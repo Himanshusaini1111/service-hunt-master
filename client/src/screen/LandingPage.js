@@ -18,53 +18,79 @@ const App = () => {
     const [allServices, setAllServices] = useState([]);
     const [locationBasedServices, setLocationBasedServices] = useState([]);
     const [filteredServices, setFilteredServices] = useState([]);
-    const [loading, setLoading] = useState(true); // Initialize as true
+    const [loading, setLoading] = useState(true);
     const [showSearchResults, setShowSearchResults] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [suggestedServiceIndex, setSuggestedServiceIndex] = useState(0);
     const [locationSearch, setLocationSearch] = useState('');
     const [selectedLocation, setSelectedLocation] = useState(null);
     const [hasLocation, setHasLocation] = useState(false);
-    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
     const navigate = useNavigate();
 
-    // Function to check if a service matches the selected location
+    // Improved location matching function
     const isServiceInLocation = useCallback((service, location) => {
         if (!location) return true;
         
-        const locationValue = location.display_name || location.city || location;
-        const locationLower = locationValue.toLowerCase();
+        // Get location string from various possible formats
+        let locationValue = '';
+        if (typeof location === 'string') {
+            locationValue = location.toLowerCase();
+        } else if (location.display_name) {
+            locationValue = location.display_name.toLowerCase();
+        } else if (location.city) {
+            locationValue = location.city.toLowerCase();
+        } else if (location.name) {
+            locationValue = location.name.toLowerCase();
+        } else {
+            locationValue = String(location).toLowerCase();
+        }
+        
+        // Extract city name from display_name (first part before comma)
+        const cityName = locationValue.split(',')[0].trim();
         
         // Check primary location field
-        if (service.location && service.location.toLowerCase().includes(locationLower)) {
-            return true;
+        if (service.location) {
+            const serviceLocation = service.location.toLowerCase();
+            if (serviceLocation.includes(cityName) || 
+                cityName.includes(serviceLocation) ||
+                serviceLocation.includes(locationValue)) {
+                return true;
+            }
         }
         
         // Check address
-        if (service.address && service.address.toLowerCase().includes(locationLower)) {
+        if (service.address && service.address.toLowerCase().includes(cityName)) {
             return true;
         }
         
         // Check serviceAreas array
         if (service.serviceAreas && Array.isArray(service.serviceAreas)) {
             return service.serviceAreas.some(area => {
-                return (
-                    (area.city && area.city.toLowerCase().includes(locationLower)) ||
-                    (area.state && area.state.toLowerCase().includes(locationLower)) ||
-                    (area.district && area.district.toLowerCase().includes(locationLower)) ||
-                    (area.pincode && area.pincode.includes(locationValue))
-                );
+                if (!area) return false;
+                const areaCity = (area.city || '').toLowerCase();
+                const areaState = (area.state || '').toLowerCase();
+                const areaDistrict = (area.district || '').toLowerCase();
+                const areaPincode = (area.pincode || '').toString();
+                
+                return areaCity.includes(cityName) ||
+                       cityName.includes(areaCity) ||
+                       areaState.includes(cityName) ||
+                       areaDistrict.includes(cityName) ||
+                       areaPincode === locationValue;
             });
         }
         
         // Check serviceLocation object
         if (service.serviceLocation) {
-            return (
-                (service.serviceLocation.city && service.serviceLocation.city.toLowerCase().includes(locationLower)) ||
-                (service.serviceLocation.state && service.serviceLocation.state.toLowerCase().includes(locationLower)) ||
-                (service.serviceLocation.district && service.serviceLocation.district.toLowerCase().includes(locationLower))
-            );
+            const locCity = (service.serviceLocation.city || '').toLowerCase();
+            const locState = (service.serviceLocation.state || '').toLowerCase();
+            const locDistrict = (service.serviceLocation.district || '').toLowerCase();
+            
+            return locCity.includes(cityName) ||
+                   cityName.includes(locCity) ||
+                   locState.includes(cityName) ||
+                   locDistrict.includes(cityName);
         }
         
         return false;
@@ -73,22 +99,25 @@ const App = () => {
     // Get location-based services
     const getLocationBasedServices = useCallback((location, services) => {
         if (!location) return services;
-        const locationValue = location.display_name || location.city || location;
-        return services.filter(service => isServiceInLocation(service, locationValue));
+        const filtered = services.filter(service => isServiceInLocation(service, location));
+        console.log(`Filtered ${filtered.length} services from ${services.length} for location:`, location);
+        return filtered;
     }, [isServiceInLocation]);
 
     // Update location-based services when location or allServices changes
     useEffect(() => {
-        if (allServices.length > 0 && selectedLocation) {
-            const filtered = getLocationBasedServices(selectedLocation, allServices);
-            setLocationBasedServices(filtered);
-            setFilteredServices(filtered);
-            setHasLocation(true);
-            setLoading(false);
-        } else if (allServices.length > 0 && !selectedLocation) {
-            setLocationBasedServices(allServices);
-            setFilteredServices(allServices);
-            setHasLocation(false);
+        if (allServices.length > 0) {
+            if (selectedLocation) {
+                const filtered = getLocationBasedServices(selectedLocation, allServices);
+                setLocationBasedServices(filtered);
+                setFilteredServices(filtered);
+                setHasLocation(true);
+                console.log(`Location selected: ${selectedLocation.display_name || selectedLocation.city}, Found ${filtered.length} services`);
+            } else {
+                setLocationBasedServices(allServices);
+                setFilteredServices(allServices);
+                setHasLocation(false);
+            }
             setLoading(false);
         }
     }, [allServices, selectedLocation, getLocationBasedServices]);
@@ -141,6 +170,7 @@ const App = () => {
                     location: service.location || 'Location not specified'
                 }));
                 setAllServices(validatedData);
+                console.log(`Loaded ${validatedData.length} services`);
                 
                 // Check localStorage for saved location
                 const savedLocation = localStorage.getItem("selectedLocation");
@@ -148,15 +178,11 @@ const App = () => {
                     try {
                         const location = JSON.parse(savedLocation);
                         setSelectedLocation(location);
-                        setHasLocation(true);
+                        console.log("Loaded saved location:", location);
                     } catch (error) {
                         console.error("Error parsing saved location:", error);
                         setSelectedLocation(null);
-                        setHasLocation(false);
                     }
-                } else {
-                    setSelectedLocation(null);
-                    setHasLocation(false);
                 }
             } catch (error) {
                 console.error('Error fetching services:', error);
@@ -166,20 +192,16 @@ const App = () => {
         };
 
         fetchServicesAndLoadLocation();
-    }, []); // Only run once on mount
+    }, []);
 
     // Handle location selection from navbar
     const handleLocationSelect = useCallback((location) => {
+        console.log("Location selected in App:", location);
         setSelectedLocation(location);
         
         if (location) {
             // Save location to localStorage
             localStorage.setItem("selectedLocation", JSON.stringify(location));
-            
-            // Filter services based on selected location
-            const filtered = getLocationBasedServices(location, allServices);
-            setLocationBasedServices(filtered);
-            setFilteredServices(filtered);
             setHasLocation(true);
             setShowSearchResults(false);
             setSearchTerm('');
@@ -187,19 +209,17 @@ const App = () => {
         } else {
             // Clear location from localStorage
             localStorage.removeItem("selectedLocation");
-            
-            // Clear location filter - show all services
-            setLocationBasedServices(allServices);
-            setFilteredServices(allServices);
             setHasLocation(false);
             setShowSearchResults(false);
             setSearchTerm('');
             setLocationSearch('');
         }
-    }, [allServices, getLocationBasedServices]);
+    }, []);
 
     // Handle search from hero section
     const handleSearch = () => {
+        console.log("Search triggered, hasLocation:", hasLocation);
+        
         if (!hasLocation) {
             alert("Please select a location first");
             return;
@@ -216,10 +236,10 @@ const App = () => {
         if (searchTerm.trim()) {
             const searchTermLower = searchTerm.trim().toLowerCase();
             results = results.filter(service =>
-                service.name.toLowerCase().includes(searchTermLower) ||
-                service.category?.toLowerCase().includes(searchTermLower) ||
-                service.subCategory?.toLowerCase().includes(searchTermLower) ||
-                service.description?.toLowerCase().includes(searchTermLower)
+                (service.name && service.name.toLowerCase().includes(searchTermLower)) ||
+                (service.category && service.category.toLowerCase().includes(searchTermLower)) ||
+                (service.subCategory && service.subCategory.toLowerCase().includes(searchTermLower)) ||
+                (service.description && service.description.toLowerCase().includes(searchTermLower))
             );
         }
         
@@ -228,12 +248,15 @@ const App = () => {
             results = results.filter(service => isServiceInLocation(service, locationSearch.trim()));
         }
         
+        console.log(`Search results: ${results.length} services found`);
         setFilteredServices(results);
         setShowSearchResults(true);
     };
 
     // Filter by search term only (for navbar search)
     const filterBySearch = (term) => {
+        console.log("Navbar search triggered, hasLocation:", hasLocation);
+        
         if (!hasLocation) {
             alert("Please select a location first");
             return;
@@ -247,12 +270,13 @@ const App = () => {
         
         const searchTermLower = term.toLowerCase();
         const filtered = locationBasedServices.filter(service =>
-            service.name.toLowerCase().includes(searchTermLower) ||
-            service.category?.toLowerCase().includes(searchTermLower) ||
-            service.subCategory?.toLowerCase().includes(searchTermLower) ||
-            service.description?.toLowerCase().includes(searchTermLower)
+            (service.name && service.name.toLowerCase().includes(searchTermLower)) ||
+            (service.category && service.category.toLowerCase().includes(searchTermLower)) ||
+            (service.subCategory && service.subCategory.toLowerCase().includes(searchTermLower)) ||
+            (service.description && service.description.toLowerCase().includes(searchTermLower))
         );
         
+        console.log(`Search results: ${filtered.length} services found for term: ${term}`);
         setFilteredServices(filtered);
         setShowSearchResults(true);
     };
@@ -381,12 +405,9 @@ const App = () => {
             />
             <br />
 
-            {/* Display selected location banner */}
-           
             {/* Search Results Section */}
             {showSearchResults && (
                 <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
-                   
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         {filteredServices.length > 0 ? (
                             filteredServices.map((service) => (
@@ -684,22 +705,29 @@ const App = () => {
                             ) : (
                                 <>
                                     {/* Suggested Services Section */}
-                                    <div style={{ marginTop: '40px', padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
-                                        <h2 style={{ fontSize: "26px", fontWeight: "700", color: "#333", marginBottom: "25px", letterSpacing: "0.5px" }}>
-                                            Suggested Services 
-                                        </h2>
-                                        <div style={{ display: 'flex', gap: '20px', whiteSpace: "nowrap", scrollbarWidth: "none", msOverflowStyle: "none", overflowX: 'auto', padding: '10px' }}>
-                                            {loading ? (
-                                                <p>Loading services...</p>
-                                            ) : (
-                                                getSuggestedServices().map((service) => (
+                                    {locationBasedServices.length > 0 && (
+                                        <div style={{ marginTop: '40px', padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
+                                            <h2 style={{ fontSize: "26px", fontWeight: "700", color: "#333", marginBottom: "25px", letterSpacing: "0.5px" }}>
+                                                Suggested Services 
+                                            </h2>
+                                            <div style={{ 
+                                                display: 'flex', 
+                                                gap: '20px', 
+                                                whiteSpace: "nowrap", 
+                                                scrollbarWidth: "none", 
+                                                msOverflowStyle: "none", 
+                                                overflowX: 'auto', 
+                                                padding: '10px',
+                                                WebkitOverflowScrolling: 'touch'
+                                            }}>
+                                                {getSuggestedServices().map((service) => (
                                                     <div key={service._id} style={{ minWidth: "250px", flexShrink: 0 }}>
                                                         <Service service={service} isLandingPage={true} />
                                                     </div>
-                                                ))
-                                            )}
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                     
                                     {/* Categories Section */}
                                     <div
@@ -757,6 +785,7 @@ const App = () => {
                                                             e.currentTarget.style.transform = "translateY(0)";
                                                             e.currentTarget.style.boxShadow = "0 4px 10px rgba(0,0,0,0.1)";
                                                         }}
+                                                        onClick={() => handleCategoryClick(buttonText)}
                                                     >
                                                         <div style={{ marginBottom: "15px" }}>
                                                             <img
@@ -778,7 +807,6 @@ const App = () => {
                                                             }}
                                                             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#e55b00")}
                                                             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#FF6600")}
-                                                            onClick={() => handleCategoryClick(buttonText)}
                                                         >
                                                             {buttonText}
                                                         </button>
@@ -789,28 +817,27 @@ const App = () => {
                                     </div>
 
                                     {/* Rotating Services Section */}
-                                    <div style={{
-                                        display: 'flex',
-                                        overflowX: 'auto',
-                                        gap: '20px',
-                                        padding: '20px',
-                                        whiteSpace: 'nowrap',
-                                        backgroundColor: '#FFFFFF',
-                                        borderRadius: '10px',
-                                        scrollbarWidth: "none",
-                                        msOverflowStyle: "none",
-                                        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-                                    }}>
-                                        {loading ? (
-                                            <p>Loading services...</p>
-                                        ) : (
-                                            getRotatingServices().map((service) => (
+                                    {locationBasedServices.length > 0 && (
+                                        <div style={{
+                                            display: 'flex',
+                                            overflowX: 'auto',
+                                            gap: '20px',
+                                            padding: '20px',
+                                            whiteSpace: 'nowrap',
+                                            backgroundColor: '#FFFFFF',
+                                            borderRadius: '10px',
+                                            scrollbarWidth: "none",
+                                            msOverflowStyle: "none",
+                                            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                                            WebkitOverflowScrolling: 'touch'
+                                        }}>
+                                            {getRotatingServices().map((service) => (
                                                 <div key={service._id} style={{ minWidth: "250px", flexShrink: 0 }}>
                                                     <Service service={service} isLandingPage={true} />
                                                 </div>
-                                            ))
-                                        )}
-                                    </div>
+                                            ))}
+                                        </div>
+                                    )}
                                     
                                     {/* Event & Ticket Services Section */}
                                     <div
@@ -1091,8 +1118,17 @@ const App = () => {
                             </p>
                             <button
                                 onClick={() => {
+                                    // Find and click the location button in navbar
                                     const locationBtn = document.querySelector('.location-toggle-btn');
-                                    if (locationBtn) locationBtn.click();
+                                    if (locationBtn) {
+                                        locationBtn.click();
+                                    } else {
+                                        // Fallback: scroll to top and show alert
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                        setTimeout(() => {
+                                            alert("Please click on the location button in the top navbar to select your location");
+                                        }, 500);
+                                    }
                                 }}
                                 style={{
                                     padding: "12px 24px",

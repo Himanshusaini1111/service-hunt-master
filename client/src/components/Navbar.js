@@ -39,7 +39,28 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                 console.error("Error parsing saved location:", error);
             }
         }
-    }, []);
+    }, [onLocationSelect]);
+
+    // Listen for location selection from other components
+    useEffect(() => {
+        const handleStorageChange = () => {
+            const savedLocation = localStorage.getItem("selectedLocation");
+            if (savedLocation) {
+                try {
+                    const location = JSON.parse(savedLocation);
+                    setCurrentLocation(location);
+                    if (onLocationSelect) {
+                        onLocationSelect(location);
+                    }
+                } catch (error) {
+                    console.error("Error parsing saved location:", error);
+                }
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, [onLocationSelect]);
 
     function logout() {
         localStorage.removeItem("currentUser");
@@ -55,6 +76,8 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
     };
 
     const handleLocationSelect = (location) => {
+        console.log("Location selected in Navbar:", location);
+        
         if (location) {
             // Save location to localStorage
             localStorage.setItem("selectedLocation", JSON.stringify(location));
@@ -71,6 +94,11 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
             }
         }
         setShowLocationSearch(false);
+        
+        // Close mobile menu if open
+        if (isMobile && isMenuOpen) {
+            setIsMenuOpen(false);
+        }
     };
 
     const toggleMenu = () => {
@@ -140,7 +168,7 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
     };
 
     return (
-        <nav className="navbar navbar-expand-lg custom-navbar">
+        <nav className="navbar navbar-expand-lg custom-navbar" style={{ backgroundColor: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
             <div className="container-fluid">
                 {/* Brand Section */}
                 <div className="navbar-brand-section">
@@ -148,7 +176,7 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                         e.preventDefault();
                         handleNavigation('/home');
                     }}>
-                        <h5 className="app-title">Smart Seva</h5>
+                        <h5 className="app-title" style={{ margin: 0, color: '#4a54e1', fontWeight: 'bold' }}>Smart Seva</h5>
                     </a>
                     <button
                         className="navbar-toggler custom-toggler"
@@ -157,6 +185,7 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                         aria-controls="navbarNav"
                         aria-expanded={isMenuOpen}
                         aria-label="Toggle navigation"
+                        style={{ border: 'none', background: 'transparent', fontSize: '24px' }}
                     >
                         <i className="fa fa-bars"></i>
                     </button>
@@ -167,12 +196,26 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                     ref={menuRef}
                     className={`navbar-collapse ${isMenuOpen ? 'show' : ''}`} 
                     id="navbarNav"
+                    style={{
+                        ...(isMobile && isMenuOpen ? {
+                            position: 'fixed',
+                            top: '60px',
+                            left: 0,
+                            right: 0,
+                            background: 'white',
+                            padding: '20px',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                            zIndex: 1000,
+                            maxHeight: 'calc(100vh - 60px)',
+                            overflowY: 'auto'
+                        } : {})
+                    }}
                 >
-                    <ul className="navbar-nav">
+                    <ul className="navbar-nav" style={{ width: '100%' }}>
                         {user ? (
                             <>
                                 {/* Location Search Button - Always visible */}
-                                <li className="nav-item location-search-btn-container" ref={locationSearchRef}>
+                                <li className="nav-item location-search-btn-container" ref={locationSearchRef} style={{ width: '100%', marginBottom: isMobile ? '10px' : 0 }}>
                                     <div className="location-search-wrapper" style={{ width: "100%" }}>
                                         <button
                                             className="location-toggle-btn"
@@ -183,16 +226,15 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                                                 justifyContent: "center",
                                                 gap: "8px",
                                                 width: "100%",
-                                                padding: isMobile ? "10px 16px" : "8px 16px",
+                                                padding: isMobile ? "12px 16px" : "8px 16px",
                                                 backgroundColor: currentLocation ? "#4a54e1" : "#f0f0f0",
                                                 border: "none",
-                                                borderRadius: isMobile ? "8px" : "20px",
+                                                borderRadius: "8px",
                                                 cursor: "pointer",
                                                 transition: "all 0.3s ease",
                                                 color: currentLocation ? "white" : "#333",
                                                 fontSize: isMobile ? "14px" : "14px",
-                                                fontWeight: "500",
-                                                marginBottom: isMobile ? "10px" : "0"
+                                                fontWeight: "500"
                                             }}
                                         >
                                             <i className="fa fa-map-marker" style={{ fontSize: isMobile ? "14px" : "14px" }}></i>
@@ -276,8 +318,8 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                                 </li>
 
                                 {/* User Menu */}
-                                <li className="nav-item dropdown user-menu" ref={dropdownRef}>
-                                    <div className="user-dropdown">
+                                <li className="nav-item dropdown user-menu" ref={dropdownRef} style={{ width: '100%' }}>
+                                    <div className="user-dropdown" style={{ width: '100%' }}>
                                         <button
                                             className="user-toggle"
                                             type="button"
@@ -289,12 +331,12 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                                                 justifyContent: "center",
                                                 gap: "8px",
                                                 width: "100%",
-                                                padding: isMobile ? "10px 16px" : "8px 12px",
+                                                padding: isMobile ? "12px 16px" : "8px 12px",
                                                 backgroundColor: "#f0f0f0",
                                                 border: "none",
-                                                borderRadius: isMobile ? "8px" : "20px",
+                                                borderRadius: "8px",
                                                 cursor: "pointer",
-                                                marginTop: isMobile ? "10px" : "0"
+                                                marginTop: isMobile ? "0" : "0"
                                             }}
                                         >
                                             <i className="fa fa-user"></i>
@@ -316,7 +358,15 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                                                 {user.name?.charAt(0).toUpperCase()}
                                             </span>
                                         </button>
-                                        <div className={`dropdown-menu ${isDropdownOpen ? 'show' : ''}`}>
+                                        <div className={`dropdown-menu ${isDropdownOpen ? 'show' : ''}`} style={{
+                                            ...(isMobile && isDropdownOpen ? {
+                                                position: 'static',
+                                                width: '100%',
+                                                marginTop: '10px',
+                                                boxShadow: 'none',
+                                                border: '1px solid #e0e0e0'
+                                            } : {})
+                                        }}>
                                             <button className="dropdown-item" onClick={() => handleNavigation("/profile")}>
                                                 <i className="fa fa-user-o"></i> Profile
                                             </button>
@@ -365,20 +415,20 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                         ) : (
                             /* Guest User Links */
                             <>
-                                <li className="nav-item">
+                                <li className="nav-item" style={{ width: '100%', marginBottom: '10px' }}>
                                     <button 
                                         className="nav-link btn-register"
                                         onClick={() => handleNavigation("/register")}
-                                        style={{color:"black", width: "100%", textAlign: "left"}}
+                                        style={{color:"black", width: "100%", textAlign: "center", padding: "10px"}}
                                     >
                                         Register
                                     </button>
                                 </li>
-                                <li className="nav-item">
+                                <li className="nav-item" style={{ width: '100%' }}>
                                     <button 
                                         className="nav-link btn-login"
                                         onClick={() => handleNavigation("/login")}
-                                        style={{width: "100%", textAlign: "left"}}
+                                        style={{width: "100%", textAlign: "center", padding: "10px"}}
                                     >
                                         Login
                                     </button>
@@ -388,51 +438,6 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                     </ul>
                 </div>
             </div>
-
-            {/* Add responsive styles */}
-            <style jsx>{`
-                @media (max-width: 768px) {
-                    .navbar-collapse {
-                        position: fixed;
-                        top: 60px;
-                        left: 0;
-                        right: 0;
-                        background: white;
-                        padding: 20px;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                        z-index: 1000;
-                        max-height: calc(100vh - 60px);
-                        overflow-y: auto;
-                    }
-                    
-                    .navbar-nav {
-                        width: 100%;
-                    }
-                    
-                    .nav-item {
-                        width: 100%;
-                        margin: 5px 0;
-                    }
-                    
-                    .location-search-btn-container,
-                    .user-menu {
-                        width: 100%;
-                    }
-                    
-                    .location-search-wrapper,
-                    .user-dropdown {
-                        width: 100%;
-                    }
-                    
-                    .dropdown-menu {
-                        position: static !important;
-                        width: 100%;
-                        margin-top: 10px !important;
-                        box-shadow: none !important;
-                        border: 1px solid #e0e0e0;
-                    }
-                }
-            `}</style>
         </nav>
     );
 }

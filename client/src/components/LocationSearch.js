@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import debounce from "lodash.debounce";
 
 const LocationSearch = ({ onLocationSelect, placeholder = "Enter location..." }) => {
@@ -6,6 +6,16 @@ const LocationSearch = ({ onLocationSelect, placeholder = "Enter location..." })
     const [suggestions, setSuggestions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+    // Handle window resize
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Debounced search function
     const debouncedSearch = useCallback(
@@ -51,6 +61,7 @@ const LocationSearch = ({ onLocationSelect, placeholder = "Enter location..." })
     };
 
     const handleSelectLocation = (location) => {
+        console.log("Location selected in LocationSearch:", location);
         setSearchQuery(location.display_name);
         setSuggestions([]);
         onLocationSelect?.(location);
@@ -66,11 +77,11 @@ const LocationSearch = ({ onLocationSelect, placeholder = "Enter location..." })
                     placeholder={placeholder}
                     style={{
                         width: "100%",
-                        height: "56px",
+                        height: isMobile ? "48px" : "56px",
                         padding: "0 50px 0 20px",
                         border: "2px solid #E2E8F0",
                         borderRadius: "12px",
-                        fontSize: "16px",
+                        fontSize: isMobile ? "14px" : "16px",
                         fontWeight: "400",
                         outline: "none",
                         transition: "all 0.3s ease",
@@ -164,7 +175,7 @@ const LocationSearch = ({ onLocationSelect, placeholder = "Enter location..." })
                             key={location.place_id}
                             onClick={() => handleSelectLocation(location)}
                             style={{
-                                padding: "12px 16px",
+                                padding: isMobile ? "12px 16px" : "12px 16px",
                                 cursor: "pointer",
                                 borderBottom: "1px solid #f0f0f0",
                                 backgroundColor: "white",
@@ -178,12 +189,12 @@ const LocationSearch = ({ onLocationSelect, placeholder = "Enter location..." })
                         >
                             <span style={{ fontSize: "18px" }}>📍</span>
                             <div>
-                                <div style={{ fontWeight: "500", color: "#333" }}>
+                                <div style={{ fontWeight: "500", color: "#333", fontSize: isMobile ? "14px" : "16px" }}>
                                     {location.name || location.display_name.split(',')[0]}
                                 </div>
-                                <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
-                                    {location.display_name.length > 80 
-                                        ? location.display_name.substring(0, 80) + '...'
+                                <div style={{ fontSize: isMobile ? "11px" : "12px", color: "#666", marginTop: "2px" }}>
+                                    {location.display_name.length > (isMobile ? 60 : 80) 
+                                        ? location.display_name.substring(0, isMobile ? 60 : 80) + '...'
                                         : location.display_name}
                                 </div>
                             </div>
