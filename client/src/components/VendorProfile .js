@@ -22,7 +22,6 @@ export function VendorProfile({ userId }) {
         averageRating: 0
     });
 
-    // Fetch vendor profile
     useEffect(() => {
         if (userId) {
             fetchVendorProfile();
@@ -32,36 +31,34 @@ export function VendorProfile({ userId }) {
     const fetchVendorProfile = async () => {
         try {
             setLoading(true);
-            // First try to get vendor from Vendor collection
+            setError(false);
+            
+            // Fetch vendor profile with userId
             const { data: vendorData } = await axios.get(`/api/vendor/profile/${userId}`);
             
             if (vendorData) {
-                setVendorProfile(vendorData);
-                fetchVendorStats(vendorData._id);
-            } else {
-                // If not in Vendor collection, check if user is a vendor/admin
-                const { data: userData } = await axios.get(`/api/users/${userId}`);
-                if (userData && (userData.role === 'admin' || userData.role === 'vendor')) {
-                    // Check if there's a pathner application
-                    const { data: pathnerData } = await axios.get(`/api/pathner/user/${userId}`);
-                    
-                    // Create basic vendor profile from user data
-                    setVendorProfile({
-                        _id: userData._id,
-                        name: userData.name,
-                        email: userData.email,
-                        phone: userData.phone,
-                        address: userData.address,
-                        role: userData.role,
-                        isVendor: true,
-                        pathnerDetails: pathnerData || null
-                    });
+                // Verify this is the correct vendor data for this user
+                if (vendorData.userId && vendorData.userId !== userId) {
+                    console.error('Vendor data mismatch');
+                    setError(true);
+                    message.error("You don't have permission to view this profile");
+                    return;
                 }
+                
+                setVendorProfile(vendorData);
+                
+                // Fetch stats for this vendor only
+                if (vendorData._id && vendorData.isFromVendorCollection) {
+                    fetchVendorStats(vendorData._id);
+                }
+            } else {
+                setError(true);
+                message.error("No vendor profile found");
             }
         } catch (error) {
             console.error("Error fetching vendor profile:", error);
             setError(true);
-            message.error("Failed to load vendor profile");
+            message.error(error.response?.data?.message || "Failed to load vendor profile");
         } finally {
             setLoading(false);
         }
@@ -69,6 +66,7 @@ export function VendorProfile({ userId }) {
 
     const fetchVendorStats = async (vendorId) => {
         try {
+            // Fetch stats specific to this vendor
             const { data } = await axios.get(`/api/vendor/stats/${vendorId}`);
             setStats(data);
         } catch (error) {

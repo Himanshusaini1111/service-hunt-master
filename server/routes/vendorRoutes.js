@@ -31,65 +31,207 @@ const generateUniqueCode = async () => {
     return code;
 };
 // Get vendor profile by user ID
+// In your vendor.js routes file
+// In vendor.js routes - Update the profile endpoint
 router.get("/profile/:userId", async (req, res) => {
     try {
         const { userId } = req.params;
         
-        // First try to find in Vendor collection
+        console.log('Fetching vendor profile for userId:', userId);
+        
+        // First try to find in Vendor collection with proper userId linking
         let vendor = await Vendor.findOne({ userId: userId });
         
-        if (!vendor) {
-            // If not found, check if user exists and is a vendor/admin
-            const user = await User.findById(userId);
-            if (user && (user.role === 'admin' || user.role === 'vendor')) {
-                // Check if there's a pathner application
-                const pathner = await Pathner.findOne({ emailDetails: user.email });
-                
-                // Create basic vendor object from user data
-                vendor = {
-                    _id: user._id,
-                    name: user.name,
-                    email: user.email,
-                    phone: user.phone,
-                    address: user.address,
-                    role: user.role,
-                    isVendor: true,
-                    pathnerDetails: pathner || null
-                };
-            }
+        if (vendor) {
+            console.log('Found vendor in Vendor collection:', vendor._id);
+            
+            // Fetch pathner details if available
+            const pathner = await Pathner.findOne({ 
+                $or: [
+                    { emailDetails: vendor.email },
+                    { userId: userId }
+                ]
+            });
+            
+            const vendorData = {
+                ...vendor.toObject(),
+                _id: vendor._id, // Keep the vendor ID
+                userId: vendor.userId, // Keep reference to user
+                isFromVendorCollection: true,
+                pathnerDetails: pathner || null
+            };
+            
+            return res.json(vendorData);
         }
         
-        if (!vendor) {
-            return res.status(404).json({ message: "Vendor profile not found" });
+        // If not found in Vendor collection, check if user exists and is admin/vendor
+        const user = await User.findById(userId);
+        
+        if (user && (user.role === 'admin' || user.role === 'vendor')) {
+            console.log('User found with role:', user.role);
+            
+            // Check for pathner application with matching email
+            const pathner = await Pathner.findOne({ 
+                emailDetails: user.email 
+            });
+            
+            // Create basic vendor object from user data
+            const vendorData = {
+                _id: user._id, // Important: Use user._id as the identifier
+                userId: user._id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                address: user.address,
+                role: user.role,
+                isVendor: true,
+                isFromVendorCollection: false,
+                pathnerDetails: pathner || null,
+                skills: user.skills || '',
+                experience: user.experience || 0,
+                availability: user.availability || 'Available',
+                hourlyRate: user.hourlyRate || 0,
+                category: user.category || 'General',
+                companyName: pathner?.serviceName || user.companyName || 'Individual Vendor',
+                serviceType: pathner?.typeOfService || user.serviceType || 'General',
+                description: pathner?.description || user.description || ''
+            };
+            
+            return res.json(vendorData);
         }
         
-        res.json(vendor);
+        console.log('No vendor profile found for userId:', userId);
+        return res.status(404).json({ message: "Vendor profile not found" });
+        
     } catch (error) {
         console.error("Error fetching vendor profile:", error);
         res.status(500).json({ message: "Server error" });
     }
 });
-
 // Update vendor profile
+// In vendor.js routes
+// In vendor.js routes - Replace the update endpoint with this
 router.put("/update/:id", async (req, res) => {
     try {
-        const vendor = await Vendor.findByIdAndUpdate(
-            req.params.id,
-            { $set: req.body },
-            { new: true }
-        );
+        const vendorId = req.params.id;
+        const updateData = req.body;
         
-        if (!vendor) {
-            return res.status(404).json({ message: "Vendor not found" });
+        console.log('Updating vendor profile:', { vendorId, updateData });
+        
+        // First, try to find in Vendor collection
+        let vendor = await Vendor.findById(vendorId);
+        
+        if (vendor) {
+            // Found in Vendor collection - update both Vendor and User
+            console.log('Updating vendor from Vendor collection');
+            
+            const updatedVendor = await Vendor.findByIdAndUpdate(
+                vendorId,
+                { $set: updateData },
+                { new: true }
+            );
+            
+            // Also update the associated user
+            if (vendor.userId) {
+                const userUpdateData = {
+                    name: updateData.name,
+                    phone: updateData.phone,
+                    address: updateData.address
+                };
+                
+                // Only include fields that exist in User model
+                Object.keys(userUpdateData).forEach(key => 
+                    userUpdateData[key] === undefined && delete userUpdateData[key]
+                );
+                
+                if (Object.keys(userUpdateData).length > 0) {
+                    await User.findByIdAndUpdate(vendor.userId, userUpdateData);
+                }
+            }
+            
+            return res.json(updatedVendor);
         }
         
-        res.json(vendor);
+        // If not found in Vendor collection, check if it's a User-based vendor
+        const user = await User.findById(vendorId);
+        
+        if (user && (user.role === 'admin' || user.role === 'vendor')) {
+            console.log('Updating user-based vendor profile');
+            
+            // Update the user document
+            const userUpdateData = {
+                name: updateData.name,
+                phone: updateData.phone,
+                address: updateData.address,
+                skills: updateData.skills,
+                experience: updateData.experience,
+                availability: updateData.availability,
+                hourlyRate: updateData.hourlyRate,
+                category: updateData.category,
+                companyName: updateData.companyName,
+                serviceType: updateData.serviceType,
+                description: updateData.description
+            };
+            
+            // Remove undefined fields
+            Object.keys(userUpdateData).forEach(key => 
+                userUpdateData[key] === undefined && delete userUpdateData[key]
+            );
+            
+            const updatedUser = await User.findByIdAndUpdate(
+                vendorId,
+                { $set: userUpdateData },
+                { new: true }
+            );
+            
+            // Also update pathner details if they exist
+            if (updateData.companyName || updateData.serviceType) {
+                await Pathner.findOneAndUpdate(
+                    { emailDetails: user.email },
+                    {
+                        $set: {
+                            serviceName: updateData.companyName || user.companyName,
+                            typeOfService: updateData.serviceType || user.serviceType,
+                            description: updateData.description || user.description
+                        }
+                    },
+                    { new: true, upsert: false }
+                );
+            }
+            
+            // Return the updated data in vendor format
+            const pathner = await Pathner.findOne({ emailDetails: user.email });
+            
+            const updatedVendorData = {
+                _id: updatedUser._id,
+                name: updatedUser.name,
+                email: updatedUser.email,
+                phone: updatedUser.phone,
+                address: updatedUser.address,
+                role: updatedUser.role,
+                isVendor: true,
+                isFromVendorCollection: false,
+                pathnerDetails: pathner || null,
+                skills: updatedUser.skills || '',
+                experience: updatedUser.experience || 0,
+                availability: updatedUser.availability || 'Available',
+                hourlyRate: updatedUser.hourlyRate || 0,
+                category: updatedUser.category || 'General',
+                companyName: pathner?.serviceName || updatedUser.companyName || 'Individual Vendor',
+                serviceType: pathner?.typeOfService || updatedUser.serviceType || 'General',
+                description: pathner?.description || updatedUser.description || ''
+            };
+            
+            return res.json(updatedVendorData);
+        }
+        
+        return res.status(404).json({ message: "Vendor not found" });
+        
     } catch (error) {
         console.error("Update error:", error);
-        res.status(500).json({ message: "Server error" });
+        res.status(500).json({ message: "Server error: " + error.message });
     }
 });
-
 // Get all vendors (for super admin)
 router.get('/all', async (req, res) => {
     try {

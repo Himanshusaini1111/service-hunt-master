@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import About from '../components/About';
 import Service from '../components/Service';
-import LocationSearch from '../components/LocationSearch'; // Add this import
-
-// Remove the incorrect LocationSearch import
+import LocationSearch from '../components/LocationSearch';
 
 const App = () => {
     const images = [
@@ -17,115 +15,26 @@ const App = () => {
 
     const [currentIndex, setCurrentIndex] = useState(0);
     const [currentServiceIndex, setCurrentServiceIndex] = useState(0);
-    const [services, setServices] = useState([]);
+    const [allServices, setAllServices] = useState([]);
+    const [locationBasedServices, setLocationBasedServices] = useState([]);
     const [filteredServices, setFilteredServices] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true); // Initialize as true
     const [showSearchResults, setShowSearchResults] = useState(false);
-    const [suggestedServices, setSuggestedServices] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [suggestedServiceIndex, setSuggestedServiceIndex] = useState(0);
     const [locationSearch, setLocationSearch] = useState('');
+    const [selectedLocation, setSelectedLocation] = useState(null);
+    const [hasLocation, setHasLocation] = useState(false);
+    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
     const navigate = useNavigate();
 
-// Handle search input change
-const handleSearchChange = (e) => {
-    const term = e.target.value;
-    setSearchTerm(term);
-};
-
-// Remove this function since it's not used
-// const searchService = (term) => {
-//     filterBySearch(term);
-// };
-
-// Separate the getCurrentServices functions
-
-    // Define the missing searchService function
-    const searchService = (term) => {
-        filterBySearch(term);
-    };
-
-    // Separate the getCurrentServices functions
-    const getSuggestedServices = () => {
-        const startIndex = suggestedServiceIndex;
-        const endIndex = startIndex + 10;
-        return filteredServices.slice(startIndex, endIndex);
-    };
-
-    const getRotatingServices = () => {
-        const startIndex = currentServiceIndex;
-        const endIndex = startIndex + 4;
-        return filteredServices.slice(startIndex, endIndex);
-    };
-
-    // Update both intervals separately
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setSuggestedServiceIndex(prev => (prev + 4) % filteredServices.length);
-        }, 8000);
-        return () => clearInterval(interval);
-    }, [filteredServices.length]);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentServiceIndex(prev => (prev + 4) % filteredServices.length);
-        }, 10000);
-        return () => clearInterval(interval);
-    }, [filteredServices.length]);
-
-    // Fetch services from the backend
-    useEffect(() => {
-        const fetchServices = async () => {
-            setLoading(true);
-            try {
-                const { data } = await axios.get('/api/service/getallservices');
-                const validatedData = data.map(service => ({
-                    ...service,
-                    location: service.location || 'Location not specified'
-                }));
-                setServices(validatedData);
-                setFilteredServices(validatedData);
-            } catch (error) {
-                console.error('Error fetching services:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchServices();
-    }, []);
-
-    // Function to filter services by search term
-    const filterBySearch = (searchTerm) => {
-        if (searchTerm.trim() === "") {
-            setFilteredServices(services);
-            setShowSearchResults(false);
-        } else {
-            const updatedServices = services.filter(service =>
-                service.name.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-            setFilteredServices(updatedServices);
-            setShowSearchResults(true);
-        }
-    };
-
-    // Function to filter services by location
-   // Improved location filtering function
-const filterByLocation = (location) => {
-    if (!location || location.trim() === "") {
-        setFilteredServices(services);
-        setShowSearchResults(false);
-        return;
-    }
-    
-    const locationLower = location.toLowerCase();
-    
-    const updatedServices = services.filter(service => {
-        // Check if service has location data
-        if (!service.location && !service.serviceAreas && !service.address) {
-            return false;
-        }
+    // Function to check if a service matches the selected location
+    const isServiceInLocation = useCallback((service, location) => {
+        if (!location) return true;
+        
+        const locationValue = location.display_name || location.city || location;
+        const locationLower = locationValue.toLowerCase();
         
         // Check primary location field
         if (service.location && service.location.toLowerCase().includes(locationLower)) {
@@ -137,83 +46,253 @@ const filterByLocation = (location) => {
             return true;
         }
         
-        // Check service areas array
+        // Check serviceAreas array
         if (service.serviceAreas && Array.isArray(service.serviceAreas)) {
             return service.serviceAreas.some(area => {
                 return (
                     (area.city && area.city.toLowerCase().includes(locationLower)) ||
                     (area.state && area.state.toLowerCase().includes(locationLower)) ||
                     (area.district && area.district.toLowerCase().includes(locationLower)) ||
-                    (area.pincode && area.pincode.includes(location))
+                    (area.pincode && area.pincode.includes(locationValue))
                 );
             });
         }
         
+        // Check serviceLocation object
+        if (service.serviceLocation) {
+            return (
+                (service.serviceLocation.city && service.serviceLocation.city.toLowerCase().includes(locationLower)) ||
+                (service.serviceLocation.state && service.serviceLocation.state.toLowerCase().includes(locationLower)) ||
+                (service.serviceLocation.district && service.serviceLocation.district.toLowerCase().includes(locationLower))
+            );
+        }
+        
         return false;
-    });
-    
-    setFilteredServices(updatedServices);
-    setShowSearchResults(true);
-};
+    }, []);
 
-// Combined search function
-// Combined search function
-// Combined search function
-const handleSearch = () => {
-    // Check if both inputs have some value
-    if (!searchTerm.trim() || !locationSearch.trim()) {
-        // If either is empty, show a message or don't search
-        alert("Please enter both service name and location to search");
-        return;
-    }
-    
-    let results = services;
-    
-    // Filter by search term
-    const searchTermLower = searchTerm.trim().toLowerCase();
-    results = results.filter(service =>
-        service.name.toLowerCase().includes(searchTermLower) ||
-        service.category?.toLowerCase().includes(searchTermLower) ||
-        service.subCategory?.toLowerCase().includes(searchTermLower) ||
-        service.description?.toLowerCase().includes(searchTermLower)
-    );
-    
-    // Filter by location
-    const locationLower = locationSearch.trim().toLowerCase();
-    results = results.filter(service => {
-        // Check multiple location fields
-        return (
-            // Check location field
-            (service.location && service.location.toLowerCase().includes(locationLower)) ||
+    // Get location-based services
+    const getLocationBasedServices = useCallback((location, services) => {
+        if (!location) return services;
+        const locationValue = location.display_name || location.city || location;
+        return services.filter(service => isServiceInLocation(service, locationValue));
+    }, [isServiceInLocation]);
+
+    // Update location-based services when location or allServices changes
+    useEffect(() => {
+        if (allServices.length > 0 && selectedLocation) {
+            const filtered = getLocationBasedServices(selectedLocation, allServices);
+            setLocationBasedServices(filtered);
+            setFilteredServices(filtered);
+            setHasLocation(true);
+            setLoading(false);
+        } else if (allServices.length > 0 && !selectedLocation) {
+            setLocationBasedServices(allServices);
+            setFilteredServices(allServices);
+            setHasLocation(false);
+            setLoading(false);
+        }
+    }, [allServices, selectedLocation, getLocationBasedServices]);
+
+    // Get suggested services (first 10)
+    const getSuggestedServices = () => {
+        if (locationBasedServices.length === 0) return [];
+        const startIndex = suggestedServiceIndex;
+        const endIndex = Math.min(startIndex + 10, locationBasedServices.length);
+        return locationBasedServices.slice(startIndex, endIndex);
+    };
+
+    // Get rotating services (4 services that rotate)
+    const getRotatingServices = () => {
+        if (locationBasedServices.length === 0) return [];
+        const startIndex = currentServiceIndex;
+        const endIndex = Math.min(startIndex + 4, locationBasedServices.length);
+        return locationBasedServices.slice(startIndex, endIndex);
+    };
+
+    // Update rotating services interval
+    useEffect(() => {
+        if (locationBasedServices.length === 0) return;
+        
+        const interval = setInterval(() => {
+            setCurrentServiceIndex(prev => (prev + 4) % locationBasedServices.length);
+        }, 10000);
+        return () => clearInterval(interval);
+    }, [locationBasedServices.length]);
+
+    // Update suggested services interval
+    useEffect(() => {
+        if (locationBasedServices.length === 0) return;
+        
+        const interval = setInterval(() => {
+            setSuggestedServiceIndex(prev => (prev + 4) % locationBasedServices.length);
+        }, 8000);
+        return () => clearInterval(interval);
+    }, [locationBasedServices.length]);
+
+    // Fetch all services from backend and load saved location
+    useEffect(() => {
+        const fetchServicesAndLoadLocation = async () => {
+            setLoading(true);
+            try {
+                // Fetch services
+                const { data } = await axios.get('/api/service/getallservices');
+                const validatedData = data.map(service => ({
+                    ...service,
+                    location: service.location || 'Location not specified'
+                }));
+                setAllServices(validatedData);
+                
+                // Check localStorage for saved location
+                const savedLocation = localStorage.getItem("selectedLocation");
+                if (savedLocation) {
+                    try {
+                        const location = JSON.parse(savedLocation);
+                        setSelectedLocation(location);
+                        setHasLocation(true);
+                    } catch (error) {
+                        console.error("Error parsing saved location:", error);
+                        setSelectedLocation(null);
+                        setHasLocation(false);
+                    }
+                } else {
+                    setSelectedLocation(null);
+                    setHasLocation(false);
+                }
+            } catch (error) {
+                console.error('Error fetching services:', error);
+                setAllServices([]);
+                setLoading(false);
+            }
+        };
+
+        fetchServicesAndLoadLocation();
+    }, []); // Only run once on mount
+
+    // Handle location selection from navbar
+    const handleLocationSelect = useCallback((location) => {
+        setSelectedLocation(location);
+        
+        if (location) {
+            // Save location to localStorage
+            localStorage.setItem("selectedLocation", JSON.stringify(location));
             
-            // Check address field
-            (service.address && service.address.toLowerCase().includes(locationLower)) ||
+            // Filter services based on selected location
+            const filtered = getLocationBasedServices(location, allServices);
+            setLocationBasedServices(filtered);
+            setFilteredServices(filtered);
+            setHasLocation(true);
+            setShowSearchResults(false);
+            setSearchTerm('');
+            setLocationSearch('');
+        } else {
+            // Clear location from localStorage
+            localStorage.removeItem("selectedLocation");
             
-            // Check serviceLocation object
-            (service.serviceLocation?.city && service.serviceLocation.city.toLowerCase().includes(locationLower)) ||
-            (service.serviceLocation?.state && service.serviceLocation.state.toLowerCase().includes(locationLower)) ||
-            (service.serviceLocation?.district && service.serviceLocation.district.toLowerCase().includes(locationLower)) ||
-            
-            // Check serviceAreas array
-            (service.serviceAreas && service.serviceAreas.some(area => 
-                (area.city && area.city.toLowerCase().includes(locationLower)) ||
-                (area.state && area.state.toLowerCase().includes(locationLower)) ||
-                (area.district && area.district.toLowerCase().includes(locationLower)) ||
-                (area.pincode && area.pincode.includes(locationSearch.trim()))
-            ))
+            // Clear location filter - show all services
+            setLocationBasedServices(allServices);
+            setFilteredServices(allServices);
+            setHasLocation(false);
+            setShowSearchResults(false);
+            setSearchTerm('');
+            setLocationSearch('');
+        }
+    }, [allServices, getLocationBasedServices]);
+
+    // Handle search from hero section
+    const handleSearch = () => {
+        if (!hasLocation) {
+            alert("Please select a location first");
+            return;
+        }
+        
+        if (!searchTerm.trim() && !locationSearch.trim()) {
+            alert("Please enter service name or location to search");
+            return;
+        }
+        
+        let results = [...locationBasedServices];
+        
+        // Filter by search term
+        if (searchTerm.trim()) {
+            const searchTermLower = searchTerm.trim().toLowerCase();
+            results = results.filter(service =>
+                service.name.toLowerCase().includes(searchTermLower) ||
+                service.category?.toLowerCase().includes(searchTermLower) ||
+                service.subCategory?.toLowerCase().includes(searchTermLower) ||
+                service.description?.toLowerCase().includes(searchTermLower)
+            );
+        }
+        
+        // Additional location filter from hero section
+        if (locationSearch.trim()) {
+            results = results.filter(service => isServiceInLocation(service, locationSearch.trim()));
+        }
+        
+        setFilteredServices(results);
+        setShowSearchResults(true);
+    };
+
+    // Filter by search term only (for navbar search)
+    const filterBySearch = (term) => {
+        if (!hasLocation) {
+            alert("Please select a location first");
+            return;
+        }
+        
+        if (!term || term.trim() === "") {
+            setFilteredServices(locationBasedServices);
+            setShowSearchResults(false);
+            return;
+        }
+        
+        const searchTermLower = term.toLowerCase();
+        const filtered = locationBasedServices.filter(service =>
+            service.name.toLowerCase().includes(searchTermLower) ||
+            service.category?.toLowerCase().includes(searchTermLower) ||
+            service.subCategory?.toLowerCase().includes(searchTermLower) ||
+            service.description?.toLowerCase().includes(searchTermLower)
         );
-    });
-    
-    setFilteredServices(results);
-    setShowSearchResults(true);
-};
-// Also update the clear button functionality
-const handleClearSearch = () => {
-    setSearchTerm('');
-    setLocationSearch('');
-    setFilteredServices(services);
-    setShowSearchResults(false);
-};
+        
+        setFilteredServices(filtered);
+        setShowSearchResults(true);
+    };
+
+    const handleClearSearch = () => {
+        setSearchTerm('');
+        setLocationSearch('');
+        setFilteredServices(locationBasedServices);
+        setShowSearchResults(false);
+    };
+
+    // Handle category click
+    const handleCategoryClick = (category) => {
+        if (!hasLocation) {
+            alert("Please select a location first");
+            return;
+        }
+        
+        navigate('/home', { 
+            state: { 
+                category: category,
+                location: selectedLocation
+            } 
+        });
+    };
+
+    // Handle subcategory click
+    const handleSubCategoryClick = (subCategory) => {
+        if (!hasLocation) {
+            alert("Please select a location first");
+            return;
+        }
+        
+        navigate('/home', { 
+            state: { 
+                subCategory: subCategory,
+                location: selectedLocation
+            } 
+        });
+    };
 
     // Image slider for banners
     useEffect(() => {
@@ -223,67 +302,6 @@ const handleClearSearch = () => {
         return () => clearInterval(interval);
     }, []);
 
-    const buttonStyle = {
-        padding: '10px 20px',
-        fontSize: '16px',
-        backgroundColor: '#FF9900',
-        color: '#FFFFFF',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        margin: '10px',
-        width: '100%',
-        height: '50px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        transition: 'background-color 0.3s ease', // Add transition for hover effect
-    };
-
-    const boxStyle = {
-        border: '1px solid #ccc',
-        padding: '20px',
-        margin: '10px',
-        borderRadius: '10px',
-        textAlign: 'center',
-        width: '250px',
-        height: '350px',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: '#FFFFFF',
-        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', // Add shadow for depth
-        transition: 'transform 0.3s ease, box-shadow 0.3s ease', // Add hover effect
-    };
-
-    const gridStyle = {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, 1fr)', // 4 columns
-        gap: '20px', // Space between items
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '0px',
-    };
-    // Add this new style object for consistent image containers
-    const imageContainerStyle = {
-        width: '100%',
-        height: '200px', // Fixed height for all image containers
-        overflow: 'hidden',
-        position: 'relative',
-        borderRadius: '10px',
-    };
-
-    // Update the image style
-    const imageStyle = {
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover',
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-    };
     const buttonLabels = [
         "Home Maintenance & Repair Services",
         "Event & Party Planning Services",
@@ -305,7 +323,7 @@ const handleClearSearch = () => {
         "https://i.pinimg.com/originals/59/71/b4/5971b4ac248f4d423b88f3ea8ea19d5b.png",
         "https://cdn.dribbble.com/users/1021976/screenshots/2423268/1st-shot.gif",
         "https://thumbs.dreamstime.com/z/people-queue-to-cinema-ticket-office-flat-cartoon-diverse-multiracial-adults-child-characters-booth-friendly-smiling-box-177416024.jpg",
-        "https://allurehealthservices.com/wp-content/uploads/2023/10/3226126_43071.png",
+        "https://tse1.mm.bing.net/th/id/OIP.QO-qqyIWNAjntPfA7l7CtgHaHa?rs=1&pid=ImgDetMain&o=7&rm=3",
         "https://th.bing.com/th/id/OIP.kZwgivQHtgnpXz3XmweVYgHaIc?rs=1&pid=ImgDetMain",
         "https://t4.ftcdn.net/jpg/02/67/08/09/360_F_267080924_aHzz3sjmAUbwTCstbOublIt7ls4okYyA.jpg",
         "https://ak.picdn.net/shutterstock/videos/1081206167/thumb/3.jpg?ip=x480",
@@ -318,14 +336,57 @@ const handleClearSearch = () => {
         "https://thumbs.dreamstime.com/b/elderly-person-assistance-vector-illustration-support-care-senior-people-social-work-volunteering-concept-flat-cartoon-322085453.jpg"
     ];
 
+    // Show loading spinner while initial load is in progress
+    if (loading && allServices.length === 0) {
+        return (
+            <div>
+                <Navbar 
+                    onLocationSelect={handleLocationSelect}
+                    selectedLocation={selectedLocation}
+                    searchService={filterBySearch}
+                />
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100vh',
+                    flexDirection: 'column'
+                }}>
+                    <div style={{
+                        width: '50px',
+                        height: '50px',
+                        border: '5px solid #f3f3f3',
+                        borderTop: '5px solid #4a54e1',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                    }} />
+                    <p style={{ marginTop: '20px', color: '#666' }}>Loading services...</p>
+                    <style>{`
+                        @keyframes spin {
+                            0% { transform: rotate(0deg); }
+                            100% { transform: rotate(360deg); }
+                        }
+                    `}</style>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div style={{ padding: '0px', fontFamily: 'Arial, sans-serif', backgroundColor: '#F9FAFB' }}>
-            <Navbar />
+            <Navbar 
+                onLocationSelect={handleLocationSelect}
+                selectedLocation={selectedLocation}
+                searchService={filterBySearch}
+            />
             <br />
 
+            {/* Display selected location banner */}
+           
             {/* Search Results Section */}
             {showSearchResults && (
                 <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
+                   
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         {filteredServices.length > 0 ? (
                             filteredServices.map((service) => (
@@ -334,15 +395,32 @@ const handleClearSearch = () => {
                                 </div>
                             ))
                         ) : (
-                            <p>No services found.</p>
+                            <div style={{ textAlign: "center", padding: "40px" }}>
+                                <p>No services found matching your criteria in this location.</p>
+                                <button
+                                    onClick={handleClearSearch}
+                                    style={{
+                                        marginTop: "10px",
+                                        padding: "8px 16px",
+                                        backgroundColor: "#4a54e1",
+                                        color: "white",
+                                        border: "none",
+                                        borderRadius: "6px",
+                                        cursor: "pointer"
+                                    }}
+                                >
+                                    Clear Search
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>
             )}
 
-            {/* Rest of the Content */}
+            {/* Rest of the Content - Only show when no search results */}
             {!showSearchResults && (
                 <>
+                    {/* Hero Section */}
                     <div style={{
                         position: "relative",
                         height: "500px",
@@ -352,9 +430,6 @@ const handleClearSearch = () => {
                         overflow: "hidden",
                         background: "linear-gradient(135deg, #6c5ce7 0%, #a29bfe 50%, #fd79a8 100%)"
                     }}>
-
-
-                        {/* Background Pattern */}
                         <div style={{
                             position: "absolute",
                             top: 0,
@@ -365,23 +440,20 @@ const handleClearSearch = () => {
                             zIndex: 1
                         }}></div>
 
-
                         <div style={{
                             position: "relative",
                             zIndex: 2,
                             width: "95%",
                             maxWidth: "800px",
-                            padding: "30px 15px",   // FIXED
+                            padding: "30px 15px",
                             background: "rgba(255, 255, 255, 0.95)",
                             borderRadius: "20px",
                             boxShadow: "0 20px 60px rgba(0, 0, 0, 0.15)",
                             backdropFilter: "blur(10px)",
                             border: "1px solid rgba(255, 255, 255, 0.2)",
                             textAlign: "center",
-                            margin: "auto"          // CENTER on all screens
+                            margin: "auto"
                         }}>
-
-                            {/* Header Section */}
                             <div style={{ marginBottom: "35px" }}>
                                 <h1 style={{
                                     marginBottom: "12px",
@@ -405,7 +477,6 @@ const handleClearSearch = () => {
                                 </p>
                             </div>
 
-                            {/* Search Form */}
                             <div style={{
                                 display: "flex",
                                 flexWrap: "wrap",
@@ -413,14 +484,11 @@ const handleClearSearch = () => {
                                 alignItems: "stretch",
                                 justifyContent: "center",
                                 width: "100%",
-                                marginTop: "10px"    // improves spacing on small screens
+                                marginTop: "10px"
                             }}>
-
-                                {/* Service Name Input */}
                                 <div style={{
-                                    flex: "1 1 100%",     // full width mobile
-                                    maxWidth: "350px",    // desktop limit
-
+                                    flex: "1 1 100%",
+                                    maxWidth: "350px",
                                     position: "relative"
                                 }}>
                                     <input
@@ -441,8 +509,11 @@ const handleClearSearch = () => {
                                         type="text"
                                         placeholder="Service name or category..."
                                         value={searchTerm}
-                                        onChange={handleSearchChange}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
                                         onFocus={(e) => {
+                                            if (!hasLocation) {
+                                                alert("Please select a location first");
+                                            }
                                             e.target.style.borderColor = "#4299E1";
                                             e.target.style.boxShadow = "0 0 0 3px rgba(66, 153, 225, 0.1)";
                                             e.target.style.backgroundColor = "#F7FAFC";
@@ -465,59 +536,59 @@ const handleClearSearch = () => {
                                     </div>
                                 </div>
 
-                              <div style={{
-        flex: "1 1 250px",
-        minWidth: "250px",
-        position: "relative"
-    }}>
-       <LocationSearch
-    onLocationSelect={(location) => {
-        setLocationSearch(location.display_name || location);
-    }}
-    placeholder="City, state or zip code..."
-    value={locationSearch} // Add this if your LocationSearch component accepts value prop
-/>
-    </div>
-                                {/* Search Button */}
-                             {/* Search Button */}
-<button
-    onClick={handleSearch}
-    style={{
-        height: "56px",
-        flex: "0 1 160px",
-        minWidth: "160px",
-        backgroundColor: "#4299E1",
-        color: "white",
-        border: "none",
-        borderRadius: "12px",
-        fontSize: "16px",
-        fontWeight: "600",
-        cursor: "pointer",
-        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        boxShadow: "0 4px 14px rgba(66, 153, 225, 0.4)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "8px"
-    }}
-    onMouseEnter={(e) => {
-        e.target.style.backgroundColor = "#3182CE";
-        e.target.style.transform = "translateY(-2px)";
-        e.target.style.boxShadow = "0 8px 20px rgba(66, 153, 225, 0.5)";
-    }}
-    onMouseLeave={(e) => {
-        e.target.style.backgroundColor = "#4299E1";
-        e.target.style.transform = "translateY(0)";
-        e.target.style.boxShadow = "0 4px 14px rgba(66, 153, 225, 0.4)";
-    }}
->
-    <span>Search</span>
-    <span style={{ fontSize: "18px" }}>&rarr;</span>
-</button>
-</div>
-{/* Clear Button */}
+                                <div style={{
+                                    flex: "1 1 250px",
+                                    minWidth: "250px",
+                                    position: "relative"
+                                }}>
+                                    <LocationSearch
+                                        onLocationSelect={(location) => {
+                                            if (!hasLocation) {
+                                                alert("Please select a location first");
+                                                return;
+                                            }
+                                            setLocationSearch(location.display_name || location);
+                                        }}
+                                        placeholder="City, state or zip code..."
+                                    />
+                                </div>
 
-                            {/* Quick Tips */}
+                                <button
+                                    onClick={handleSearch}
+                                    style={{
+                                        height: "56px",
+                                        flex: "0 1 160px",
+                                        minWidth: "160px",
+                                        backgroundColor: "#4299E1",
+                                        color: "white",
+                                        border: "none",
+                                        borderRadius: "12px",
+                                        fontSize: "16px",
+                                        fontWeight: "600",
+                                        cursor: "pointer",
+                                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                                        boxShadow: "0 4px 14px rgba(66, 153, 225, 0.4)",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: "8px"
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.target.style.backgroundColor = "#3182CE";
+                                        e.target.style.transform = "translateY(-2px)";
+                                        e.target.style.boxShadow = "0 8px 20px rgba(66, 153, 225, 0.5)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.backgroundColor = "#4299E1";
+                                        e.target.style.transform = "translateY(0)";
+                                        e.target.style.boxShadow = "0 4px 14px rgba(66, 153, 225, 0.4)";
+                                    }}
+                                >
+                                    <span>Search</span>
+                                    <span style={{ fontSize: "18px" }}>&rarr;</span>
+                                </button>
+                            </div>
+
                             <div style={{
                                 marginTop: "25px",
                                 display: "flex",
@@ -577,252 +648,387 @@ const handleClearSearch = () => {
                         </div>
                     </div>
 
-                    {/* Suggested Services Section */}
-                    <div style={{ marginTop: '40px', padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
-                        <h2 style={{ fontSize: "26px", fontWeight: "700", color: "#333", marginBottom: "25px", letterSpacing: "0.5px" }}>
-                            Suggested Services
-                        </h2>
-                        <div style={{ display: 'flex', gap: '20px', whiteSpace: "nowrap", scrollbarWidth: "none", msOverflowStyle: "none", overflowX: 'auto', padding: '10px' }}>
-                            {loading ? (
-                                <p>Loading services...</p>
-                            ) : (
-                                getSuggestedServices().map((service) => (
-                                    <div key={service._id} style={{ minWidth: "250px", flexShrink: 0 }}>
-                                        <Service service={service} isLandingPage={true} />                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                    <div
-                        style={{
-                            backgroundColor: "#f5f7fa",
-                            padding: "40px 20px",
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: "10px",
-                        }}
-                    >
-                        <h2
-                            style={{
-                                fontSize: "26px",
-                                fontWeight: "700",
-                                color: "#333",
-                                marginBottom: "25px",
-                                letterSpacing: "0.5px",
-                            }}
-                        >
-                            Categories of Services
-                        </h2>
-
-                        <div
-                            style={{
-                                display: "grid",
-                                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                                gap: "30px",
-                                width: "100%",
-                                maxWidth: "1200px",
-                            }}
-                        >
-                            {Array.from({ length: buttonLabels.length }).map((_, index) => {
-                                const buttonText = buttonLabels[index] || `Button ${index + 1}`;
-                                const imageUrl = imageUrls[index] || "https://via.placeholder.com/150";
-
-                                return (
-                                    <div
-                                        key={index}
+                    {/* Show content only when location is selected */}
+                    {hasLocation ? (
+                        <>
+                            {locationBasedServices.length === 0 ? (
+                                <div style={{
+                                    marginTop: '40px',
+                                    padding: '60px 20px',
+                                    textAlign: 'center',
+                                    backgroundColor: '#FFFFFF',
+                                    borderRadius: '10px',
+                                    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)'
+                                }}>
+                                    <i className="fa fa-map-marker" style={{ fontSize: "48px", color: "#ff4444", marginBottom: "20px" }}></i>
+                                    <h3 style={{ color: "#333", marginBottom: "10px" }}>No Services Available in This Location</h3>
+                                    <p style={{ color: "#666", marginBottom: "20px" }}>
+                                        We're sorry, but there are currently no service providers available in {selectedLocation?.display_name?.split(',')[0] || selectedLocation?.city || 'your selected location'}.
+                                        Please try a different location or check back later.
+                                    </p>
+                                    <button
+                                        onClick={() => handleLocationSelect(null)}
                                         style={{
-                                            backgroundColor: "#fff",
-                                            padding: "30px 20px",
-                                            borderRadius: "15px",
-                                            boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-                                            textAlign: "center",
-                                            transition: "transform 0.3s, box-shadow 0.3s",
+                                            padding: "10px 20px",
+                                            backgroundColor: "#4a54e1",
+                                            color: "white",
+                                            border: "none",
+                                            borderRadius: "8px",
                                             cursor: "pointer",
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.transform = "translateY(-5px)";
-                                            e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.15)";
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.transform = "translateY(0)";
-                                            e.currentTarget.style.boxShadow = "0 4px 10px rgba(0,0,0,0.1)";
+                                            fontSize: "16px"
                                         }}
                                     >
-                                        <div style={{ marginBottom: "15px" }}>
-                                            <img
-                                                src={imageUrl}
-                                                alt={buttonText}
-                                                style={{ width: "60px", height: "200px", objectFit: "cover" }}
-                                            />
-                                        </div>
-                                        <button
-                                            style={{
-                                                padding: "10px 20px",
-                                                borderRadius: "8px",
-                                                border: "none",
-                                                background: "linear-gradient(135deg, #e1d9d9ff 0%, #fafafa 100%)",
-                                                color: "#201f1fff",
-                                                fontWeight: "600",
-                                                cursor: "pointer",
-                                                transition: "background-color 0.3s",
-                                            }}
-                                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#e55b00")}
-                                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#FF6600")}
-                                            onClick={() => navigate('/home', { state: { category: buttonText } })}
-                                        >
-                                            {buttonText}
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div style={{
-                        display: 'flex',
-                        overflowX: 'auto',
-                        gap: '20px',
-                        padding: '20px',
-                        whiteSpace: 'nowrap',
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: '10px',
-                        whiteSpace: "nowrap",
-                        scrollbarWidth: "none",      // For Firefox
-                        msOverflowStyle: "none",
-                        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-                    }}>
-                        {loading ? (
-                            <p>Loading services...</p>
-                        ) : (
-                            getRotatingServices().map((service) => (
-                                <div key={service._id} style={{ minWidth: "250px", flexShrink: 0 }}>
-                                    <Service service={service} isLandingPage={true} />
+                                        Select Different Location
+                                    </button>
                                 </div>
-                            ))
-                        )}
-                    </div>
-                    <div
-                        style={{
-                            backgroundColor: "#f5f7fa",
-                            padding: "60px 0",
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            gap: "60px",
-                        }}
-                    >
-                        {/* ----------- Event & Ticket Services Section ----------- */}
-                        <div style={{ width: "100%", textAlign: "center" }}>
-                            <h2
-                                style={{
-                                    fontSize: "26px",
-                                    fontWeight: "700",
-                                    color: "#333",
-                                    marginBottom: "25px",
-                                    letterSpacing: "0.5px",
-                                }}
-                            >
-                                Event & Ticket Services
-                            </h2>
-                            <div
-                                style={{
-                                    display: "flex",
-                                    justifyContent: "center",
-                                    flexWrap: "wrap",
-                                    gap: "40px",
-                                }}
-                            >
-                                {Array.from({ length: 3 }).map((_, boxIndex) => (
+                            ) : (
+                                <>
+                                    {/* Suggested Services Section */}
+                                    <div style={{ marginTop: '40px', padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
+                                        <h2 style={{ fontSize: "26px", fontWeight: "700", color: "#333", marginBottom: "25px", letterSpacing: "0.5px" }}>
+                                            Suggested Services 
+                                        </h2>
+                                        <div style={{ display: 'flex', gap: '20px', whiteSpace: "nowrap", scrollbarWidth: "none", msOverflowStyle: "none", overflowX: 'auto', padding: '10px' }}>
+                                            {loading ? (
+                                                <p>Loading services...</p>
+                                            ) : (
+                                                getSuggestedServices().map((service) => (
+                                                    <div key={service._id} style={{ minWidth: "250px", flexShrink: 0 }}>
+                                                        <Service service={service} isLandingPage={true} />
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Categories Section */}
                                     <div
-                                        key={boxIndex}
                                         style={{
-                                            width: "340px",
-                                            borderRadius: "16px",
-                                            backgroundColor: "#fff",
-                                            boxShadow: "0 6px 16px rgba(0,0,0,0.1)",
-                                            overflow: "hidden",
-                                            transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.transform = "translateY(-8px)";
-                                            e.currentTarget.style.boxShadow =
-                                                "0 10px 25px rgba(0,0,0,0.15)";
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.transform = "translateY(0)";
-                                            e.currentTarget.style.boxShadow =
-                                                "0 6px 16px rgba(0,0,0,0.1)";
+                                            backgroundColor: "#f5f7fa",
+                                            padding: "40px 20px",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            alignItems: "center",
+                                            gap: "10px",
                                         }}
                                     >
-                                        <div
+                                        <h2
                                             style={{
-                                                background: "linear-gradient(135deg, #a0a4f0ff, #b7a6e5ff)",
-                                                color: "#fff",
-                                                textAlign: "center",
-                                                fontWeight: "600",
-                                                fontSize: "17px",
-                                                padding: "14px 0",
+                                                fontSize: "26px",
+                                                fontWeight: "700",
+                                                color: "#333",
+                                                marginBottom: "25px",
+                                                letterSpacing: "0.5px",
                                             }}
                                         >
-                                            {["Event Planning", "Decor & Photography", "Ticketing Services"][boxIndex]}
-                                        </div>
+                                            Categories of Services
+                                        </h2>
 
                                         <div
                                             style={{
                                                 display: "grid",
-                                                gridTemplateColumns: "1fr 1fr",
-                                                gap: "15px",
-                                                padding: "20px",
-                                                backgroundColor: "#fafafa",
+                                                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                                                gap: "30px",
+                                                width: "100%",
+                                                maxWidth: "1200px",
                                             }}
                                         >
-                                            {[
-                                                "Wedding Planning",
-                                                "Birthday Planning",
-                                                "Corporate Events",
-                                                "Catering Service",
-                                                "Decor & Theme Setup",
-                                                "Photography & Videography",
-                                                "Entertainment",
-                                                "Venue Booking",
-                                                "Movie Tickets",
-                                                "Concert Tickets",
-                                                "Sports Tickets",
-                                                "Amusement Park Passes",
-                                            ]
-                                                .slice(boxIndex * 4, boxIndex * 4 + 4)
-                                                .map((buttonText, innerIndex) => (
+                                            {Array.from({ length: buttonLabels.length }).map((_, index) => {
+                                                const buttonText = buttonLabels[index] || `Button ${index + 1}`;
+                                                const imageUrl = imageUrls[index] || "https://via.placeholder.com/150";
+
+                                                return (
                                                     <div
-                                                        key={innerIndex}
+                                                        key={index}
                                                         style={{
-                                                            borderRadius: "10px",
-                                                            overflow: "hidden",
                                                             backgroundColor: "#fff",
-                                                            boxShadow: "0 2px 6px rgba(0, 0, 0, 0.08)",
-                                                            transition:
-                                                                "transform 0.25s ease, box-shadow 0.25s ease",
+                                                            padding: "30px 20px",
+                                                            borderRadius: "15px",
+                                                            boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+                                                            textAlign: "center",
+                                                            transition: "transform 0.3s, box-shadow 0.3s",
+                                                            cursor: "pointer",
                                                         }}
                                                         onMouseEnter={(e) => {
-                                                            e.currentTarget.style.transform = "scale(1.04)";
-                                                            e.currentTarget.style.boxShadow =
-                                                                "0 6px 12px rgba(0,0,0,0.15)";
+                                                            e.currentTarget.style.transform = "translateY(-5px)";
+                                                            e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.15)";
                                                         }}
                                                         onMouseLeave={(e) => {
-                                                            e.currentTarget.style.transform = "scale(1)";
+                                                            e.currentTarget.style.transform = "translateY(0)";
+                                                            e.currentTarget.style.boxShadow = "0 4px 10px rgba(0,0,0,0.1)";
+                                                        }}
+                                                    >
+                                                        <div style={{ marginBottom: "15px" }}>
+                                                            <img
+                                                                src={imageUrl}
+                                                                alt={buttonText}
+                                                                style={{ width: "60px", height: "200px", objectFit: "cover" }}
+                                                            />
+                                                        </div>
+                                                        <button
+                                                            style={{
+                                                                padding: "10px 20px",
+                                                                borderRadius: "8px",
+                                                                border: "none",
+                                                                background: "linear-gradient(135deg, #e1d9d9ff 0%, #fafafa 100%)",
+                                                                color: "#201f1fff",
+                                                                fontWeight: "600",
+                                                                cursor: "pointer",
+                                                                transition: "background-color 0.3s",
+                                                            }}
+                                                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#e55b00")}
+                                                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#FF6600")}
+                                                            onClick={() => handleCategoryClick(buttonText)}
+                                                        >
+                                                            {buttonText}
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Rotating Services Section */}
+                                    <div style={{
+                                        display: 'flex',
+                                        overflowX: 'auto',
+                                        gap: '20px',
+                                        padding: '20px',
+                                        whiteSpace: 'nowrap',
+                                        backgroundColor: '#FFFFFF',
+                                        borderRadius: '10px',
+                                        scrollbarWidth: "none",
+                                        msOverflowStyle: "none",
+                                        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                                    }}>
+                                        {loading ? (
+                                            <p>Loading services...</p>
+                                        ) : (
+                                            getRotatingServices().map((service) => (
+                                                <div key={service._id} style={{ minWidth: "250px", flexShrink: 0 }}>
+                                                    <Service service={service} isLandingPage={true} />
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                    
+                                    {/* Event & Ticket Services Section */}
+                                    <div
+                                        style={{
+                                            backgroundColor: "#f5f7fa",
+                                            padding: "60px 0",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            alignItems: "center",
+                                            gap: "60px",
+                                        }}
+                                    >
+                                        <div style={{ width: "100%", textAlign: "center" }}>
+                                            <h2
+                                                style={{
+                                                    fontSize: "26px",
+                                                    fontWeight: "700",
+                                                    color: "#333",
+                                                    marginBottom: "25px",
+                                                    letterSpacing: "0.5px",
+                                                }}
+                                            >
+                                                Event & Ticket Services
+                                            </h2>
+                                            <div
+                                                style={{
+                                                    display: "flex",
+                                                    justifyContent: "center",
+                                                    flexWrap: "wrap",
+                                                    gap: "40px",
+                                                }}
+                                            >
+                                                {Array.from({ length: 3 }).map((_, boxIndex) => (
+                                                    <div
+                                                        key={boxIndex}
+                                                        style={{
+                                                            width: "340px",
+                                                            borderRadius: "16px",
+                                                            backgroundColor: "#fff",
+                                                            boxShadow: "0 6px 16px rgba(0,0,0,0.1)",
+                                                            overflow: "hidden",
+                                                            transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.transform = "translateY(-8px)";
                                                             e.currentTarget.style.boxShadow =
-                                                                "0 2px 6px rgba(0,0,0,0.08)";
+                                                                "0 10px 25px rgba(0,0,0,0.15)";
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.transform = "translateY(0)";
+                                                            e.currentTarget.style.boxShadow =
+                                                                "0 6px 16px rgba(0,0,0,0.1)";
                                                         }}
                                                     >
                                                         <div
                                                             style={{
-                                                                height: "90px",
-                                                                width: "100%",
-                                                                overflow: "hidden",
+                                                                background: "linear-gradient(135deg, #a0a4f0ff, #b7a6e5ff)",
+                                                                color: "#fff",
+                                                                textAlign: "center",
+                                                                fontWeight: "600",
+                                                                fontSize: "17px",
+                                                                padding: "14px 0",
                                                             }}
                                                         >
+                                                            {["Event Planning", "Decor & Photography", "Ticketing Services"][boxIndex]}
+                                                        </div>
+
+                                                        <div
+                                                            style={{
+                                                                display: "grid",
+                                                                gridTemplateColumns: "1fr 1fr",
+                                                                gap: "15px",
+                                                                padding: "20px",
+                                                                backgroundColor: "#fafafa",
+                                                            }}
+                                                        >
+                                                            {[
+                                                                "Wedding Planning",
+                                                                "Birthday Planning",
+                                                                "Corporate Events",
+                                                                "Catering Service",
+                                                                "Decor & Theme Setup",
+                                                                "Photography & Videography",
+                                                                "Entertainment",
+                                                                "Venue Booking",
+                                                                "Movie Tickets",
+                                                                "Concert Tickets",
+                                                                "Sports Tickets",
+                                                                "Amusement Park Passes",
+                                                            ]
+                                                                .slice(boxIndex * 4, boxIndex * 4 + 4)
+                                                                .map((buttonText, innerIndex) => (
+                                                                    <div
+                                                                        key={innerIndex}
+                                                                        style={{
+                                                                            borderRadius: "10px",
+                                                                            overflow: "hidden",
+                                                                            backgroundColor: "#fff",
+                                                                            boxShadow: "0 2px 6px rgba(0, 0, 0, 0.08)",
+                                                                            transition:
+                                                                                "transform 0.25s ease, box-shadow 0.25s ease",
+                                                                        }}
+                                                                        onMouseEnter={(e) => {
+                                                                            e.currentTarget.style.transform = "scale(1.04)";
+                                                                            e.currentTarget.style.boxShadow =
+                                                                                "0 6px 12px rgba(0,0,0,0.15)";
+                                                                        }}
+                                                                        onMouseLeave={(e) => {
+                                                                            e.currentTarget.style.transform = "scale(1)";
+                                                                            e.currentTarget.style.boxShadow =
+                                                                                "0 2px 6px rgba(0,0,0,0.08)";
+                                                                        }}
+                                                                    >
+                                                                        <div
+                                                                            style={{
+                                                                                height: "90px",
+                                                                                width: "100%",
+                                                                                overflow: "hidden",
+                                                                            }}
+                                                                        >
+                                                                            <img
+                                                                                src={imageUrls[(boxIndex * 4 + innerIndex) % imageUrls.length]}
+                                                                                alt={buttonText}
+                                                                                style={{
+                                                                                    width: "100%",
+                                                                                    height: "100%",
+                                                                                    objectFit: "cover",
+                                                                                    transition: "transform 0.4s ease",
+                                                                                }}
+                                                                                onMouseEnter={(e) =>
+                                                                                    (e.currentTarget.style.transform = "scale(1.1)")
+                                                                                }
+                                                                                onMouseLeave={(e) =>
+                                                                                    (e.currentTarget.style.transform = "scale(1)")
+                                                                                }
+                                                                            />
+                                                                        </div>
+                                                                        <button
+                                                                            style={{
+                                                                                color: "#6b7280",
+                                                                                background: "linear-gradient(135deg, #e1d9d9ff 0%, #fafafa 100%)",
+                                                                                border: "1px solid #f5f5f5",
+                                                                                color: "black",
+                                                                                border: "none",
+                                                                                cursor: "pointer",
+                                                                                padding: "10px 5px",
+                                                                                fontSize: "13px",
+                                                                                fontWeight: "600",
+                                                                                width: "100%",
+                                                                                borderRadius: "0 0 10px 10px",
+                                                                                transition: "background-color 0.3s ease",
+                                                                            }}
+                                                                            onClick={() => handleSubCategoryClick(buttonText)}
+                                                                        >
+                                                                            {buttonText}
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Travel & Transport Services Section */}
+                                        <div style={{ width: "100%", textAlign: "center" }}>
+                                            <h2
+                                                style={{
+                                                    fontSize: "26px",
+                                                    fontWeight: "700",
+                                                    color: "#333",
+                                                    marginBottom: "25px",
+                                                    letterSpacing: "0.5px",
+                                                }}
+                                            >
+                                                Travel & Transport Services
+                                            </h2>
+                                            <div
+                                                style={{
+                                                    display: "flex",
+                                                    flexWrap: "wrap",
+                                                    justifyContent: "center",
+                                                    gap: "25px",
+                                                    padding: "0 20px",
+                                                }}
+                                            >
+                                                {[
+                                                    "Cab and Taxi Services",
+                                                    "Car Rental",
+                                                    "Airport Transfers",
+                                                    "Flight Ticket Booking",
+                                                ].map((buttonText, index) => (
+                                                    <div
+                                                        key={index}
+                                                        style={{
+                                                            width: "260px",
+                                                            borderRadius: "14px",
+                                                            overflow: "hidden",
+                                                            backgroundColor: "rgba(255, 255, 255, 1)",
+                                                            boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+                                                            transition: "transform 0.3s ease, box-shadow 0.3s ease",
+                                                            cursor: "pointer",
+                                                        }}
+                                                        onClick={() => handleCategoryClick(buttonText)}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.transform = "translateY(-5px)";
+                                                            e.currentTarget.style.boxShadow =
+                                                                "0 6px 12px rgba(0, 0, 0, 0.2)";
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.transform = "translateY(0)";
+                                                            e.currentTarget.style.boxShadow =
+                                                                "0 4px 8px rgba(0, 0, 0, 0.1)";
+                                                        }}
+                                                    >
+                                                        <div style={{ height: "130px", overflow: "hidden" }}>
                                                             <img
-                                                                src={imageUrls[(boxIndex * 4 + innerIndex) % imageUrls.length]}
+                                                                src={imageUrls[index % imageUrls.length]}
                                                                 alt={buttonText}
                                                                 style={{
                                                                     width: "100%",
@@ -835,139 +1041,75 @@ const handleClearSearch = () => {
                                                                 }
                                                                 onMouseLeave={(e) =>
                                                                     (e.currentTarget.style.transform = "scale(1)")
-                                                                }
+                                                                 }
                                                             />
                                                         </div>
-                                                        <button
+                                                        <div
                                                             style={{
+                                                                padding: "15px 22px",
+                                                                textAlign: "center",
+                                                                fontWeight: "600",
+                                                                fontSize: "14px",
                                                                 color: "#6b7280",
                                                                 background: "linear-gradient(135deg, #e1d9d9ff 0%, #fafafa 100%)",
                                                                 border: "1px solid #f5f5f5",
-                                                                color: "black",
-                                                                border: "none",
                                                                 cursor: "pointer",
-                                                                padding: "10px 5px",
-                                                                fontSize: "13px",
-                                                                fontWeight: "600",
-                                                                width: "100%",
-                                                                borderRadius: "0 0 10px 10px",
-                                                                transition: "background-color 0.3s ease",
+                                                                transition: "all 0.3s ease",
+                                                                borderRadius: "8px",
+                                                                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.02)",
                                                             }}
-                                                            onClick={() =>
-                                                                navigate("/home", {
-                                                                    state: { subCategory: buttonText },
-                                                                })
-                                                            }
 
                                                         >
                                                             {buttonText}
-                                                        </button>
+                                                        </div>
                                                     </div>
                                                 ))}
+                                            </div>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
 
-                        {/* ----------- Travel & Transport Services Section ----------- */}
-                        <div style={{ width: "100%", textAlign: "center" }}>
-                            <h2
+                                    {/* About Section */}
+                                    <About />
+                                </>
+                            )}
+                        </>
+                    ) : (
+                        /* Prompt to select location */
+                        <div style={{
+                            marginTop: '40px',
+                            padding: '60px 20px',
+                            textAlign: 'center',
+                            backgroundColor: '#FFFFFF',
+                            borderRadius: '10px',
+                            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)'
+                        }}>
+                            <i className="fa fa-map-marker" style={{ fontSize: "48px", color: "#ff9800", marginBottom: "20px" }}></i>
+                            <h3 style={{ color: "#333", marginBottom: "10px" }}>Select Your Location</h3>
+                            <p style={{ color: "#666", marginBottom: "20px", maxWidth: "500px", margin: "0 auto" }}>
+                                Please select your location from the navbar to discover services available in your area.
+                                This helps us show you the most relevant service providers near you.
+                            </p>
+                            <button
+                                onClick={() => {
+                                    const locationBtn = document.querySelector('.location-toggle-btn');
+                                    if (locationBtn) locationBtn.click();
+                                }}
                                 style={{
-                                    fontSize: "26px",
-                                    fontWeight: "700",
-                                    color: "#333",
-                                    marginBottom: "25px",
-                                    letterSpacing: "0.5px",
+                                    padding: "12px 24px",
+                                    backgroundColor: "#ff9800",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "8px",
+                                    cursor: "pointer",
+                                    fontSize: "16px",
+                                    fontWeight: "500",
+                                    marginTop: "20px"
                                 }}
                             >
-                                Travel & Transport Services
-                            </h2>
-                            <div
-                                style={{
-                                    display: "flex",
-                                    flexWrap: "wrap",
-                                    justifyContent: "center",
-                                    gap: "25px",
-                                    padding: "0 20px",
-                                }}
-                            >
-                                {[
-                                    "Cab and Taxi Services",
-                                    "Car Rental",
-                                    "Airport Transfers",
-                                    "Flight Ticket Booking",
-                                ].map((buttonText, index) => (
-                                    <div
-                                        key={index}
-                                        style={{
-                                            width: "260px",
-                                            borderRadius: "14px",
-                                            overflow: "hidden",
-                                            backgroundColor: "rgba(255, 255, 255, 1)",
-                                            boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                                            transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                                            cursor: "pointer",
-                                        }}
-                                        onClick={() =>
-                                            navigate("/home", { state: { category: buttonText } })
-                                        }
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.transform = "translateY(-5px)";
-                                            e.currentTarget.style.boxShadow =
-                                                "0 6px 12px rgba(0, 0, 0, 0.2)";
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.transform = "translateY(0)";
-                                            e.currentTarget.style.boxShadow =
-                                                "0 4px 8px rgba(0, 0, 0, 0.1)";
-                                        }}
-                                    >
-                                        <div style={{ height: "130px", overflow: "hidden" }}>
-                                            <img
-                                                src={imageUrls[index % imageUrls.length]}
-                                                alt={buttonText}
-                                                style={{
-                                                    width: "100%",
-                                                    height: "100%",
-                                                    objectFit: "cover",
-                                                    transition: "transform 0.4s ease",
-                                                }}
-                                                onMouseEnter={(e) =>
-                                                    (e.currentTarget.style.transform = "scale(1.1)")
-                                                }
-                                                onMouseLeave={(e) =>
-                                                    (e.currentTarget.style.transform = "scale(1)")
-                                                }
-                                            />
-                                        </div>
-                                        <div
-                                            style={{
-                                                padding: "15px 22px",
-                                                textAlign: "center",
-                                                fontWeight: "600",
-                                                fontSize: "14px",
-                                                color: "#6b7280",
-                                                background: "linear-gradient(135deg, #e1d9d9ff 0%, #fafafa 100%)",
-                                                border: "1px solid #f5f5f5",
-                                                cursor: "pointer",
-                                                transition: "all 0.3s ease",
-                                                borderRadius: "8px",
-                                                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.02)",
-                                            }}
-
-                                        >
-                                            {buttonText}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                Select Location
+                            </button>
                         </div>
-                    </div>
-
-
-                    {/* About Section */}
-                    <About />
+                    )}
                 </>
             )}
         </div>

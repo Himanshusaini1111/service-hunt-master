@@ -14,8 +14,8 @@ AOS.init();
 
 function Homescreen() {
     const [services, setServices] = useState([]);
-    const [allServices, setAllServices] = useState([]); // Store ALL services from backend
-    const [visibleServices, setVisibleServices] = useState([]); // Store only visible services
+    const [allServices, setAllServices] = useState([]);
+    const [visibleServices, setVisibleServices] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchKey, setSearchKey] = useState("");
     const [location, setLocation] = useState("");
@@ -28,12 +28,53 @@ function Homescreen() {
     const [sortOrder, setSortOrder] = useState("default");
     const [vendors, setVendors] = useState([]);
     const [viewMode, setViewMode] = useState("all");
+    const [selectedLocationObject, setSelectedLocationObject] = useState(null);
 
     const navigate = useNavigate();
     const locationState = useLocation();
     const { RangePicker } = DatePicker;
 
-    // Fetch service categories
+    // Function to check if service matches location
+    const isServiceInLocation = (service, locationValue) => {
+        if (!locationValue) return true;
+        
+        const locationLower = locationValue.toLowerCase();
+        
+        // Check primary location field
+        if (service.location && service.location.toLowerCase().includes(locationLower)) {
+            return true;
+        }
+        
+        // Check address
+        if (service.address && service.address.toLowerCase().includes(locationLower)) {
+            return true;
+        }
+        
+        // Check serviceAreas array
+        if (service.serviceAreas && Array.isArray(service.serviceAreas)) {
+            return service.serviceAreas.some(area => {
+                return (
+                    (area.city && area.city.toLowerCase().includes(locationLower)) ||
+                    (area.state && area.state.toLowerCase().includes(locationLower)) ||
+                    (area.district && area.district.toLowerCase().includes(locationLower)) ||
+                    (area.pincode && area.pincode.includes(locationValue))
+                );
+            });
+        }
+        
+        // Check serviceLocation object
+        if (service.serviceLocation) {
+            return (
+                (service.serviceLocation.city && service.serviceLocation.city.toLowerCase().includes(locationLower)) ||
+                (service.serviceLocation.state && service.serviceLocation.state.toLowerCase().includes(locationLower)) ||
+                (service.serviceLocation.district && service.serviceLocation.district.toLowerCase().includes(locationLower))
+            );
+        }
+        
+        return false;
+    };
+
+    // Fetch subCategories
     const subCategories = {
         "Home Maintenance & Repair Services": [
             "Plumbing Services",
@@ -65,7 +106,36 @@ function Homescreen() {
         ]
     };
 
-    // Handle state from navbar/category pages
+    // Load location from localStorage if not passed through state
+    useEffect(() => {
+        const loadLocation = async () => {
+            // First, check if location was passed through navigation state
+            if (locationState.state?.location) {
+                const passedLocation = locationState.state.location;
+                setSelectedLocationObject(passedLocation);
+                const locationValue = passedLocation.display_name || passedLocation.city || passedLocation;
+                setLocation(locationValue);
+                return;
+            }
+            
+            // If not, try to load from localStorage
+            const savedLocation = localStorage.getItem("selectedLocation");
+            if (savedLocation) {
+                try {
+                    const location = JSON.parse(savedLocation);
+                    setSelectedLocationObject(location);
+                    const locationValue = location.display_name || location.city || location;
+                    setLocation(locationValue);
+                } catch (error) {
+                    console.error("Error parsing saved location:", error);
+                }
+            }
+        };
+        
+        loadLocation();
+    }, [locationState.state]);
+
+    // Handle category from navigation state
     useEffect(() => {
         if (locationState.state) {
             if (locationState.state.subCategory) {
@@ -82,19 +152,10 @@ function Homescreen() {
         const fetchServices = async () => {
             try {
                 setLoading(true);
-                // Fetch ALL services (including hidden ones)
                 const { data } = await axios.get("/api/service/getallservices");
                 setAllServices(data);
-                
-                // Filter visible services for when availability toggle is ON
                 const visibleOnly = data.filter(service => service.isVisible !== false);
                 setVisibleServices(visibleOnly);
-                
-                // Apply initial filters (with availability ON by default)
-                let filtered = [...visibleOnly];
-                filtered = filtered.filter(service => isServiceAvailableToday(service));
-                setServices(filtered);
-                
                 setLoading(false);
             } catch (error) {
                 console.error("Error fetching services:", error);
@@ -106,24 +167,17 @@ function Homescreen() {
 
     // Check if service is available today
     const isServiceAvailableToday = (service) => {
-        // Don't check visibility here - that's handled separately
         const today = moment().format("YYYY-MM-DD");
         
-        // If no unavailableDates, service is available
         if (!service.unavailableDates || service.unavailableDates.length === 0) {
             return true;
         }
         
-        // Find if today is in unavailableDates
         const todayUnavailable = service.unavailableDates.find(d => d.date === today);
         
-        // If not found, service is available
         if (!todayUnavailable) return true;
-        
-        // If full day is blocked, not available
         if (todayUnavailable.fullDay) return false;
         
-        // If partial day blocking, consider as available (you can adjust this)
         return true;
     };
 
@@ -139,12 +193,10 @@ function Homescreen() {
         while (currentDate.isSameOrBefore(endDate)) {
             const dateString = currentDate.format("YYYY-MM-DD");
             
-            // Check if this date is unavailable
             const unavailableDate = service.unavailableDates?.find(d => d.date === dateString);
             
             if (unavailableDate) {
                 if (unavailableDate.fullDay) return false;
-                // For partial day, you might still consider it available
             }
             
             currentDate.add(1, 'day');
@@ -153,61 +205,61 @@ function Homescreen() {
         return true;
     };
 
-    // Filtering logic
+    // Filtering logic - includes location filter
     useEffect(() => {
+        if (allServices.length === 0) return;
+        
         let filtered = [];
         
-        // Choose which data source to filter based on availability toggle
+        // Apply availability filter
         if (availability) {
-            // When availability is ON: Only show visible AND available services
             filtered = [...visibleServices];
             filtered = filtered.filter(service => isServiceAvailableToday(service));
         } else {
-            // When availability is OFF: Show ALL services (including hidden ones)
             filtered = [...allServices];
         }
         
-        // Apply other filters
+        // Apply location filter - CRITICAL FIX
+        if (location && location !== "") {
+            filtered = filtered.filter(service => isServiceInLocation(service, location));
+        }
+        
+        // Apply category filter
         if (category !== "all") {
             filtered = filtered.filter(s => s.category === category);
         }
-
+        
+        // Apply subcategory filter
         if (subCategory) {
             filtered = filtered.filter(s => s.subCategory === subCategory);
         }
-
-        if (location) {
-            filtered = filtered.filter(s =>
-                s.locations?.some(loc => loc.toLowerCase().includes(location.toLowerCase())) ||
-                s.address?.toLowerCase().includes(location.toLowerCase())
-            );
-        }
-
+        
+        // Apply search filter
         if (searchKey) {
             filtered = filtered.filter(s =>
                 s.name.toLowerCase().includes(searchKey.toLowerCase())
             );
         }
-
-        // Apply date filter from modal
+        
+        // Apply date range filter
         if (selectedDates.length > 0) {
             filtered = filtered.filter(service => 
                 isServiceAvailableForDates(service, selectedDates)
             );
         }
-
-        // Filter by price range
+        
+        // Apply price range filter
         filtered = filtered.filter(
             s => s.rentperday >= priceRange[0] && s.rentperday <= priceRange[1]
         );
-
-        // Sorting
+        
+        // Apply sorting
         if (sortOrder === "priceAsc") {
             filtered.sort((a, b) => a.rentperday - b.rentperday);
         } else if (sortOrder === "priceDesc") {
             filtered.sort((a, b) => b.rentperday - a.rentperday);
         }
-
+        
         setServices(filtered);
     }, [category, subCategory, location, searchKey, availability, selectedDates, priceRange, sortOrder, allServices, visibleServices]);
 
@@ -225,7 +277,6 @@ function Homescreen() {
 
     // Apply Filters from modal
     const applyFilters = () => {
-        // The filtering is already handled by useEffect
         setIsFilterModalVisible(false);
     };
 
@@ -233,70 +284,108 @@ function Homescreen() {
         setSelectedDates([]);
         setPriceRange([0, 10000]);
         setSortOrder("default");
-        setLocation("");
         setSearchKey("");
         setSubCategory("");
         setCategory("all");
-        // Reset to default state
-        if (availability) {
-            // Show only visible AND available services
-            const filtered = visibleServices.filter(service => isServiceAvailableToday(service));
-            setServices(filtered);
-        } else {
-            // Show ALL services
-            setServices(allServices);
+        
+        // Don't reset location when resetting filters - location should persist
+        // Only reset location if specifically cleared
+    };
+
+    // Get display location name for header
+    const getDisplayLocationName = () => {
+        if (!location) return "All Locations";
+        // If we have the full location object, use its display name
+        if (selectedLocationObject) {
+            return selectedLocationObject.display_name?.split(',')[0] || 
+                   selectedLocationObject.city || 
+                   location;
         }
-        setIsFilterModalVisible(false);
+        return location;
     };
 
     return (
         <div className="mt-0">
-
             {/* NAVBAR */}
-            <Navbar  />
+            <Navbar />
 
-            {/* SUBCATEGORY SCROLL SECTION */}
-            <div
-                style={{
-                    marginTop: "15px",
-                    overflowX: "auto",
-                    whiteSpace: "nowrap",
-                }}
-                className="hide-scrollbar"
-            >
+            {/* Category Header - Show selected category */}
+            {category !== "all" && (
+                <div style={{
+                    backgroundColor: "#f5f5f5",
+                    padding: "12px 16px",
+                    marginTop: "8px",
+                    textAlign: "center",
+                    borderBottom: "2px solid #4a54e1"
+                }}>
+                    <h3 style={{ margin: 0, fontSize: "20px", color: "#333" }}>
+                        {category}
+                        {subCategory && ` - ${subCategory}`}
+                    </h3>
+                </div>
+            )}
+
+            {/* SUBCATEGORY SCROLL SECTION - Only show when a category is selected */}
+            {category !== "all" && subCategories[category] && (
                 <div
                     style={{
-                        display: "flex",
-                        gap: "10px",
-                        padding: "10px",
+                        marginTop: "15px",
                         overflowX: "auto",
-                        scrollbarWidth: "none",
-                        msOverflowStyle: "none",
+                        whiteSpace: "nowrap",
                     }}
                     className="hide-scrollbar"
                 >
-                    {subCategories[category]?.map((sub, index) => (
+                    <div
+                        style={{
+                            display: "flex",
+                            gap: "10px",
+                            padding: "10px",
+                            overflowX: "auto",
+                            scrollbarWidth: "none",
+                            msOverflowStyle: "none",
+                        }}
+                        className="hide-scrollbar"
+                    >
                         <button
-                            key={index}
-                            onClick={() => setSubCategory(sub)}
+                            onClick={() => setSubCategory("")}
                             style={{
                                 flexShrink: 0,
                                 padding: "6px 12px",
                                 borderRadius: "8px",
                                 border: "1px solid #ddd",
-                                backgroundColor: subCategory === sub ? "#4a54e1" : "#f8f8f8",
-                                color: subCategory === sub ? "white" : "#333",
+                                backgroundColor: subCategory === "" ? "#4a54e1" : "#f8f8f8",
+                                color: subCategory === "" ? "white" : "#333",
                                 cursor: "pointer",
                                 fontSize: "14px",
                                 boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
                                 transition: "0.2s",
                             }}
                         >
-                            {sub}
+                            All
                         </button>
-                    ))}
+                        {subCategories[category]?.map((sub, index) => (
+                            <button
+                                key={index}
+                                onClick={() => setSubCategory(sub)}
+                                style={{
+                                    flexShrink: 0,
+                                    padding: "6px 12px",
+                                    borderRadius: "8px",
+                                    border: "1px solid #ddd",
+                                    backgroundColor: subCategory === sub ? "#4a54e1" : "#f8f8f8",
+                                    color: subCategory === sub ? "white" : "#333",
+                                    cursor: "pointer",
+                                    fontSize: "14px",
+                                    boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+                                    transition: "0.2s",
+                                }}
+                            >
+                                {sub}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* TOGGLE + FILTER BUTTON */}
             <div
@@ -337,6 +426,9 @@ function Homescreen() {
                         <div className="col-12 text-center py-5">
                             <i className="bi bi-search display-4 text-muted"></i>
                             <p className="mt-3">No services found matching your criteria</p>
+                            <p className="text-muted" style={{ fontSize: "14px" }}>
+                                {location && "Try changing the location or clearing filters"}
+                            </p>
                             <Button 
                                 type="primary" 
                                 onClick={resetFilters}
@@ -344,6 +436,17 @@ function Homescreen() {
                             >
                                 Reset Filters
                             </Button>
+                            {location && (
+                                <Button 
+                                    onClick={() => {
+                                        setLocation("");
+                                        setSelectedLocationObject(null);
+                                    }}
+                                    style={{ marginLeft: "10px" }}
+                                >
+                                    Clear Location
+                                </Button>
+                            )}
                         </div>
                     ) : (
                         services.map((s) => (

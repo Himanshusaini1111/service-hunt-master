@@ -1,6 +1,12 @@
 const mongoose = require("mongoose");
 
 const vendorSchema = new mongoose.Schema({
+     userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true,
+        unique: true // Each vendor should be linked to one user
+    },
     companyName: { type: String, required: true },
     image: { type: String, required: true }, // Now a URL string
     address: { type: String, required: true },

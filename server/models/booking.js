@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 // booking model - Keep IDs as strings
 const bookingSchema = new mongoose.Schema({
     serviceid: { type: String, required: true },  // Keep as String
-    totalAmount: { type: Number, required: true },
+    totalAmount: { type: Number, required: false },
     userid: { type: String, required: true },      // Keep as String
     vendorId: { type: String, required: true },    // Keep as String
     photo: { type: String },
@@ -17,6 +17,15 @@ const bookingSchema = new mongoose.Schema({
     description: { type: String, required: true },
     service: { type: String, required: true },
     bookingType: { type: String, required: true },
+    
+    // ADD THESE MISSING FIELDS
+    rentperday: { type: Number },  // Base price
+    unit: { type: String, default: "per day" },
+    customUnit: { type: String },
+    isCountable: { type: Boolean, default: true },
+    quantity: { type: Number, default: 1 },
+    daysCount: { type: Number, default: 1 },
+    
     optionalInputs: [{
         name: String,
         price: Number,
@@ -55,4 +64,3 @@ const bookingSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model("Booking", bookingSchema);
-

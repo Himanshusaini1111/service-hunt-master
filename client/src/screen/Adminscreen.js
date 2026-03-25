@@ -181,7 +181,7 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
             setLoading(true);
             try {
                 const response = await axios.get(`/api/bookings/getallbookings?userid=${userId}`);
-                console.log('Bookings with helpers:', response.data); // Debug log
+                console.log('Bookings with helpers:', response.data);
                 setBookings(response.data);
             } catch (err) {
                 console.error('Error fetching bookings:', err);
@@ -285,7 +285,6 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
         </span>
     );
 
-    // NEW: Component to display assigned helpers
     const AssignedHelpers = ({ helpers }) => {
         if (!helpers || helpers.length === 0) {
             return <span className="text-muted">Not assigned</span>;
@@ -409,7 +408,7 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
                             <th>Name</th>
                             <th>Booking Type</th>
                             <th>Date</th>
-                            <th>Job Completed By</th> {/* This column will now show helpers */}
+                            <th>Job Completed By</th>
                             {(filterTab === 'Manual Booking' || filterTab === 'Inquari Booking') && <th>Actions</th>}
                         </tr>
                     </thead>
@@ -452,7 +451,7 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
                                 </td>
                                 <td>{booking.bookingType}</td>
                                 <td><FormattedDate date={booking.createdAt} /></td>
-                                {/* Job Completed By Column - FIXED: Shows assigned helpers */}
+                                {/* Job Completed By Column */}
                                 <td>
                                     {booking.assignedHelpers && booking.assignedHelpers.length > 0 ? (
                                         <div className="assigned-helpers">
@@ -481,7 +480,7 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
                 </table>
             </div>
 
-            {/* Bill Modal */}
+            {/* Bill Modal - SIMPLIFIED VERSION */}
             {showBillModal && selectedBooking && (
                 <BookingBillModal 
                     booking={selectedBooking} 
@@ -492,127 +491,94 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
                 />
             )}
 
-       {/* Location Modal */}
-{selectedLocation && (
-    <div className="modal-backdrop">
-        <div className="location-modal">
-            <div className="modal-header">
-                <h3 className="modal-title">Location Information</h3>
-                <button className="close-btn" onClick={() => setSelectedLocation(null)}>
-                    &times;
-                </button>
-            </div>
+            {/* Location Modal */}
+            {selectedLocation && (
+                <div className="modal-backdrop">
+                    <div className="location-modal">
+                        <div className="modal-header">
+                            <h3 className="modal-title">Location Information</h3>
+                            <button className="close-btn" onClick={() => setSelectedLocation(null)}>
+                                &times;
+                            </button>
+                        </div>
 
-            <div className="modal-body">
-                <table className="info-table">
-                    <tbody>
-                        <tr>
-                            <td className="label-cell">Location Type</td>
-                            <td className="value-cell">
-                                <span className={`badge ${selectedLocation.locationType === 'Rental' ? 'badge-rental' : 'badge-simple'}`}>
-                                    {selectedLocation.locationType}
-                                </span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td className="label-cell">From</td>
-                            <td className="value-cell">
-                                <div className="address-cell">
-                                    <span className="address-icon">📍</span>
-                                    {selectedLocation.locationType === 'Simple' 
-                                        ? selectedLocation.address 
-                                        : selectedLocation.pickupAddress}
-                                </div>
-                            </td>
-                        </tr>
-                        {selectedLocation.locationType === 'Rental' && (
-                            <tr>
-                                <td className="label-cell">To</td>
-                                <td className="value-cell">
-                                    <div className="address-cell">
-                                        <span className="address-icon">🎯</span>
-                                        {selectedLocation.dropAddress || 'N/A'}
-                                    </div>
-                                </td>
-                            </tr>
-                        )}
-                        <tr>
-                            <td className="label-cell">Date & Time</td>
-                            <td className="value-cell">
-                                <div className="datetime-cell">
-                                    <span className="datetime-icon">📅</span>
-                                    {selectedLocation.time 
-                                        ? new Date(selectedLocation.time).toLocaleString('en-US', {
-                                            year: 'numeric',
-                                            month: 'long',
-                                            day: 'numeric',
-                                            hour: '2-digit',
-                                            minute: '2-digit'
-                                          })
-                                        : 'N/A'}
-                                </div>
-                            </td>
-                        </tr>
-                        {selectedLocation.locationType === 'Rental' && (
-                            <tr>
-                                <td className="label-cell">Return Trip</td>
-                                <td className="value-cell">
-                                    <span className={`status-badge ${selectedLocation.returnTrip ? 'status-yes' : 'status-no'}`}>
-                                        {selectedLocation.returnTrip ? '✓ Yes' : '✗ No'}
-                                    </span>
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                        <div className="modal-body">
+                            <table className="info-table">
+                                <tbody>
+                                    <tr>
+                                        <td className="label-cell">Location Type</td>
+                                        <td className="value-cell">
+                                            <span className={`badge ${selectedLocation.locationType === 'Rental' ? 'badge-rental' : 'badge-simple'}`}>
+                                                {selectedLocation.locationType}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td className="label-cell">From</td>
+                                        <td className="value-cell">
+                                            <div className="address-cell">
+                                                <span className="address-icon">📍</span>
+                                                {selectedLocation.locationType === 'Simple' 
+                                                    ? selectedLocation.address 
+                                                    : selectedLocation.pickupAddress}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {selectedLocation.locationType === 'Rental' && (
+                                        <tr>
+                                            <td className="label-cell">To</td>
+                                            <td className="value-cell">
+                                                <div className="address-cell">
+                                                    <span className="address-icon">🎯</span>
+                                                    {selectedLocation.dropAddress || 'N/A'}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                    <tr>
+                                        <td className="label-cell">Date & Time</td>
+                                        <td className="value-cell">
+                                            <div className="datetime-cell">
+                                                <span className="datetime-icon">📅</span>
+                                                {selectedLocation.time 
+                                                    ? new Date(selectedLocation.time).toLocaleString('en-US', {
+                                                        year: 'numeric',
+                                                        month: 'long',
+                                                        day: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                      })
+                                                    : 'N/A'}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {selectedLocation.locationType === 'Rental' && (
+                                        <tr>
+                                            <td className="label-cell">Return Trip</td>
+                                            <td className="value-cell">
+                                                <span className={`status-badge ${selectedLocation.returnTrip ? 'status-yes' : 'status-no'}`}>
+                                                    {selectedLocation.returnTrip ? '✓ Yes' : '✗ No'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
 
-            <div className="modal-footer">
-                <button className="btn-close" onClick={() => setSelectedLocation(null)}>
-                    Close
-                </button>
-            </div>
-        </div>
-    </div>
-)}
+                        <div className="modal-footer">
+                            <button className="btn-close" onClick={() => setSelectedLocation(null)}>
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
-
 const BookingBillModal = ({ booking, onClose }) => {
     if (!booking) return null;
-
-    // Debug log to see the booking data structure
-    console.log('Booking data in modal:', {
-        id: booking._id,
-        slots: booking.slots,
-        selectedDates: booking.selectedDates,
-        fromDate: booking.fromDate,
-        toDate: booking.toDate,
-        bookingType: booking.bookingType,
-        optionalInputs: booking.optionalInputs,
-        extraInputs: booking.extraInputs,
-        quantity: booking.quantity,
-        daysCount: booking.daysCount,
-        serviceUnit: booking.unit,
-        service: booking.service,
-        rentperday: booking.rentperday,
-        totalAmount: booking.totalAmount,
-        unit: booking.unit,
-        customUnit: booking.customUnit
-    });
-
-    // Normalize selected dates
-    const normalizedSelectedDates = (() => {
-        if (Array.isArray(booking.selectedDates)) return booking.selectedDates.filter(Boolean);
-        if (typeof booking.selectedDates === 'string' && booking.selectedDates.trim()) return [booking.selectedDates];
-        const from = booking.fromDate;
-        const to = booking.toDate;
-        if (from && to && from !== to) return [from, to];
-        if (from) return [from];
-        if (to) return [to];
-        return [];
-    })();
 
     // Helper function to format date
     const formatDate = (dateString) => {
@@ -636,135 +602,16 @@ const BookingBillModal = ({ booking, onClose }) => {
         });
     };
 
-    // Calculate multiplier based on input unit and main service unit
-    const calculateMultiplier = (input) => {
-        const mainUnit = booking.unit || 'per day';
-        const inputUnit = input.unit || '';
-        const quantity = booking.quantity || 1;
-        const daysCount = booking.daysCount || 1;
-        const slotsCount = booking.slots?.length || 1;
-
-        // If input uses day-based unit and main service uses days
-        if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
-            (mainUnit.includes('day') || mainUnit === 'per-day')) {
-            return daysCount * quantity;
-        }
-        // If input uses hour-based unit and main service uses hours/slots
-        else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
-            (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
-            return slotsCount * quantity;
-        }
-        // If input uses same unit type as main service
-        else if (inputUnit === mainUnit) {
-            return quantity;
-        }
-        // Default multiplier
-        return quantity;
-    };
-
-    // Get the display unit for the service
-    const getServiceDisplayUnit = () => {
-        if (booking.customUnit) return booking.customUnit;
-        if (!booking.unit) return '';
-
-        const unit = booking.unit;
-        if (unit.startsWith('per-')) {
-            return unit.replace('per-', '').replace(/-/g, ' ');
-        }
-        return unit;
-    };
-
-    // Calculate the quantity multiplier display
-    const getQuantityDisplay = () => {
-        const quantity = booking.quantity || 1;
-        const daysCount = booking.daysCount || 1;
-        const slotsCount = booking.slots?.length || 1;
-        const unit = booking.unit || 'per day';
-
-        if (unit.includes('day') || unit.includes('week') || unit.includes('month')) {
-            return {
-                quantity: quantity,
-                multiplier: daysCount,
-                multiplierLabel: 'Days'
-            };
-        } else if (unit.includes('hour')) {
-            return {
-                quantity: quantity,
-                multiplier: slotsCount,
-                multiplierLabel: 'Slots'
-            };
-        } else {
-            return {
-                quantity: quantity,
-                multiplier: 1,
-                multiplierLabel: 'Qty'
-            };
-        }
-    };
-
-    // Calculate base price
-    const calculateBasePrice = () => {
-        // If we have the totalAmount from the booking
-        if (booking.totalAmount) {
-            // Calculate optional and extras total
-            const optionalTotal = calculateOptionalTotal();
-            const extrasTotal = calculateExtrasTotal();
-
-            // Base price = total - optional - extras
-            const calculatedBase = booking.totalAmount - optionalTotal - extrasTotal;
-            return calculatedBase > 0 ? calculatedBase : 0;
-        }
-
-        // Fallback: try to calculate from available data
-        const quantity = booking.quantity || 1;
-        const daysCount = booking.daysCount || 1;
-        const slotsCount = booking.slots?.length || 1;
-        const unit = booking.unit || 'per day';
-
-        // If we have rentperday, use it
-        if (booking.rentperday) {
-            if (unit.includes('day') || unit.includes('week') || unit.includes('month')) {
-                return booking.rentperday * daysCount * quantity;
-            } else if (unit.includes('hour')) {
-                return booking.rentperday * slotsCount * quantity;
-            } else {
-                return booking.rentperday * quantity;
-            }
-        }
-
-        return 0;
-    };
-
-    // Calculate totals for optional services
-    const calculateOptionalTotal = () => {
-        if (!booking.optionalInputs || booking.optionalInputs.length === 0) return 0;
-
-        return booking.optionalInputs.reduce((total, input) => {
-            if (input.count === 0 || (input.isCountable === false && !input.count)) return total;
-
-            const qty = input.count || 1;
-            const price = input.price || 0;
-            const multiplier = calculateMultiplier(input);
-
-            return total + (qty * price * multiplier);
-        }, 0);
-    };
-
-    // Calculate extras total
-    const calculateExtrasTotal = () => {
-        if (!booking.extraInputs || booking.extraInputs.length === 0) return 0;
-
-        return booking.extraInputs.reduce((total, input) => {
-            return total + (input.price || 0);
-        }, 0);
-    };
-
-    const optionalTotal = calculateOptionalTotal();
-    const extrasTotal = calculateExtrasTotal();
-    const baseAmount = calculateBasePrice();
-    const totalAmount = booking.totalAmount || (baseAmount + optionalTotal + extrasTotal);
-    const quantityDisplay = getQuantityDisplay();
-    const serviceUnit = getServiceDisplayUnit();
+    // Normalize selected dates
+    const normalizedSelectedDates = (() => {
+        if (booking.selectedDates && Array.isArray(booking.selectedDates)) 
+            return booking.selectedDates.filter(Boolean);
+        if (booking.fromDate && booking.toDate && booking.fromDate !== booking.toDate) 
+            return [booking.fromDate, booking.toDate];
+        if (booking.fromDate) return [booking.fromDate];
+        if (booking.toDate) return [booking.toDate];
+        return [];
+    })();
 
     // Format time slots for display
     const formatTimeSlots = () => {
@@ -811,14 +658,186 @@ const BookingBillModal = ({ booking, onClose }) => {
         });
     };
 
-    // Helper to get display unit
-    const getDisplayUnit = (unit, customUnit) => {
-        if (customUnit) return customUnit;
-        if (!unit) return '';
-        if (unit.startsWith('per-')) {
-            return unit.replace('per-', '').replace(/-/g, ' ');
+    // Calculate base price breakdown
+    const renderBasePriceBreakdown = () => {
+        if (!booking) return null;
+        
+        const basePrice = booking.rentperday || 0;
+        const unit = booking.customUnit || booking.unit || 'per day';
+        const quantity = booking.quantity || 1;
+        const daysCount = booking.daysCount || 1;
+        
+        // Calculate base total
+        let baseTotal = basePrice;
+        let breakdownText = `₹${basePrice}`;
+        
+        if (unit.includes('day') && daysCount > 1) {
+            baseTotal = basePrice * daysCount;
+            breakdownText = `₹${basePrice} × ${daysCount} days`;
         }
-        return unit;
+        
+        if (booking.isCountable && quantity > 1) {
+            baseTotal = baseTotal * quantity;
+            breakdownText += ` × ${quantity} qty`;
+        }
+        
+        // Multiply by quantity if countable and not already multiplied
+        if (booking.isCountable && quantity > 1 && !unit.includes('day')) {
+            baseTotal = basePrice * quantity;
+            breakdownText = `₹${basePrice} × ${quantity}`;
+        }
+        
+        // For inquiry bookings, don't show breakdown
+        if (booking.bookingType === 'Inquari Booking') {
+            return (
+                <div style={{
+                    background: '#fff3e0',
+                    padding: '25px',
+                    borderRadius: '8px',
+                    textAlign: 'center'
+                }}>
+                    <p style={{ margin: '0 0 10px 0', color: '#f57c00', fontSize: '1.2em', fontWeight: 'bold' }}>
+                        📋 Inquiry Required
+                    </p>
+                    <p style={{ margin: '10px 0 0 0', color: '#666', fontSize: '1em' }}>
+                        This is an inquiry-based booking. The final price will be discussed and confirmed after inquiry.
+                        Our team will contact the customer shortly to provide the final quote.
+                    </p>
+                </div>
+            );
+        }
+
+        return (
+            <div style={{
+                background: '#f8f9fa',
+                padding: '20px',
+                borderRadius: '8px'
+            }}>
+                {/* Base Price Breakdown */}
+                <div style={{ marginBottom: '15px' }}>
+                    <h5 style={{ color: '#444', marginBottom: '10px' }}>Price Breakdown</h5>
+                    
+                    {/* Service Name and Unit */}
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '8px 0',
+                        borderBottom: '1px dashed #ddd'
+                    }}>
+                        <span><strong>Service:</strong> {booking.service}</span>
+                        <span><strong>Unit:</strong> {booking.customUnit || booking.unit || 'per day'}</span>
+                    </div>
+
+                    {/* Base Price Calculation */}
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '8px 0',
+                        borderBottom: '1px dashed #ddd',
+                        backgroundColor: '#e8f4fd',
+                        fontWeight: '500'
+                    }}>
+                        <span>
+                            Base Price: ₹{booking.rentperday || 0} 
+                            {booking.unit?.includes('day') && booking.daysCount > 1 && ` × ${booking.daysCount} day${booking.daysCount > 1 ? 's' : ''}`}
+                            {booking.isCountable && booking.quantity > 1 && ` × ${booking.quantity} qty`}
+                        </span>
+                        <span style={{ fontWeight: 'bold', color: '#1976d2' }}>
+                            ₹{(booking.rentperday || 0) * (booking.daysCount || 1) * (booking.isCountable ? (booking.quantity || 1) : 1)}
+                        </span>
+                    </div>
+
+                    {/* Display unit and quantity info */}
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '5px 0',
+                        fontSize: '0.9em',
+                        color: '#666'
+                    }}>
+                        <span>Price per {booking.customUnit || booking.unit || 'unit'}:</span>
+                        <span>₹{booking.rentperday || 0}</span>
+                    </div>
+                    
+                    {booking.quantity > 1 && (
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            padding: '5px 0',
+                            fontSize: '0.9em',
+                            color: '#666'
+                        }}>
+                            <span>Quantity:</span>
+                            <span>{booking.quantity}</span>
+                        </div>
+                    )}
+                    
+                    {booking.daysCount > 1 && (
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            padding: '5px 0',
+                            fontSize: '0.9em',
+                            color: '#666'
+                        }}>
+                            <span>Number of days:</span>
+                            <span>{booking.daysCount}</span>
+                        </div>
+                    )}
+
+                    {/* Optional Services Total */}
+                    {booking.optionalInputs && booking.optionalInputs.length > 0 && (
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            padding: '8px 0',
+                            borderBottom: '1px dashed #ddd',
+                            color: '#1976d2'
+                        }}>
+                            <span>Optional Services Total:</span>
+                            <span>
+                                ₹{booking.optionalInputs.reduce((sum, item) => 
+                                    sum + ((item.count || 1) * (item.price || 0)), 0
+                                )}
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Extra Services Total */}
+                    {booking.extraInputs && booking.extraInputs.length > 0 && (
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            padding: '8px 0',
+                            borderBottom: '1px dashed #ddd',
+                            color: '#f57c00'
+                        }}>
+                            <span>Extra Services Total:</span>
+                            <span>
+                                ₹{booking.extraInputs.reduce((sum, item) => 
+                                    sum + (item.price || 0), 0
+                                )}
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Grand Total */}
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: '15px',
+                    paddingTop: '15px',
+                    borderTop: '2px solid #1976d2',
+                    fontSize: '1.3em',
+                    fontWeight: 'bold',
+                    color: '#1976d2'
+                }}>
+                    <span>Total Amount:</span>
+                    <span>₹{(booking.totalAmount || 0).toFixed(2)}</span>
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -1050,53 +1069,8 @@ const BookingBillModal = ({ booking, onClose }) => {
                     </table>
                 </div>
 
-                {/* Base Service Price Breakdown - FIXED to show proper values */}
-                <div style={{ marginBottom: '25px' }}>
-                    <h4 style={{
-                        borderBottom: '1px solid #ddd',
-                        paddingBottom: '8px',
-                        color: '#444',
-                        marginBottom: '15px'
-                    }}>Base Service Price</h4>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ddd' }}>
-                        <thead>
-                            <tr style={{ background: '#f5f5f5' }}>
-                                <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Description</th>
-                                <th style={{ padding: '12px', textAlign: 'right', border: '1px solid #ddd' }}>Rate</th>
-                                <th style={{ padding: '12px', textAlign: 'right', border: '1px solid #ddd' }}>Quantity</th>
-                                <th style={{ padding: '12px', textAlign: 'right', border: '1px solid #ddd' }}>{quantityDisplay.multiplierLabel}</th>
-                                <th style={{ padding: '12px', textAlign: 'right', border: '1px solid #ddd' }}>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td style={{ padding: '10px', border: '1px solid #ddd' }}>
-                                    {booking.service}
-                                    {serviceUnit && <span style={{ color: '#666', fontSize: '0.9em' }}> ({serviceUnit})</span>}
-                                </td>
-                                <td style={{ padding: '10px', textAlign: 'right', border: '1px solid #ddd', fontWeight: '500' }}>
-                                    ₹{booking.rentperday ? booking.rentperday.toFixed(2) : '0.00'}
-                                </td>
-                                <td style={{ padding: '10px', textAlign: 'right', border: '1px solid #ddd', fontWeight: '500' }}>
-                                    {quantityDisplay.quantity}
-                                </td>
-                                <td style={{ padding: '10px', textAlign: 'right', border: '1px solid #ddd', fontWeight: '500' }}>
-                                    {quantityDisplay.multiplier > 1 ? quantityDisplay.multiplier : '-'}
-                                </td>
-                                <td style={{ padding: '10px', textAlign: 'right', border: '1px solid #ddd', fontWeight: 'bold', color: '#1976d2' }}>
-                                    ₹{baseAmount.toFixed(2)}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <div style={{ marginTop: '8px', fontSize: '0.9em', color: '#666', textAlign: 'right' }}>
-                        Calculation: ₹{booking.rentperday?.toFixed(2) || '0.00'} × {quantityDisplay.quantity} {quantityDisplay.quantity > 1 ? '(qty)' : ''}
-                        {quantityDisplay.multiplier > 1 ? ` × ${quantityDisplay.multiplier} ${quantityDisplay.multiplierLabel.toLowerCase()}` : ''}
-                    </div>
-                </div>
-
-                {/* Optional Services Section */}
-                {booking.optionalInputs && booking.optionalInputs.length > 0 && (
+                {/* Optional Services - This is the detailed breakdown you want */}
+                {booking.optionalInputs && booking.optionalInputs.length > 0 && booking.bookingType !== 'Inquari Booking' && (
                     <div style={{ marginBottom: '25px' }}>
                         <h4 style={{
                             borderBottom: '1px solid #ddd',
@@ -1104,71 +1078,86 @@ const BookingBillModal = ({ booking, onClose }) => {
                             color: '#444',
                             marginBottom: '15px'
                         }}>Optional Services</h4>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ddd' }}>
-                            <thead>
-                                <tr style={{ background: '#f5f5f5' }}>
-                                    <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Service</th>
-                                    <th style={{ padding: '12px', textAlign: 'right', border: '1px solid #ddd' }}>Unit Price</th>
-                                    <th style={{ padding: '12px', textAlign: 'right', border: '1px solid #ddd' }}>Quantity</th>
-                                    <th style={{ padding: '12px', textAlign: 'right', border: '1px solid #ddd' }}>Multiplier</th>
-                                    <th style={{ padding: '12px', textAlign: 'right', border: '1px solid #ddd' }}>Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {booking.optionalInputs.map((input, index) => {
-                                    if (input.count === 0 || (input.isCountable === false && !input.count)) return null;
-
-                                    const qty = input.count || 1;
-                                    const price = input.price || 0;
-                                    const multiplier = calculateMultiplier(input);
-                                    const total = qty * price * multiplier;
-                                    const displayUnit = getDisplayUnit(input.unit, input.customUnit);
-
-                                    return (
-                                        <tr key={index}>
-                                            <td style={{ padding: '10px', border: '1px solid #ddd' }}>
-                                                {input.name}
-                                                {displayUnit && <span style={{ color: '#666', fontSize: '0.9em' }}> ({displayUnit})</span>}
-                                                {input.isCountable === false && (
-                                                    <span style={{
-                                                        marginLeft: '8px',
-                                                        background: '#e3f2fd',
-                                                        padding: '2px 6px',
-                                                        borderRadius: '4px',
-                                                        fontSize: '0.8em',
-                                                        color: '#1976d2'
-                                                    }}>
-                                                        One-time
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td style={{ padding: '10px', textAlign: 'right', border: '1px solid #ddd' }}>
-                                                ₹{price.toFixed(2)}
-                                            </td>
-                                            <td style={{ padding: '10px', textAlign: 'right', border: '1px solid #ddd' }}>
-                                                {qty}
-                                            </td>
-                                            <td style={{ padding: '10px', textAlign: 'right', border: '1px solid #ddd' }}>
-                                                {multiplier > 1 ? `×${multiplier}` : '-'}
-                                                {multiplier > 1 && (
-                                                    <div style={{ fontSize: '0.8em', color: '#666' }}>
-                                                        ({booking.quantity || 1} qty × {booking.daysCount > 1 ? `${booking.daysCount} days` : (booking.slots?.length || 1)})
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td style={{ padding: '10px', textAlign: 'right', border: '1px solid #ddd', fontWeight: 'bold' }}>
-                                                ₹{total.toFixed(2)}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                        <div style={{
+                            background: '#f5f5f5',
+                            padding: '15px',
+                            borderRadius: '8px'
+                        }}>
+                            {booking.optionalInputs.map((input, index) => {
+                                const count = input.count || 1;
+                                const price = input.price || 0;
+                                
+                                // Get display unit
+                                const getDisplayUnit = (input) => {
+                                    if (input.customUnit) return input.customUnit;
+                                    const unit = input.unit || 'per item';
+                                    if (unit.startsWith('per-')) {
+                                        return unit.replace('per-', '').replace(/-/g, ' ');
+                                    }
+                                    return unit;
+                                };
+                                
+                                const displayUnit = getDisplayUnit(input);
+                                
+                                // Calculate multiplier based on booking data
+                                let multiplier = 1;
+                                const inputUnit = input.unit || '';
+                                const mainUnit = booking.unit || 'per day';
+                                
+                                if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
+                                    (mainUnit.includes('day') || mainUnit === 'per-day')) {
+                                    multiplier = (booking.daysCount || 1) * (booking.quantity || 1);
+                                } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
+                                    (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
+                                    multiplier = ((booking.slots && booking.slots.length) || 1) * (booking.quantity || 1);
+                                } else {
+                                    multiplier = booking.quantity || 1;
+                                }
+                                
+                                const itemTotal = count * price * multiplier;
+                                
+                                return (
+                                    <div key={index} style={{
+                                        marginTop: '8px',
+                                        padding: '8px',
+                                        background: 'white',
+                                        borderRadius: '5px',
+                                        border: '1px solid #eee'
+                                    }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            fontSize: '0.95em'
+                                        }}>
+                                            <span>
+                                                <strong>{input.name || `Option ${index + 1}`}</strong>
+                                                {displayUnit && <span style={{ color: '#666', fontSize: '0.9em', marginLeft: '5px' }}>({displayUnit})</span>}
+                                            </span>
+                                            <span style={{ fontWeight: 'bold', color: '#1976d2' }}>₹{itemTotal.toFixed(2)}</span>
+                                        </div>
+                                        
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            fontSize: '0.85em',
+                                            color: '#666',
+                                            marginTop: '4px'
+                                        }}>
+                                            <span>
+                                                {count} × ₹{price}
+                                                {displayUnit && ` /${displayUnit}`}
+                                                {multiplier > 1 && ` × ${multiplier}`}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
 
                 {/* Extra Services */}
-                {booking.extraInputs && booking.extraInputs.length > 0 && (
+                {booking.extraInputs && booking.extraInputs.length > 0 && booking.bookingType !== 'Inquari Booking' && (
                     <div style={{ marginBottom: '25px' }}>
                         <h4 style={{
                             borderBottom: '1px solid #ddd',
@@ -1176,27 +1165,30 @@ const BookingBillModal = ({ booking, onClose }) => {
                             color: '#444',
                             marginBottom: '15px'
                         }}>Extra Services</h4>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #ddd' }}>
-                            <thead>
-                                <tr style={{ background: '#f5f5f5' }}>
-                                    <th style={{ padding: '12px', textAlign: 'left', border: '1px solid #ddd' }}>Service</th>
-                                    <th style={{ padding: '12px', textAlign: 'right', border: '1px solid #ddd' }}>Price</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {booking.extraInputs.map((input, index) => (
-                                    <tr key={index}>
-                                        <td style={{ padding: '10px', border: '1px solid #ddd' }}>
-                                            {input.name}
-                                            {input.customUnit && <span style={{ color: '#666', fontSize: '0.9em' }}> ({input.customUnit})</span>}
-                                        </td>
-                                        <td style={{ padding: '10px', textAlign: 'right', border: '1px solid #ddd', fontWeight: 'bold' }}>
-                                            ₹{input.price?.toFixed(2) || '0.00'}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <div style={{
+                            background: '#f5f5f5',
+                            padding: '15px',
+                            borderRadius: '8px'
+                        }}>
+                            {booking.extraInputs.map((input, index) => {
+                                const price = input.price || 0;
+                                
+                                return (
+                                    <div key={index} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        padding: '8px',
+                                        background: 'white',
+                                        borderRadius: '5px',
+                                        marginTop: '5px',
+                                        border: '1px solid #eee'
+                                    }}>
+                                        <span>{input.name}</span>
+                                        <span style={{ fontWeight: 'bold', color: '#f57c00' }}>₹{price.toFixed(2)}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
 
@@ -1226,87 +1218,14 @@ const BookingBillModal = ({ booking, onClose }) => {
                     </table>
                 </div>
 
-                {/* Price Summary */}
+                {/* Price Summary - Using the renderBasePriceBreakdown function */}
                 <div style={{
                     marginTop: '30px',
                     borderTop: '2px solid #f0f0f0',
                     paddingTop: '20px'
                 }}>
                     <h4 style={{ marginBottom: '15px', color: '#444' }}>Payment Summary</h4>
-
-                    {booking.bookingType !== 'Inquari Booking' ? (
-                        <div style={{
-                            background: '#f8f9fa',
-                            padding: '20px',
-                            borderRadius: '8px'
-                        }}>
-                            <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                marginBottom: '10px',
-                                paddingBottom: '10px',
-                                borderBottom: '1px dashed #ddd'
-                            }}>
-                                <span style={{ fontWeight: '500' }}>Base Service:</span>
-                                <span style={{ fontWeight: '500' }}>₹{baseAmount.toFixed(2)}</span>
-                            </div>
-
-                            {optionalTotal > 0 && (
-                                <div style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    marginBottom: '10px',
-                                    paddingBottom: '10px',
-                                    borderBottom: '1px dashed #ddd'
-                                }}>
-                                    <span style={{ fontWeight: '500' }}>Optional Services:</span>
-                                    <span style={{ fontWeight: '500' }}>₹{optionalTotal.toFixed(2)}</span>
-                                </div>
-                            )}
-
-                            {extrasTotal > 0 && (
-                                <div style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    marginBottom: '10px',
-                                    paddingBottom: '10px',
-                                    borderBottom: '1px dashed #ddd'
-                                }}>
-                                    <span style={{ fontWeight: '500' }}>Extra Services:</span>
-                                    <span style={{ fontWeight: '500' }}>₹{extrasTotal.toFixed(2)}</span>
-                                </div>
-                            )}
-
-                            <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                marginTop: '15px',
-                                paddingTop: '15px',
-                                borderTop: '2px solid #1976d2',
-                                fontSize: '1.3em',
-                                fontWeight: 'bold',
-                                color: '#1976d2'
-                            }}>
-                                <span>Total Amount:</span>
-                                <span>₹{totalAmount.toFixed(2)}</span>
-                            </div>
-                        </div>
-                    ) : (
-                        <div style={{
-                            background: '#fff3e0',
-                            padding: '25px',
-                            borderRadius: '8px',
-                            textAlign: 'center'
-                        }}>
-                            <p style={{ margin: '0 0 10px 0', color: '#f57c00', fontSize: '1.2em', fontWeight: 'bold' }}>
-                                📋 Inquiry Required
-                            </p>
-                            <p style={{ margin: '10px 0 0 0', color: '#666', fontSize: '1em' }}>
-                                This is an inquiry-based booking. The final price will be discussed and confirmed after inquiry.
-                                Our team will contact the customer shortly to provide the final quote.
-                            </p>
-                        </div>
-                    )}
+                    {renderBasePriceBreakdown()}
                 </div>
 
                 {/* Footer */}

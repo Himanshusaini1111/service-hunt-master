@@ -2,15 +2,44 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import LocationSearch from "./LocationSearch";
 
-function Navbar({ filterByLocation, searchService }) {
+function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLocation }) {
     const user = JSON.parse(localStorage.getItem("currentUser"));
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [showLocationSearch, setShowLocationSearch] = useState(false);
+    const [currentLocation, setCurrentLocation] = useState(null);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     
     const menuRef = useRef(null);
     const dropdownRef = useRef(null);
+    const locationSearchRef = useRef(null);
+
+    // Handle window resize
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Load saved location from localStorage on component mount
+    useEffect(() => {
+        const savedLocation = localStorage.getItem("selectedLocation");
+        if (savedLocation) {
+            try {
+                const location = JSON.parse(savedLocation);
+                setCurrentLocation(location);
+                if (onLocationSelect) {
+                    onLocationSelect(location);
+                }
+            } catch (error) {
+                console.error("Error parsing saved location:", error);
+            }
+        }
+    }, []);
 
     function logout() {
         localStorage.removeItem("currentUser");
@@ -26,18 +55,38 @@ function Navbar({ filterByLocation, searchService }) {
     };
 
     const handleLocationSelect = (location) => {
-        if (filterByLocation) {
-            filterByLocation(location.display_name);
+        if (location) {
+            // Save location to localStorage
+            localStorage.setItem("selectedLocation", JSON.stringify(location));
+            setCurrentLocation(location);
+            if (onLocationSelect) {
+                onLocationSelect(location);
+            }
+        } else {
+            // Clear location from localStorage
+            localStorage.removeItem("selectedLocation");
+            setCurrentLocation(null);
+            if (onLocationSelect) {
+                onLocationSelect(null);
+            }
         }
+        setShowLocationSearch(false);
     };
 
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
-        setIsDropdownOpen(false); // Close dropdown when menu toggles
+        setIsDropdownOpen(false);
+        setShowLocationSearch(false);
     };
 
     const toggleDropdown = () => {
         setIsDropdownOpen(!isDropdownOpen);
+        setShowLocationSearch(false);
+    };
+
+    const toggleLocationSearch = () => {
+        setShowLocationSearch(!showLocationSearch);
+        setIsDropdownOpen(false);
     };
 
     // Close menus when clicking outside
@@ -52,6 +101,11 @@ function Navbar({ filterByLocation, searchService }) {
             // Close dropdown when clicking outside
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsDropdownOpen(false);
+            }
+            
+            // Close location search when clicking outside
+            if (locationSearchRef.current && !locationSearchRef.current.contains(event.target)) {
+                setShowLocationSearch(false);
             }
         };
 
@@ -73,6 +127,16 @@ function Navbar({ filterByLocation, searchService }) {
         navigate(path);
         setIsMenuOpen(false);
         setIsDropdownOpen(false);
+        setShowLocationSearch(false);
+    };
+
+    // Get display location name
+    const getDisplayLocationName = () => {
+        if (!currentLocation) return "Select Location";
+        return currentLocation.display_name?.split(',')[0] || 
+               currentLocation.city || 
+               currentLocation.name || 
+               "Location";
     };
 
     return (
@@ -84,7 +148,7 @@ function Navbar({ filterByLocation, searchService }) {
                         e.preventDefault();
                         handleNavigation('/home');
                     }}>
-                        <h5 className="app-title">Service Hunt</h5>
+                        <h5 className="app-title">Smart Seva</h5>
                     </a>
                     <button
                         className="navbar-toggler custom-toggler"
@@ -107,35 +171,109 @@ function Navbar({ filterByLocation, searchService }) {
                     <ul className="navbar-nav">
                         {user ? (
                             <>
-                                {/* Search Bar - Visible for logged in users */}
-                                {/* <li className="nav-item search-container">
-                                    <div className="nav-search">
-                                        <input
-                                            type="text"
-                                            className="search-input"
-                                            placeholder="Search services..."
-                                            value={searchTerm}
-                                            onChange={handleSearchChange}
-                                        />
-                                        <i className="fa fa-search search-icon"></i>
+                                {/* Location Search Button - Always visible */}
+                                <li className="nav-item location-search-btn-container" ref={locationSearchRef}>
+                                    <div className="location-search-wrapper" style={{ width: "100%" }}>
+                                        <button
+                                            className="location-toggle-btn"
+                                            onClick={toggleLocationSearch}
+                                            style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                gap: "8px",
+                                                width: "100%",
+                                                padding: isMobile ? "10px 16px" : "8px 16px",
+                                                backgroundColor: currentLocation ? "#4a54e1" : "#f0f0f0",
+                                                border: "none",
+                                                borderRadius: isMobile ? "8px" : "20px",
+                                                cursor: "pointer",
+                                                transition: "all 0.3s ease",
+                                                color: currentLocation ? "white" : "#333",
+                                                fontSize: isMobile ? "14px" : "14px",
+                                                fontWeight: "500",
+                                                marginBottom: isMobile ? "10px" : "0"
+                                            }}
+                                        >
+                                            <i className="fa fa-map-marker" style={{ fontSize: isMobile ? "14px" : "14px" }}></i>
+                                            <span>
+                                                {getDisplayLocationName()}
+                                            </span>
+                                            <i className={`fa fa-chevron-${showLocationSearch ? 'up' : 'down'}`} style={{ fontSize: "10px" }}></i>
+                                        </button>
+                                        
+                                        {/* Location Search Modal/Dropdown - Responsive */}
+                                        {showLocationSearch && (
+                                            <div 
+                                                className="location-search-dropdown"
+                                                style={{
+                                                    position: isMobile ? "fixed" : "absolute",
+                                                    top: isMobile ? "50%" : "100%",
+                                                    left: isMobile ? "50%" : "auto",
+                                                    right: isMobile ? "auto" : "0",
+                                                    transform: isMobile ? "translate(-50%, -50%)" : "none",
+                                                    marginTop: isMobile ? "0" : "8px",
+                                                    width: isMobile ? "90%" : "320px",
+                                                    maxWidth: "400px",
+                                                    zIndex: 9999,
+                                                    textAlign: "right",
+                                                    backgroundColor: "white",
+                                                    borderRadius: "16px",
+                                                    boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
+                                                    padding: "20px"
+                                                }}
+                                            >
+                                                <div style={{
+                                                    display: "flex",
+                                                    justifyContent: "space-between",
+                                                    alignItems: "center",
+                                                    marginBottom: "15px"
+                                                }}>
+                                                    <h4 style={{ margin: 0, fontSize: "18px", fontWeight: "600" }}>
+                                                        Select Location
+                                                    </h4>
+                                                    <button
+                                                        onClick={() => setShowLocationSearch(false)}
+                                                        style={{
+                                                            background: "none",
+                                                            border: "none",
+                                                            fontSize: "24px",
+                                                            cursor: "pointer",
+                                                            color: "#666"
+                                                        }}
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                                <LocationSearch 
+                                                    onLocationSelect={handleLocationSelect}
+                                                    placeholder="Search for city, area."
+                                                />
+                                                {currentLocation && (
+                                                    <button
+                                                        onClick={() => {
+                                                            handleLocationSelect(null);
+                                                        }}
+                                                        style={{
+                                                            marginTop: "12px",
+                                                            padding: "10px",
+                                                            backgroundColor: "#ff4444",
+                                                            color: "white",
+                                                            border: "none",
+                                                            borderRadius: "8px",
+                                                            cursor: "pointer",
+                                                            fontSize: "14px",
+                                                            width: "100%",
+                                                            fontWeight: "500"
+                                                        }}
+                                                    >
+                                                        Clear Location
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
-                                </li> */}
-
-                                {/* Location Search */}
-                                {/* <li className="nav-item location-container">
-                                    <LocationSearch onLocationSelect={handleLocationSelect} />
-                                </li> */}
-
-                                {/* Post Requirement */}
-                                {/* <li className="nav-item post-requirement">
-                                    <button
-                                        className="nav-link btn-post-requirement"
-                                        onClick={() => handleNavigation("/post-requirement")}
-                                    >
-                                        <i className="fa fa-plus-circle"></i>
-                                        <span className="btn-text">Post Requirement</span>
-                                    </button>
-                                </li> */}
+                                </li>
 
                                 {/* User Menu */}
                                 <li className="nav-item dropdown user-menu" ref={dropdownRef}>
@@ -145,11 +283,37 @@ function Navbar({ filterByLocation, searchService }) {
                                             type="button"
                                             onClick={toggleDropdown}
                                             aria-expanded={isDropdownOpen}
+                                            style={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                gap: "8px",
+                                                width: "100%",
+                                                padding: isMobile ? "10px 16px" : "8px 12px",
+                                                backgroundColor: "#f0f0f0",
+                                                border: "none",
+                                                borderRadius: isMobile ? "8px" : "20px",
+                                                cursor: "pointer",
+                                                marginTop: isMobile ? "10px" : "0"
+                                            }}
                                         >
                                             <i className="fa fa-user"></i>
-                                            <span className="user-name">{user.name}</span>
-                                            <span className="user-initials" style={{ textAlign:"center"}}> 
-                                                {user.name}
+                                            <span className="user-name" style={{ fontSize: "14px" }}>
+                                                {user.name?.split(' ')[0]}
+                                            </span>
+                                            <span className="user-initials" style={{ 
+                                                textAlign: "center",
+                                                width: "30px",
+                                                height: "30px",
+                                                borderRadius: "50%",
+                                                backgroundColor: "#4a54e1",
+                                                color: "white",
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                fontSize: "12px"
+                                            }}> 
+                                                {user.name?.charAt(0).toUpperCase()}
                                             </span>
                                         </button>
                                         <div className={`dropdown-menu ${isDropdownOpen ? 'show' : ''}`}>
@@ -157,7 +321,7 @@ function Navbar({ filterByLocation, searchService }) {
                                                 <i className="fa fa-user-o"></i> Profile
                                             </button>
                                             <button className="dropdown-item" onClick={() => handleNavigation("/myorders")}>
-                                                <i className="fa fa-gavel"></i>Orders
+                                                <i className="fa fa-gavel"></i> Orders
                                             </button>
                                             <button className="dropdown-item" onClick={() => handleNavigation("/form")}>
                                                 <i className="fa fa-handshake-o"></i> Partner
@@ -205,7 +369,7 @@ function Navbar({ filterByLocation, searchService }) {
                                     <button 
                                         className="nav-link btn-register"
                                         onClick={() => handleNavigation("/register")}
-                                        style={{color:"black"}}
+                                        style={{color:"black", width: "100%", textAlign: "left"}}
                                     >
                                         Register
                                     </button>
@@ -214,6 +378,7 @@ function Navbar({ filterByLocation, searchService }) {
                                     <button 
                                         className="nav-link btn-login"
                                         onClick={() => handleNavigation("/login")}
+                                        style={{width: "100%", textAlign: "left"}}
                                     >
                                         Login
                                     </button>
@@ -223,6 +388,51 @@ function Navbar({ filterByLocation, searchService }) {
                     </ul>
                 </div>
             </div>
+
+            {/* Add responsive styles */}
+            <style jsx>{`
+                @media (max-width: 768px) {
+                    .navbar-collapse {
+                        position: fixed;
+                        top: 60px;
+                        left: 0;
+                        right: 0;
+                        background: white;
+                        padding: 20px;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                        z-index: 1000;
+                        max-height: calc(100vh - 60px);
+                        overflow-y: auto;
+                    }
+                    
+                    .navbar-nav {
+                        width: 100%;
+                    }
+                    
+                    .nav-item {
+                        width: 100%;
+                        margin: 5px 0;
+                    }
+                    
+                    .location-search-btn-container,
+                    .user-menu {
+                        width: 100%;
+                    }
+                    
+                    .location-search-wrapper,
+                    .user-dropdown {
+                        width: 100%;
+                    }
+                    
+                    .dropdown-menu {
+                        position: static !important;
+                        width: 100%;
+                        margin-top: 10px !important;
+                        box-shadow: none !important;
+                        border: 1px solid #e0e0e0;
+                    }
+                }
+            `}</style>
         </nav>
     );
 }

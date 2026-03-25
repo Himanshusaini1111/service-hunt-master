@@ -372,6 +372,7 @@ router.get("/pathners", async (req, res) => {
 });
 // Convert Pathner to Vendor - UPDATED VERSION
 // Convert Pathner to Vendor - UPDATED (using 'admin' role for vendors)
+// In your superadmin.js routes file - Update the pathner-to-vendor conversion
 router.post("/pathner-to-vendor/:pathnerId", async (req, res) => {
     try {
         const { pathnerId } = req.params;
@@ -413,38 +414,42 @@ router.post("/pathner-to-vendor/:pathnerId", async (req, res) => {
 
         // Check if user exists with this email
         let existingUser = await User.findOne({ email: pathner.emailDetails });
-        
         let userIdForVendor = null;
 
-       // In the pathner-to-vendor conversion route
-if (existingUser) {
-    // Update existing user to admin role (vendor)
-    existingUser.role = 'admin';
-    existingUser.isAdmin = true;
-    await existingUser.save();
-    userIdForVendor = existingUser._id;
-} else {
-    // Create new user with admin role (vendor)
-    const newUser = new User({
-        name: pathner.ownerDetails,
-        email: pathner.emailDetails,
-        password: 'Temp@123',
-        role: 'admin', // This makes them a vendor
-        isAdmin: true,
-        phone: pathner.phoneNumber,
-        address: pathner.address || 'Not provided'
-    });
-    await newUser.save();
-    userIdForVendor = newUser._id;
-}
+        if (existingUser) {
+            // Update existing user to admin role (vendor)
+            existingUser.role = 'admin';
+            existingUser.isAdmin = true;
+            // Store pathner details in user document
+            existingUser.companyName = pathner.serviceName;
+            existingUser.serviceType = pathner.typeOfService;
+            existingUser.description = pathner.description;
+            await existingUser.save();
+            userIdForVendor = existingUser._id;
+            console.log('✅ Updated existing user to admin:', existingUser._id);
+        } else {
+            // Create new user with admin role (vendor)
+            const newUser = new User({
+                name: pathner.ownerDetails,
+                email: pathner.emailDetails,
+                password: 'Temp@123',
+                role: 'admin',
+                isAdmin: true,
+                phone: pathner.phoneNumber,
+                address: pathner.address || 'Not provided',
+                companyName: pathner.serviceName,
+                serviceType: pathner.typeOfService,
+                description: pathner.description
+            });
+            await newUser.save();
+            userIdForVendor = newUser._id;
+            console.log('✅ Created new user with admin role:', newUser._id);
+        }
 
-
-        // Create new vendor with required fields
+        // Create new vendor with proper userId linking
         const newVendor = new Vendor({
-            // Provide name and image with defaults if not in pathner
-            name: pathner.ownerDetails || 'Vendor Name',
+            name: pathner.ownerDetails,
             image: pathner.image || '/default-vendor-image.jpg',
-            
             companyName: pathner.serviceName,
             ownerName: pathner.ownerDetails,
             email: pathner.emailDetails,
@@ -452,21 +457,27 @@ if (existingUser) {
             address: pathner.address || 'Not provided',
             serviceType: pathner.typeOfService || 'General Service',
             description: pathner.description || `Vendor converted from pathner application`,
+            category: pathner.typeOfService || 'General',
+            
+            // IMPORTANT: Link to the specific user
+            userId: userIdForVendor,
             
             // Approval fields
             isApproved: true,
             approvedBy: userId,
             approvedDate: new Date(),
             
-            // Link to user (who now has 'admin' role)
-            userId: userIdForVendor,
-            
             // Status
-            status: 'active'
+            status: 'active',
+            availability: 'Available'
         });
 
         await newVendor.save();
-        console.log('✅ Vendor created successfully:', newVendor.companyName);
+        console.log('✅ Vendor created successfully:', {
+            vendorId: newVendor._id,
+            userId: newVendor.userId,
+            companyName: newVendor.companyName
+        });
         
         // Delete the pathner after successful conversion
         await Pathner.findByIdAndDelete(pathnerId);
@@ -479,14 +490,14 @@ if (existingUser) {
                 id: newVendor._id,
                 companyName: newVendor.companyName,
                 email: newVendor.email,
-                phone: newVendor.phone
+                phone: newVendor.phone,
+                userId: newVendor.userId
             }
         });
 
     } catch (error) {
         console.error('❌ Pathner conversion error:', error);
         
-        // More specific error messages
         if (error.name === 'ValidationError') {
             const errors = Object.values(error.errors).map(err => err.message);
             return res.status(400).json({

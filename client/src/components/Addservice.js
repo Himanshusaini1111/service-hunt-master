@@ -277,6 +277,19 @@ export function Addservice({ userId }) { // Accept userId as prop
 
         const imageURLs = [image1, image2, image3];
 
+// Filter out empty optional inputs
+const validOptionalInputs = inputs.filter(input => 
+    input.name && input.name.trim() !== '' && input.price
+).map(input => ({
+    name: input.name,
+    price: input.price,
+    image: input.image,
+    maxcount: input.maxcount || null,
+    unit: input.unit,
+    customUnit: input.unit === "Other" ? input.customUnit : "",
+    isCountable: input.isCountable !== false
+}));
+
         const payload = {
             service,
             rentperday: rentPerDay,
@@ -290,15 +303,8 @@ export function Addservice({ userId }) { // Accept userId as prop
             facility: formattedFacility,
             imageURLs, // Ensure this is an array
             // In Addservice.js, when creating the payload for optional inputs
-            optionalInputs: inputs.map(input => ({
-                name: input.name,
-                price: input.price,
-                image: input.image,
-                maxcount: input.maxcount || null,
-                unit: input.unit,
-                customUnit: input.unit === "Other" ? input.customUnit : "",
-                isCountable: input.isCountable !== false
-            })),
+    optionalInputs: validOptionalInputs, // Use the filtered array here
+
             category,
             subCategory,
             bookingType,

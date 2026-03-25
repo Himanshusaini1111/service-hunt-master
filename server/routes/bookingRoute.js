@@ -11,6 +11,8 @@ const Helper = require("../models/Helper");  // Import Helper model if needed
 // Book a service
 // bookingRoute.js - Update the bookservice endpoint
 
+// Book a service - Update the bookservice endpoint
+// Book a service - Update the bookservice endpoint
 router.post("/bookservice", async (req, res) => {
     try {
         const {
@@ -38,12 +40,18 @@ router.post("/bookservice", async (req, res) => {
             returnTrip,
             bookingType,
             optionalInputs,
-            extraInputs
+            extraInputs,
+            rentperday
         } = req.body;
 
-        // Validate required fields
-        if (!serviceid || !totalAmount || !userid || !name || !phone || !description || !service) {
+        // Validate required fields - make totalAmount optional for inquiry bookings
+        if (!serviceid || !userid || !name || !phone || !description || !service) {
             return res.status(400).json({ message: "Missing required fields" });
+        }
+
+        // For non-inquiry bookings, totalAmount is required
+        if (bookingType !== 'Inquari Booking' && !totalAmount && totalAmount !== 0) {
+            return res.status(400).json({ message: "Total amount is required for regular bookings" });
         }
 
         // Get service and check if it exists
@@ -53,16 +61,14 @@ router.post("/bookservice", async (req, res) => {
         }
 
         // CRITICAL: Get the vendorId from the service
-        // Check multiple possible field names where vendor ID might be stored
         const vendorId = serviceData.vendorId || serviceData.userid || null;
         
         if (!vendorId) {
             console.warn(`Service ${serviceid} has no vendorId assigned`);
-            // You might want to return an error or handle this case
         }
 
-        // Check availability (unchanged)
-        if (fromDate) {
+        // Check availability (skip for inquiry bookings?)
+        if (fromDate && bookingType !== 'Inquari Booking') {
             const dateStr = moment(fromDate).format('YYYY-MM-DD');
             const unavailableDate = serviceData.unavailableDates.find(d => 
                 moment(d.date).format('YYYY-MM-DD') === dateStr
@@ -77,12 +83,12 @@ router.post("/bookservice", async (req, res) => {
             }
         }
 
-        // Create booking data with vendorId properly set
+        // Create booking data with all fields
         const bookingData = {
             serviceid,
-            totalAmount,
-            userid,  // User who booked
-            vendorId: vendorId,  // IMPORTANT: Set to the service owner
+            totalAmount: bookingType === 'Inquari Booking' ? 0 : totalAmount, // Set to 0 for inquiry bookings
+            userid,
+            vendorId: vendorId,
             name,
             phone,
             description,
@@ -91,9 +97,10 @@ router.post("/bookservice", async (req, res) => {
             customUnit: customUnit || serviceData.customUnit,
             isCountable: isCountable !== undefined ? isCountable : serviceData.isCountable,
             quantity: quantity || 1,
+            daysCount: daysCount || 1,
+            rentperday: rentperday || serviceData.rentperday,
             fromDate: fromDate ? new Date(fromDate) : null,
             toDate: toDate ? new Date(toDate) : null,
-            daysCount: daysCount || 1,
             selectedDates: selectedDates || [],
             slots: slots || [],
             time: time || 'N/A',  
@@ -101,7 +108,7 @@ router.post("/bookservice", async (req, res) => {
             bookingType: bookingType || 'Automatic Booking',
             optionalInputs: optionalInputs || [],
             extraInputs: extraInputs || [],
-            status: "booked"
+            status: bookingType === 'Inquari Booking' ? "inquiry" : "booked" // Set different initial status
         };
 
         // Add location data
@@ -117,10 +124,10 @@ router.post("/bookservice", async (req, res) => {
         const newBooking = new Booking(bookingData);
         await newBooking.save();
 
-        console.log(`✅ Booking created: ${newBooking._id} for vendor: ${vendorId}`);
+        console.log(`✅ Booking created: ${newBooking._id} for vendor: ${vendorId} (Type: ${bookingType})`);
 
-        // Update service availability (unchanged)
-        if (fromDate) {
+        // Skip availability update for inquiry bookings
+        if (fromDate && bookingType !== 'Inquari Booking') {
             const dateStr = moment(fromDate).format('YYYY-MM-DD');
             let unavailableDates = serviceData.unavailableDates || [];
             
@@ -150,14 +157,14 @@ router.post("/bookservice", async (req, res) => {
         }
 
         res.status(201).json({
-            message: "Service booked successfully",
+            message: bookingType === 'Inquari Booking' ? "Inquiry submitted successfully" : "Service booked successfully",
             booking: newBooking
         });
 
     } catch (error) {
         console.error("Booking error:", error);
         res.status(500).json({
-            message: "Failed to book service",
+            message: "Failed to process booking",
             error: error.message
         });
     }
@@ -423,6 +430,7 @@ router.post("/assign-helpers", async (req, res) => {
 
 // Get user bookings
 // Get user bookings - FIXED to populate assignedHelpers
+// bookingRoute.js - Update the getuserbookings endpoint
 router.post("/getuserbookings", async (req, res) => {
     try {
         const { userid } = req.body;
@@ -436,10 +444,39 @@ router.post("/getuserbookings", async (req, res) => {
                 path: 'assignedHelpers',
                 select: 'name phone email skills experience photo description'
             })
+            .populate({
+                path: 'serviceid',
+                select: 'name rentperday unit customUnit category imageurls'
+            })
             .sort({ createdAt: -1 });
             
-        console.log(`Found ${bookings.length} bookings for user ${userid}`);
-        res.json(bookings);
+        // Transform bookings to ensure all fields are present
+        const transformedBookings = bookings.map(booking => {
+            const bookingObj = booking.toObject();
+            
+            // Ensure service name is available
+            if (bookingObj.serviceid && !bookingObj.service) {
+                bookingObj.service = bookingObj.serviceid.name;
+            }
+            
+            // Ensure dates are properly formatted
+            if (bookingObj.selectedDates && bookingObj.selectedDates.length > 0) {
+                bookingObj.fromdate = bookingObj.selectedDates[0];
+                bookingObj.todate = bookingObj.selectedDates[bookingObj.selectedDates.length - 1];
+            }
+            
+            // Ensure time slots are properly formatted
+            if (bookingObj.slots && bookingObj.slots.length > 0) {
+                bookingObj.time = bookingObj.slots.map(slot => 
+                    typeof slot === 'object' ? slot.slot : slot
+                ).join(', ');
+            }
+            
+            return bookingObj;
+        });
+        
+        console.log(`Found ${transformedBookings.length} bookings for user ${userid}`);
+        res.json(transformedBookings);
     } catch (error) {
         console.error("Error fetching user bookings:", error);
         res.status(500).json({ message: error.message });
