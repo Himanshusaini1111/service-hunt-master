@@ -2839,10 +2839,6 @@ img:hover {
   background-color: #6c757d;
   color: white;
 }
-
-// In Bookingscreen.jsx (modifications)
-
-// Add these styles to your CSS file (Bookingscreen.css)
 .react-calendar {
   width: 100%;
   max-width: 400px;
