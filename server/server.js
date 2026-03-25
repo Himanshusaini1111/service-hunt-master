@@ -21,7 +21,7 @@ const superadmin =require("./routes/superadmin.js")
 // Middleware
 app.use(express.json());
 app.use(cors({
-    origin: true,  // Accepts requests from ANY origin (laptop, phone, tablet)
+    origin: "http://localhost:3000",
      credentials: true
 })); // Allow requests from frontend origin
 
