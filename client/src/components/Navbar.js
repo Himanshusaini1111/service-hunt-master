@@ -171,50 +171,27 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
         <nav className="navbar navbar-expand-lg custom-navbar" style={{ backgroundColor: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
             <div className="container-fluid">
                 {/* Brand Section */}
-                <div className="navbar-brand-section">
+                <div className="navbar-brand-section" style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    width: '100%'
+                }}>
                     <a className="navbar-brand" href="/home" onClick={(e) => {
                         e.preventDefault();
                         handleNavigation('/home');
                     }}>
                         <h5 className="app-title" style={{ margin: 0, color: '#4a54e1', fontWeight: 'bold' }}>Smart Seva</h5>
                     </a>
-                    <button
-                        className="navbar-toggler custom-toggler"
-                        type="button"
-                        onClick={toggleMenu}
-                        aria-controls="navbarNav"
-                        aria-expanded={isMenuOpen}
-                        aria-label="Toggle navigation"
-                        style={{ border: 'none', background: 'transparent', fontSize: '24px' }}
-                    >
-                        <i className="fa fa-bars"></i>
-                    </button>
-                </div>
-
-                {/* Navigation Links */}
+                    
+                    {/* Navigation Links */}
                 <div 
-                    ref={menuRef}
-                    className={`navbar-collapse ${isMenuOpen ? 'show' : ''}`} 
-                    id="navbarNav"
-                    style={{
-                        ...(isMobile && isMenuOpen ? {
-                            position: 'fixed',
-                            top: '60px',
-                            left: 0,
-                            right: 0,
-                            background: 'white',
-                            padding: '20px',
-                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                            zIndex: 1000,
-                            maxHeight: 'calc(100vh - 60px)',
-                            overflowY: 'auto'
-                        } : {})
-                    }}
+                   
                 >
                     <ul className="navbar-nav" style={{ width: '100%' }}>
                         {user ? (
                             <>
-                                {/* Location Search Button - Always visible */}
+                                {/* Location Search Button - Second in mobile menu */}
                                 <li className="nav-item location-search-btn-container" ref={locationSearchRef} style={{ width: '100%', marginBottom: isMobile ? '10px' : 0 }}>
                                     <div className="location-search-wrapper" style={{ width: "100%" }}>
                                         <button
@@ -317,105 +294,113 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                                     </div>
                                 </li>
 
-                                {/* User Menu */}
-                                <li className="nav-item dropdown user-menu" ref={dropdownRef} style={{ width: '100%' }}>
-                                    <div className="user-dropdown" style={{ width: '100%' }}>
-                                        <button
-                                            className="user-toggle"
-                                            type="button"
-                                            onClick={toggleDropdown}
-                                            aria-expanded={isDropdownOpen}
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                gap: "8px",
-                                                width: "100%",
-                                                padding: isMobile ? "12px 16px" : "8px 12px",
-                                                backgroundColor: "#f0f0f0",
-                                                border: "none",
-                                                borderRadius: "8px",
-                                                cursor: "pointer",
-                                                marginTop: isMobile ? "0" : "0"
-                                            }}
-                                        >
-                                            <i className="fa fa-user"></i>
-                                            <span className="user-name" style={{ fontSize: "14px" }}>
-                                                {user.name?.split(' ')[0]}
-                                            </span>
-                                            <span className="user-initials" style={{ 
-                                                textAlign: "center",
-                                                width: "30px",
-                                                height: "30px",
-                                                borderRadius: "50%",
-                                                backgroundColor: "#4a54e1",
-                                                color: "white",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                fontSize: "12px"
-                                            }}> 
-                                                {user.name?.charAt(0).toUpperCase()}
-                                            </span>
-                                        </button>
-                                        <div className={`dropdown-menu ${isDropdownOpen ? 'show' : ''}`} style={{
-                                            ...(isMobile && isDropdownOpen ? {
-                                                position: 'static',
-                                                width: '100%',
-                                                marginTop: '10px',
-                                                boxShadow: 'none',
-                                                border: '1px solid #e0e0e0'
-                                            } : {})
-                                        }}>
-                                            <button className="dropdown-item" onClick={() => handleNavigation("/profile")}>
-                                                <i className="fa fa-user-o"></i> Profile
+                                {/* Desktop User Menu - Only visible on desktop */}
+                                {!isMobile && (
+                                    <li className="nav-item dropdown user-menu" ref={dropdownRef} style={{ width: '100%' }}>
+                                        <div className="user-dropdown" style={{ width: '100%' }}>
+                                            <button
+                                                className="user-toggle"
+                                                type="button"
+                                                onClick={toggleDropdown}
+                                                aria-expanded={isDropdownOpen}
+                                                style={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    gap: "8px",
+                                                    width: "100%",
+                                                    padding: "8px 12px",
+                                                    backgroundColor: "#f0f0f0",
+                                                    border: "none",
+                                                    borderRadius: "8px",
+                                                    cursor: "pointer",
+                                                    marginTop: "0"
+                                                }}
+                                            >
+                                                <i className="fa fa-user"></i>
+                                                <span className="user-name" style={{ fontSize: "14px" }}>
+                                                    {user.name?.split(' ')[0]}
+                                                </span>
+                                                <span className="user-initials" style={{ 
+                                                    textAlign: "center",
+                                                    width: "30px",
+                                                    height: "30px",
+                                                    borderRadius: "50%",
+                                                    backgroundColor: "#4a54e1",
+                                                    color: "white",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    fontSize: "12px"
+                                                }}> 
+                                                    {user.name?.charAt(0).toUpperCase()}
+                                                </span>
                                             </button>
-                                            <button className="dropdown-item" onClick={() => handleNavigation("/myorders")}>
-                                                <i className="fa fa-gavel"></i> Orders
-                                            </button>
-                                            <button className="dropdown-item" onClick={() => handleNavigation("/form")}>
-                                                <i className="fa fa-handshake-o"></i> Partner
-                                            </button>
-                                            
-                                            {/* Vendor Dashboard */}
-                                            {isVendor && (
-                                                <button className="dropdown-item" onClick={() => handleNavigation("/vendor-dashboard")}>
-                                                    <i className="fa fa-dashboard"></i> Vendor Dashboard
+                                            <div className={`dropdown-menu ${isDropdownOpen ? 'show' : ''}`} style={{
+                                                ...(isMobile && isDropdownOpen ? {
+                                                    position: 'static',
+                                                    width: '100%',
+                                                    marginTop: '10px',
+                                                    boxShadow: 'none',
+                                                    border: '1px solid #e0e0e0'
+                                                } : {})
+                                            }}>
+                                                <button className="dropdown-item" onClick={() => handleNavigation("/profile")}>
+                                                    <i className="fa fa-user-o"></i> Profile
                                                 </button>
-                                            )}
-                                            
-                                            {/* Admin Panel */}
-                                            {isAdmin && !isVendor && (
-                                                <button className="dropdown-item" onClick={() => handleNavigation("/adminscreen")}>
-                                                    <i className="fa fa-shield"></i> Admin Panel
+                                                <button className="dropdown-item" onClick={() => handleNavigation("/myorders")}>
+                                                    <i className="fa fa-gavel"></i> Orders
                                                 </button>
-                                            )}
-                                            
-                                            {/* Super Admin - Only for specific email */}
-                                            {isSuperAdmin && (
-                                                <button className="dropdown-item" onClick={() => handleNavigation("/superadmin")}>
-                                                    <i className="fa fa-star"></i> Super Admin
+                                                <button className="dropdown-item" onClick={() => handleNavigation("/form")}>
+                                                    <i className="fa fa-handshake-o"></i> Partner
                                                 </button>
-                                            )}
-                                            
-                                            <button className="dropdown-item" onClick={() => handleNavigation("/about")}>
-                                                <i className="fa fa-info-circle"></i> About
-                                            </button>
-                                            <button className="dropdown-item" onClick={() => handleNavigation("/helperpanel")}>
-                                                <i className="fa fa-life-ring"></i> Helper Panel
-                                            </button>
-                                            <div className="dropdown-divider"></div>
-                                            <button className="dropdown-item" onClick={logout}>
-                                                <i className="fa fa-sign-out"></i> Logout
-                                            </button>
+                                                
+                                                {/* Vendor Dashboard */}
+                                                {isVendor && (
+                                                    <button className="dropdown-item" onClick={() => handleNavigation("/vendor-dashboard")}>
+                                                        <i className="fa fa-dashboard"></i> Vendor Dashboard
+                                                    </button>
+                                                )}
+                                                
+                                                {/* Admin Panel */}
+                                                {isAdmin && !isVendor && (
+                                                    <button className="dropdown-item" onClick={() => handleNavigation("/adminscreen")}>
+                                                        <i className="fa fa-shield"></i> Admin Panel
+                                                    </button>
+                                                )}
+                                                
+                                                {/* Super Admin */}
+                                                {isSuperAdmin && (
+                                                    <button className="dropdown-item" onClick={() => handleNavigation("/superadmin")}>
+                                                        <i className="fa fa-star"></i> Super Admin
+                                                    </button>
+                                                )}
+                                                
+                                                <button className="dropdown-item" onClick={() => handleNavigation("/about")}>
+                                                    <i className="fa fa-info-circle"></i> About
+                                                </button>
+                                                <button className="dropdown-item" onClick={() => handleNavigation("/helperpanel")}>
+                                                    <i className="fa fa-life-ring"></i> Helper Panel
+                                                </button>
+                                                <div className="dropdown-divider"></div>
+                                                <button className="dropdown-item" onClick={logout}>
+                                                    <i className="fa fa-sign-out"></i> Logout
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                </li>
+                                    </li>
+                                    
+                                )}
+
+                                
                             </>
                         ) : (
                             /* Guest User Links */
-                            <>
-                                <li className="nav-item" style={{ width: '100%', marginBottom: '10px' }}>
+<div style={{ 
+  display: "flex",        // This is required for flexbox
+  flexDirection: "row",   // Items will be arranged left to right
+  gap: "10px"             // Optional: adds spacing between items
+}}>                                <li className="nav-item" style={{ width: '100%', marginBottom: '10px' }}>
                                     <button 
                                         className="nav-link btn-register"
                                         onClick={() => handleNavigation("/register")}
@@ -433,10 +418,130 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                                         Login
                                     </button>
                                 </li>
-                            </>
+                            </div>
                         )}
                     </ul>
                 </div>
+                    {/* Mobile Action Buttons - User Dropdown and Menu Toggle */}
+                    {user && isMobile && (
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            {/* User Dropdown Button (Mobile First) */}
+                            <div ref={dropdownRef} style={{ position: 'relative' }}>
+                                <button
+                                    className="user-toggle-mobile"
+                                    type="button"
+                                    onClick={toggleDropdown}
+                                    aria-expanded={isDropdownOpen}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: "8px",
+                                        padding: "8px 12px",
+                                        backgroundColor: "#f0f0f0",
+                                        border: "none",
+                                        borderRadius: "8px",
+                                        cursor: "pointer",
+                                        fontSize: "14px"
+                                    }}
+                                >
+                                    <i className="fa fa-user"></i>
+                                    <span className="user-initials" style={{ 
+                                        width: "28px",
+                                        height: "28px",
+                                        borderRadius: "50%",
+                                        backgroundColor: "#4a54e1",
+                                        color: "white",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: "12px"
+                                    }}> 
+                                        {user.name?.charAt(0).toUpperCase()}
+                                    </span>
+                                </button>
+                                
+                                {/* Mobile Dropdown Menu */}
+                                {isDropdownOpen && (
+                                    <div className="dropdown-menu show" style={{
+                                        position: 'absolute',
+                                        top: '100%',
+                                        right: 0,
+                                        marginTop: '8px',
+                                        width: '250px',
+                                        backgroundColor: 'white',
+                                        borderRadius: '8px',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                                        zIndex: 1050,
+                                        padding: '8px 0'
+                                    }}>
+                                        <div style={{ padding: '8px 16px', borderBottom: '1px solid #e0e0e0' }}>
+                                            <strong>{user.name}</strong>
+                                            <div style={{ fontSize: '12px', color: '#666' }}>{user.email}</div>
+                                        </div>
+                                        <button className="dropdown-item" onClick={() => handleNavigation("/profile")}>
+                                            <i className="fa fa-user-o"></i> Profile
+                                        </button>
+                                        <button className="dropdown-item" onClick={() => handleNavigation("/myorders")}>
+                                            <i className="fa fa-gavel"></i> Orders
+                                        </button>
+                                        <button className="dropdown-item" onClick={() => handleNavigation("/form")}>
+                                            <i className="fa fa-handshake-o"></i> Partner
+                                        </button>
+                                        
+                                        {/* Vendor Dashboard */}
+                                        {isVendor && (
+                                            <button className="dropdown-item" onClick={() => handleNavigation("/vendor-dashboard")}>
+                                                <i className="fa fa-dashboard"></i> Vendor Dashboard
+                                            </button>
+                                        )}
+                                        
+                                        {/* Admin Panel */}
+                                        {isAdmin && !isVendor && (
+                                            <button className="dropdown-item" onClick={() => handleNavigation("/adminscreen")}>
+                                                <i className="fa fa-shield"></i> Admin Panel
+                                            </button>
+                                        )}
+                                        
+                                        {/* Super Admin */}
+                                        {isSuperAdmin && (
+                                            <button className="dropdown-item" onClick={() => handleNavigation("/superadmin")}>
+                                                <i className="fa fa-star"></i> Super Admin
+                                            </button>
+                                        )}
+                                        
+                                        <button className="dropdown-item" onClick={() => handleNavigation("/about")}>
+                                            <i className="fa fa-info-circle"></i> About
+                                        </button>
+                                        <button className="dropdown-item" onClick={() => handleNavigation("/helperpanel")}>
+                                            <i className="fa fa-life-ring"></i> Helper Panel
+                                        </button>
+                                        <div className="dropdown-divider"></div>
+                                        <button className="dropdown-item" onClick={logout}>
+                                            <i className="fa fa-sign-out"></i> Logout
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            {/* Menu Toggle Button */}
+                          
+                        </div>
+                    )}
+                    
+                    {/* Desktop Menu Toggle */}
+                    {!isMobile && (
+                        <button
+                            className="navbar-toggler custom-toggler"
+                            type="button"
+                            onClick={toggleMenu}
+                            style={{ border: 'none', background: 'black', fontSize: '24px' }}
+                        >
+                        </button>
+                    )}
+                </div>
+
+                
             </div>
         </nav>
     );

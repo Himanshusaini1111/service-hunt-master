@@ -54,7 +54,6 @@ const CommentsSection = ({ serviceId }) => {
 
     return (
         <div className="container mt-4 text-left">
-            <h2>Comments</h2>
             <form onSubmit={handleSubmit} className="mb-3">
                 <textarea
                     className="form-control"

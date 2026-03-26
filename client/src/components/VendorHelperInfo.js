@@ -53,9 +53,17 @@ function ViewHelpers({ bookingId, userId }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [assigning, setAssigning] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
     useEffect(() => {
         fetchHelperDetails();
+        
+        // Add resize listener for responsive design
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
     }, [userId]);
 
     const fetchHelperDetails = async () => {
@@ -98,9 +106,7 @@ function ViewHelpers({ bookingId, userId }) {
             });
             
             message.success(`Helpers assigned successfully to booking!`);
-            setSelectedHelpers([]); // Clear selection after successful assignment
-            
-            // Optionally refresh helper list or show success
+            setSelectedHelpers([]);
         } catch (error) {
             console.error("Error assigning helpers:", error);
             message.error(error.response?.data?.message || "Failed to assign helpers.");
@@ -109,82 +115,307 @@ function ViewHelpers({ bookingId, userId }) {
         }
     };
 
+    // Mobile Card View Render
+    const renderMobileCardView = () => {
+        return (
+            <div className="mobile-helpers-list">
+                {helperDetails.map((helper, index) => (
+                    <div key={helper._id} className="helper-card" style={{
+                        background: "white",
+                        borderRadius: "12px",
+                        marginBottom: "12px",
+                        padding: "16px",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                        border: selectedHelpers.includes(helper._id) ? "2px solid #1890ff" : "1px solid #e8e8e8",
+                        position: "relative"
+                    }}>
+                        {/* Selection Checkbox */}
+                        <div style={{
+                            position: "absolute",
+                            top: "12px",
+                            right: "12px"
+                        }}>
+                            <input
+                                type="checkbox"
+                                checked={selectedHelpers.includes(helper._id)}
+                                onChange={() => handleHelperSelection(helper._id)}
+                                disabled={!bookingId || assigning}
+                                style={{
+                                    width: "20px",
+                                    height: "20px",
+                                    cursor: "pointer"
+                                }}
+                            />
+                        </div>
+
+                        {/* Helper Info */}
+                        <div style={{ marginBottom: "12px", paddingRight: "32px" }}>
+                            <div style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: "8px"
+                            }}>
+                                <h4 style={{
+                                    margin: 0,
+                                    fontSize: "16px",
+                                    fontWeight: "bold",
+                                    color: "#333"
+                                }}>
+                                    {helper.name}
+                                </h4>
+                                <Tag color={helper.isConnected ? "green" : "red"} style={{ margin: 0 }}>
+                                    {helper.isConnected ? "Online" : "Offline"}
+                                </Tag>
+                            </div>
+                            
+                            <div style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "8px",
+                                marginTop: "12px"
+                            }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <span style={{ fontSize: "12px", color: "#666", minWidth: "60px" }}>📞 Phone:</span>
+                                    <span style={{ fontSize: "14px", color: "#333" }}>{helper.phone}</span>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <span style={{ fontSize: "12px", color: "#666", minWidth: "60px" }}>✉️ Email:</span>
+                                    <span style={{ fontSize: "13px", color: "#333", wordBreak: "break-all" }}>{helper.email}</span>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <span style={{ fontSize: "12px", color: "#666", minWidth: "60px" }}>🔢 Code:</span>
+                                    <span style={{ fontSize: "14px", color: "#333" }}>{helper.code}</span>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                    <span style={{ fontSize: "12px", color: "#666", minWidth: "60px" }}>💼 Experience:</span>
+                                    <span style={{ fontSize: "14px", color: "#333" }}>{helper.experience} years</span>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
+                                    <span style={{ fontSize: "12px", color: "#666", minWidth: "60px" }}>⚡ Skills:</span>
+                                    <span style={{ fontSize: "14px", color: "#333", flex: 1 }}>{helper.skills}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Selection Indicator */}
+                        {selectedHelpers.includes(helper._id) && (
+                            <div style={{
+                                position: "absolute",
+                                top: "8px",
+                                left: "8px",
+                                background: "#1890ff",
+                                color: "white",
+                                padding: "2px 8px",
+                                borderRadius: "12px",
+                                fontSize: "10px",
+                                fontWeight: "bold"
+                            }}>
+                                Selected
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    // Table Columns Configuration
+    const columns = [
+        {
+            title: "#",
+            key: "index",
+            width: 60,
+            render: (text, record, index) => index + 1
+        },
+        {
+            title: "Select",
+            key: "select",
+            width: 70,
+            render: (_, helper) => (
+                <input
+                    type="checkbox"
+                    checked={selectedHelpers.includes(helper._id)}
+                    onChange={() => handleHelperSelection(helper._id)}
+                    disabled={!bookingId || assigning}
+                    style={{ cursor: "pointer", width: "18px", height: "18px" }}
+                />
+            )
+        },
+        {
+            title: "Name",
+            dataIndex: "name",
+            key: "name",
+            ellipsis: true
+        },
+        {
+            title: "Phone",
+            dataIndex: "phone",
+            key: "phone",
+            responsive: ['md'] // Hide on mobile
+        },
+        {
+            title: "Email",
+            dataIndex: "email",
+            key: "email",
+            ellipsis: true,
+            responsive: ['lg'] // Hide on tablet
+        },
+        {
+            title: "Code",
+            dataIndex: "code",
+            key: "code",
+            responsive: ['sm'] // Hide on very small screens
+        },
+        {
+            title: "Status",
+            key: "status",
+            width: 100,
+            render: (_, helper) => (
+                <Tag color={helper.isConnected ? "green" : "red"}>
+                    {helper.isConnected ? "Online" : "Offline"}
+                </Tag>
+            )
+        },
+        {
+            title: "Experience",
+            dataIndex: "experience",
+            key: "experience",
+            responsive: ['md'] // Hide on mobile
+        },
+        {
+            title: "Skills",
+            dataIndex: "skills",
+            key: "skills",
+            ellipsis: true,
+            responsive: ['lg'] // Hide on tablet
+        }
+    ];
+
     return (
-        <div className="helper-details-container">
-            <div className="helper-header">
-                <h3 className="section-title">Helper Management</h3>
-                <div className="booking-id">
-                    Booking ID: <span className="id-value">{bookingId || "Not Selected"}</span>
+        <div style={{
+            padding: isMobile ? "12px" : "20px",
+            maxWidth: "1400px",
+            margin: "0 auto",
+            width: "100%"
+        }}>
+            {/* Header Section */}
+            <div style={{
+                display: "flex",
+                flexDirection: isMobile ? "column" : "row",
+                justifyContent: "space-between",
+                alignItems: isMobile ? "flex-start" : "center",
+                marginBottom: "20px",
+                gap: isMobile ? "12px" : "0"
+            }}>
+                <h3 style={{
+                    margin: 0,
+                    fontSize: isMobile ? "18px" : "20px",
+                    fontWeight: "bold",
+                    color: "#333"
+                }}>
+                    Helper Management
+                </h3>
+                <div style={{
+                    background: "#f0f0f0",
+                    padding: "8px 16px",
+                    borderRadius: "8px",
+                    fontSize: isMobile ? "13px" : "14px",
+                    width: isMobile ? "100%" : "auto"
+                }}>
+                    Booking ID: <strong style={{ color: "#1890ff" }}>{bookingId || "Not Selected"}</strong>
                 </div>
             </div>
 
-            <div className="status-messages">
-                {loading && (
-                    <div className="loading-indicator">
-                        <div className="spinner"></div>
-                        Loading helpers...
-                    </div>
-                )}
-                {error && (
-                    <div className="error-message">
-                        ⚠️ {error}
-                    </div>
-                )}
-            </div>
+            {/* Status Messages */}
+            {loading && (
+                <div style={{
+                    textAlign: "center",
+                    padding: "40px 20px",
+                    background: "#fafafa",
+                    borderRadius: "8px"
+                }}>
+                    <div style={{
+                        display: "inline-block",
+                        width: "30px",
+                        height: "30px",
+                        border: "3px solid #f3f3f3",
+                        borderTop: "3px solid #1890ff",
+                        borderRadius: "50%",
+                        animation: "spin 1s linear infinite"
+                    }}></div>
+                    <p style={{ marginTop: "12px", color: "#666" }}>Loading helpers...</p>
+                </div>
+            )}
 
+            {error && (
+                <div style={{
+                    background: "#fff2f0",
+                    border: "1px solid #ffccc7",
+                    padding: "12px 16px",
+                    borderRadius: "8px",
+                    color: "#ff4d4f",
+                    marginBottom: "16px",
+                    fontSize: "14px"
+                }}>
+                    ⚠️ {error}
+                </div>
+            )}
+
+            {/* Helpers List */}
             {helperDetails.length > 0 ? (
                 <>
-                    <div className="table-wrapper">
-                        <Table
-                            dataSource={helperDetails}
-                            rowKey="_id"
-                            pagination={{ pageSize: 5 }}
-                            className="helper-table"
-                        >
-                            <Table.Column
-                                title="#"
-                                key="index"
-                                render={(text, record, index) => index + 1}
+                    {/* Responsive View Switcher */}
+                    {isMobile ? (
+                        renderMobileCardView()
+                    ) : (
+                        <div className="table-wrapper" style={{
+                            overflowX: "auto",
+                            WebkitOverflowScrolling: "touch"
+                        }}>
+                            <Table
+                                dataSource={helperDetails}
+                                rowKey="_id"
+                                columns={columns}
+                                pagination={{ 
+                                    pageSize: isMobile ? 5 : 10,
+                                    responsive: true,
+                                    showSizeChanger: !isMobile,
+                                    showTotal: (total, range) => isMobile ? 
+                                        `${range[0]}-${range[1]} of ${total}` : 
+                                        `Showing ${range[0]}-${range[1]} of ${total} helpers`
+                                }}
+                                scroll={{ x: isMobile ? undefined : 800 }}
+                                size={isMobile ? "small" : "middle"}
                             />
-                            <Table.Column
-                                title="Select"
-                                key="select"
-                                render={(_, helper) => (
-                                    <div className="checkbox-container">
-                                        <input
-                                            type="checkbox"
-                                            className="helper-checkbox"
-                                            checked={selectedHelpers.includes(helper._id)}
-                                            onChange={() => handleHelperSelection(helper._id)}
-                                            disabled={!bookingId || assigning}
-                                        />
-                                    </div>
-                                )}
-                            />
-                            <Table.Column title="Name" dataIndex="name" key="name" />
-                            <Table.Column title="Phone" dataIndex="phone" key="phone" />
-                            <Table.Column title="Email" dataIndex="email" key="email" />
-                            <Table.Column title="Code" dataIndex="code" key="code" />
-                            <Table.Column
-                                title="Status"
-                                render={(_, helper) => (
-                                    <Tag color={helper.isConnected ? "green" : "red"}>
-                                        {helper.isConnected ? "Online" : "Offline"}
-                                    </Tag>
-                                )}
-                            />
-                            <Table.Column title="Experience" dataIndex="experience" key="experience" />
-                            <Table.Column title="Skills" dataIndex="skills" key="skills" />
-                        </Table>
-                    </div>
+                        </div>
+                    )}
                     
+                    {/* Action Bar */}
                     {selectedHelpers.length > 0 && bookingId && (
-                        <div className="action-bar" style={{ marginTop: '20px', textAlign: 'right' }}>
+                        <div style={{
+                            position: isMobile ? "fixed" : "sticky",
+                            bottom: isMobile ? "0" : "auto",
+                            left: isMobile ? "0" : "auto",
+                            right: isMobile ? "0" : "auto",
+                            background: isMobile ? "white" : "transparent",
+                            padding: isMobile ? "12px 16px" : "20px 0 0",
+                            boxShadow: isMobile ? "0 -2px 10px rgba(0,0,0,0.1)" : "none",
+                            zIndex: isMobile ? 100 : "auto",
+                            borderTop: isMobile ? "1px solid #e8e8e8" : "none",
+                            textAlign: "right"
+                        }}>
                             <Button
                                 type="primary"
                                 onClick={assignHelpersToBooking}
                                 loading={assigning}
                                 disabled={assigning}
+                                size={isMobile ? "large" : "middle"}
+                                style={{
+                                    width: isMobile ? "100%" : "auto",
+                                    height: isMobile ? "44px" : "auto",
+                                    fontSize: isMobile ? "16px" : "14px"
+                                }}
                             >
                                 {assigning ? 'Assigning...' : `Assign ${selectedHelpers.length} Helper${selectedHelpers.length > 1 ? 's' : ''}`}
                             </Button>
@@ -193,11 +424,45 @@ function ViewHelpers({ bookingId, userId }) {
                 </>
             ) : (
                 !loading && (
-                    <div className="empty-state">
-                        No helpers available. Add helpers first.
+                    <div style={{
+                        textAlign: "center",
+                        padding: "60px 20px",
+                        background: "#fafafa",
+                        borderRadius: "8px",
+                        color: "#999"
+                    }}>
+                        <div style={{ fontSize: "48px", marginBottom: "16px" }}>👥</div>
+                        <p style={{ margin: 0 }}>No helpers available. Add helpers first.</p>
                     </div>
                 )
             )}
+
+            {/* Add CSS for animations */}
+            <style jsx>{`
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                
+                /* For mobile card view */
+                .mobile-helpers-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    margin-bottom: 80px;
+                }
+                
+                /* Responsive table adjustments */
+                @media (max-width: 768px) {
+                    .ant-table {
+                        font-size: 12px;
+                    }
+                    .ant-table-thead > tr > th,
+                    .ant-table-tbody > tr > td {
+                        padding: 8px 4px;
+                    }
+                }
+            `}</style>
         </div>
     );
 }

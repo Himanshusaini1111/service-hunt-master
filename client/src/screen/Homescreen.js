@@ -1,3 +1,5 @@
+// Homescreen.js - Fixed version
+
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Loader from "../components/Loader";
@@ -29,52 +31,79 @@ function Homescreen() {
     const [vendors, setVendors] = useState([]);
     const [viewMode, setViewMode] = useState("all");
     const [selectedLocationObject, setSelectedLocationObject] = useState(null);
+    const [isLocationLoaded, setIsLocationLoaded] = useState(false);
 
     const navigate = useNavigate();
     const locationState = useLocation();
     const { RangePicker } = DatePicker;
 
-    // Function to check if service matches location
+    // Improved location matching function
     const isServiceInLocation = (service, locationValue) => {
         if (!locationValue) return true;
         
-        const locationLower = locationValue.toLowerCase();
+        // Get location string from various possible formats
+        let locationLower = '';
+        if (typeof locationValue === 'string') {
+            locationLower = locationValue.toLowerCase();
+        } else if (locationValue.display_name) {
+            locationLower = locationValue.display_name.toLowerCase();
+        } else if (locationValue.city) {
+            locationLower = locationValue.city.toLowerCase();
+        } else {
+            locationLower = String(locationValue).toLowerCase();
+        }
+        
+        // Extract city name from display_name (first part before comma)
+        const cityName = locationLower.split(',')[0].trim();
         
         // Check primary location field
-        if (service.location && service.location.toLowerCase().includes(locationLower)) {
-            return true;
+        if (service.location) {
+            const serviceLocation = service.location.toLowerCase();
+            if (serviceLocation.includes(cityName) || 
+                cityName.includes(serviceLocation) ||
+                serviceLocation.includes(locationLower)) {
+                return true;
+            }
         }
         
         // Check address
-        if (service.address && service.address.toLowerCase().includes(locationLower)) {
+        if (service.address && service.address.toLowerCase().includes(cityName)) {
             return true;
         }
         
         // Check serviceAreas array
         if (service.serviceAreas && Array.isArray(service.serviceAreas)) {
             return service.serviceAreas.some(area => {
-                return (
-                    (area.city && area.city.toLowerCase().includes(locationLower)) ||
-                    (area.state && area.state.toLowerCase().includes(locationLower)) ||
-                    (area.district && area.district.toLowerCase().includes(locationLower)) ||
-                    (area.pincode && area.pincode.includes(locationValue))
-                );
+                if (!area) return false;
+                const areaCity = (area.city || '').toLowerCase();
+                const areaState = (area.state || '').toLowerCase();
+                const areaDistrict = (area.district || '').toLowerCase();
+                const areaPincode = (area.pincode || '').toString();
+                
+                return areaCity.includes(cityName) ||
+                       cityName.includes(areaCity) ||
+                       areaState.includes(cityName) ||
+                       areaDistrict.includes(cityName) ||
+                       areaPincode === locationValue;
             });
         }
         
         // Check serviceLocation object
         if (service.serviceLocation) {
-            return (
-                (service.serviceLocation.city && service.serviceLocation.city.toLowerCase().includes(locationLower)) ||
-                (service.serviceLocation.state && service.serviceLocation.state.toLowerCase().includes(locationLower)) ||
-                (service.serviceLocation.district && service.serviceLocation.district.toLowerCase().includes(locationLower))
-            );
+            const locCity = (service.serviceLocation.city || '').toLowerCase();
+            const locState = (service.serviceLocation.state || '').toLowerCase();
+            const locDistrict = (service.serviceLocation.district || '').toLowerCase();
+            
+            return locCity.includes(cityName) ||
+                   cityName.includes(locCity) ||
+                   locState.includes(cityName) ||
+                   locDistrict.includes(cityName);
         }
         
         return false;
     };
 
-    // Fetch subCategories
+    // SubCategories mapping
     const subCategories = {
         "Home Maintenance & Repair Services": [
             "Plumbing Services",
@@ -106,46 +135,85 @@ function Homescreen() {
         ]
     };
 
-    // Load location from localStorage if not passed through state
+    // Load location from localStorage FIRST, before any filtering
     useEffect(() => {
-        const loadLocation = async () => {
-            // First, check if location was passed through navigation state
+        const loadLocation = () => {
+            console.log("Loading location in Homescreen...");
+            
+            // First priority: Check if location was passed through navigation state
             if (locationState.state?.location) {
                 const passedLocation = locationState.state.location;
+                console.log("Location from navigation state:", passedLocation);
                 setSelectedLocationObject(passedLocation);
-                const locationValue = passedLocation.display_name || passedLocation.city || passedLocation;
+                
+                // Extract location string for filtering
+                let locationValue = '';
+                if (typeof passedLocation === 'string') {
+                    locationValue = passedLocation;
+                } else if (passedLocation.display_name) {
+                    locationValue = passedLocation.display_name;
+                } else if (passedLocation.city) {
+                    locationValue = passedLocation.city;
+                } else {
+                    locationValue = String(passedLocation);
+                }
                 setLocation(locationValue);
+                setIsLocationLoaded(true);
                 return;
             }
             
-            // If not, try to load from localStorage
+            // Second priority: Load from localStorage
             const savedLocation = localStorage.getItem("selectedLocation");
             if (savedLocation) {
                 try {
                     const location = JSON.parse(savedLocation);
+                    console.log("Location from localStorage:", location);
                     setSelectedLocationObject(location);
-                    const locationValue = location.display_name || location.city || location;
+                    
+                    // Extract location string for filtering
+                    let locationValue = '';
+                    if (typeof location === 'string') {
+                        locationValue = location;
+                    } else if (location.display_name) {
+                        locationValue = location.display_name;
+                    } else if (location.city) {
+                        locationValue = location.city;
+                    } else {
+                        locationValue = String(location);
+                    }
                     setLocation(locationValue);
+                    setIsLocationLoaded(true);
+                    return;
                 } catch (error) {
                     console.error("Error parsing saved location:", error);
                 }
             }
+            
+            // No location found
+            console.log("No location found in localStorage or navigation state");
+            setLocation("");
+            setSelectedLocationObject(null);
+            setIsLocationLoaded(true);
         };
         
         loadLocation();
     }, [locationState.state]);
 
-    // Handle category from navigation state
+    // Handle category and subcategory from navigation state AFTER location is loaded
     useEffect(() => {
-        if (locationState.state) {
+        if (locationState.state && isLocationLoaded) {
+            console.log("Processing navigation state:", locationState.state);
+            
             if (locationState.state.subCategory) {
                 setSubCategory(locationState.state.subCategory);
                 setCategory("all");
+                console.log("Set subcategory:", locationState.state.subCategory);
             } else if (locationState.state.category) {
                 setCategory(locationState.state.category);
+                console.log("Set category:", locationState.state.category);
             }
         }
-    }, [locationState]);
+    }, [locationState.state, isLocationLoaded]);
 
     // Fetch all services
     useEffect(() => {
@@ -153,6 +221,7 @@ function Homescreen() {
             try {
                 setLoading(true);
                 const { data } = await axios.get("/api/service/getallservices");
+                console.log(`Fetched ${data.length} services from API`);
                 setAllServices(data);
                 const visibleOnly = data.filter(service => service.isVisible !== false);
                 setVisibleServices(visibleOnly);
@@ -207,7 +276,13 @@ function Homescreen() {
 
     // Filtering logic - includes location filter
     useEffect(() => {
+        // Wait for location to be loaded before filtering
+        if (!isLocationLoaded) return;
+        
         if (allServices.length === 0) return;
+        
+        console.log("Filtering services with location:", location);
+        console.log("Location loaded:", isLocationLoaded);
         
         let filtered = [];
         
@@ -220,18 +295,29 @@ function Homescreen() {
         }
         
         // Apply location filter - CRITICAL FIX
-        if (location && location !== "") {
+        if (location && location !== "" && location !== "All Locations") {
+            const originalCount = filtered.length;
             filtered = filtered.filter(service => isServiceInLocation(service, location));
+            console.log(`Location filter: ${originalCount} -> ${filtered.length} services after filtering for "${location}"`);
+            
+            // Show alert if no services found for location
+            if (filtered.length === 0 && originalCount > 0) {
+                console.log("No services found for this location");
+            }
+        } else {
+            console.log("No location filter applied");
         }
         
         // Apply category filter
         if (category !== "all") {
             filtered = filtered.filter(s => s.category === category);
+            console.log(`Category filter (${category}): ${filtered.length} services`);
         }
         
         // Apply subcategory filter
         if (subCategory) {
             filtered = filtered.filter(s => s.subCategory === subCategory);
+            console.log(`Subcategory filter (${subCategory}): ${filtered.length} services`);
         }
         
         // Apply search filter
@@ -260,8 +346,9 @@ function Homescreen() {
             filtered.sort((a, b) => b.rentperday - a.rentperday);
         }
         
+        console.log(`Final filtered services: ${filtered.length}`);
         setServices(filtered);
-    }, [category, subCategory, location, searchKey, availability, selectedDates, priceRange, sortOrder, allServices, visibleServices]);
+    }, [category, subCategory, location, searchKey, availability, selectedDates, priceRange, sortOrder, allServices, visibleServices, isLocationLoaded]);
 
     // Search
     const filterBySearch = (value) => {
@@ -292,6 +379,16 @@ function Homescreen() {
         // Only reset location if specifically cleared
     };
 
+    // Clear location filter
+    const clearLocationFilter = () => {
+        setLocation("");
+        setSelectedLocationObject(null);
+        // Remove from localStorage as well
+        localStorage.removeItem("selectedLocation");
+        // Show message
+        alert("Location filter cleared. Showing all services.");
+    };
+
     // Get display location name for header
     const getDisplayLocationName = () => {
         if (!location) return "All Locations";
@@ -304,11 +401,45 @@ function Homescreen() {
         return location;
     };
 
+    // Show loading while location is being loaded
+    if (!isLocationLoaded || (loading && allServices.length === 0)) {
+        return (
+            <div>
+                <Navbar />
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    height: '100vh',
+                    flexDirection: 'column'
+                }}>
+                    <div style={{
+                        width: '50px',
+                        height: '50px',
+                        border: '5px solid #f3f3f3',
+                        borderTop: '5px solid #4a54e1',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite'
+                    }} />
+                    <p style={{ marginTop: '20px', color: '#666' }}>Loading services...</p>
+                    <style>{`
+                        @keyframes spin {
+                            0% { transform: rotate(0deg); }
+                            100% { transform: rotate(360deg); }
+                        }
+                    `}</style>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="mt-0">
             {/* NAVBAR */}
             <Navbar />
 
+            {/* Location Info Bar - Show selected location */}
+           
             {/* Category Header - Show selected category */}
             {category !== "all" && (
                 <div style={{
@@ -427,26 +558,37 @@ function Homescreen() {
                             <i className="bi bi-search display-4 text-muted"></i>
                             <p className="mt-3">No services found matching your criteria</p>
                             <p className="text-muted" style={{ fontSize: "14px" }}>
-                                {location && "Try changing the location or clearing filters"}
+                                {location ? 
+                                    `No services available in ${getDisplayLocationName()}${category !== "all" ? ` for ${category}` : ''}` : 
+                                    "Try selecting a location or clearing filters"}
                             </p>
-                            <Button 
-                                type="primary" 
-                                onClick={resetFilters}
-                                style={{ backgroundColor: "#4a54e1", borderColor: "#4a54e1" }}
-                            >
-                                Reset Filters
-                            </Button>
-                            {location && (
+                            <div style={{ display: "flex", gap: "10px", justifyContent: "center", flexWrap: "wrap" }}>
                                 <Button 
-                                    onClick={() => {
-                                        setLocation("");
-                                        setSelectedLocationObject(null);
-                                    }}
-                                    style={{ marginLeft: "10px" }}
+                                    type="primary" 
+                                    onClick={resetFilters}
+                                    style={{ backgroundColor: "#4a54e1", borderColor: "#4a54e1" }}
                                 >
-                                    Clear Location
+                                    Reset Filters
                                 </Button>
-                            )}
+                                {location && (
+                                    <Button 
+                                        onClick={clearLocationFilter}
+                                        style={{ marginLeft: "10px" }}
+                                    >
+                                        Clear Location
+                                    </Button>
+                                )}
+                                {category !== "all" && (
+                                    <Button 
+                                        onClick={() => {
+                                            setCategory("all");
+                                            setSubCategory("");
+                                        }}
+                                    >
+                                        View All Categories
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                     ) : (
                         services.map((s) => (

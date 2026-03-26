@@ -771,75 +771,202 @@ const handleBooking = async (e) => {
       <div style={{ marginTop: '10px', padding: '0 20px' }}>
         <div className="col-md-12 text-left">
 
-          {/* Service Header */}
-          <div className="mb-3 bs">
-            {/* Image Carousel */}
-            <div className="image-carousel position-relative" style={{
-              height: "500px",
-              width: "100%",
-              overflow: "hidden",
-              borderRadius: "8px"
-            }}>
-              <img
-                src={service.imageurls[currentIndex]}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover"
-                }}
-                alt={`Service ${currentIndex + 1}`}
-              />
+        {/* Service Header */}
+<div className="mb-3 bs">
+  {/* Image Carousel */}
+  <div className="image-carousel position-relative" style={{
+    height: "auto",
+    width: "100%",
+    overflow: "hidden",
+    borderRadius: "12px",
+    position: "relative",
+    backgroundColor: "#f5f5f5",
+    // Responsive aspect ratio
+    aspectRatio: window.innerWidth >= 1024 ? "21/9" : window.innerWidth >= 768 ? "16/9" : "4/3",
+    // Alternative using CSS clamp for better responsiveness
+    maxHeight: "70vh",
+    minHeight: "250px"
+  }}>
+    <img
+      src={service.imageurls[currentIndex]}
+      style={{
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        display: "block",
+        transition: "opacity 0.3s ease"
+      }}
+      alt={`Service ${currentIndex + 1}`}
+      loading="lazy"
+    />
 
-              <button
-                className="carousel-control-prev"
-                onClick={handlePrevious}
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "10px",
-                  transform: "translateY(-50%)",
-                  background: "rgba(0, 0, 0, 0.5)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "50%",
-                  width: "40px",
-                  height: "40px",
-                  cursor: "pointer",
-                }}
-              >
-                ‹
-              </button>
+    {/* Navigation Buttons - Fully Responsive */}
+    <button
+      className="carousel-control-prev"
+      onClick={handlePrevious}
+      style={{
+        position: "absolute",
+        top: "50%",
+        left: "20px",
+        transform: "translateY(-50%)",
+        background: "rgba(0, 0, 0, 0.7)",
+        color: "#fff",
+        border: "none",
+        borderRadius: "50%",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontWeight: "bold",
+        zIndex: 2,
+        backdropFilter: "blur(4px)",
+        transition: "all 0.3s ease",
+        // Responsive button size
+        width: "clamp(32px, 5vw, 48px)",
+        height: "clamp(32px, 5vw, 48px)",
+        fontSize: "clamp(20px, 4vw, 28px)",
+        // Hover effect for laptop
+        cursor: "pointer",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.2)"
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "rgba(0, 0, 0, 0.9)";
+        e.currentTarget.style.transform = "translateY(-50%) scale(1.05)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
+        e.currentTarget.style.transform = "translateY(-50%) scale(1)";
+      }}
+      aria-label="Previous image"
+    >
+      ‹
+    </button>
 
-              <button
-                className="carousel-control-next"
-                onClick={handleNext}
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  right: "10px",
-                  transform: "translateY(-50%)",
-                  background: "rgba(0, 0, 0, 0.5)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "50%",
-                  width: "40px",
-                  height: "40px",
-                  cursor: "pointer",
-                }}
-              >
-                ›
-              </button>
-            </div>
+    <button
+      className="carousel-control-next"
+      onClick={handleNext}
+      style={{
+        position: "absolute",
+        top: "50%",
+        right: "20px",
+        transform: "translateY(-50%)",
+        background: "rgba(0, 0, 0, 0.7)",
+        color: "#fff",
+        border: "none",
+        borderRadius: "50%",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontWeight: "bold",
+        zIndex: 2,
+        backdropFilter: "blur(4px)",
+        transition: "all 0.3s ease",
+        // Responsive button size
+        width: "clamp(32px, 5vw, 48px)",
+        height: "clamp(32px, 5vw, 48px)",
+        fontSize: "clamp(20px, 4vw, 28px)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.2)"
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "rgba(0, 0, 0, 0.9)";
+        e.currentTarget.style.transform = "translateY(-50%) scale(1.05)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
+        e.currentTarget.style.transform = "translateY(-50%) scale(1)";
+      }}
+      aria-label="Next image"
+    >
+      ›
+    </button>
 
-            <h1 style={{ textAlign: "left", width: "100%", marginTop: "20px" }}>
-              <b>{service.name}</b>
-            </h1>
+    {/* Image Counter - Responsive */}
+    {service.imageurls && service.imageurls.length > 1 && (
+      <div style={{
+        position: "absolute",
+        bottom: "clamp(10px, 2vh, 20px)",
+        right: "clamp(10px, 2vw, 20px)",
+        background: "rgba(0, 0, 0, 0.7)",
+        color: "#fff",
+        padding: "clamp(4px, 1.5vw, 8px) clamp(8px, 2vw, 12px)",
+        borderRadius: "20px",
+        fontSize: "clamp(11px, 2.5vw, 14px)",
+        fontWeight: "500",
+        backdropFilter: "blur(4px)",
+        zIndex: 2,
+        fontFamily: "monospace",
+        letterSpacing: "0.5px"
+      }}>
+        {currentIndex + 1} / {service.imageurls.length}
+      </div>
+    )}
 
-            <p style={{ color: "#666", marginBottom: "20px" }}>
-              {service.companyname || "N/A"}
-            </p>
-          </div>
+    {/* Optional: Dot Indicators for Mobile */}
+    {service.imageurls && service.imageurls.length > 1 && (
+      <div style={{
+        position: "absolute",
+        bottom: "clamp(10px, 2vh, 20px)",
+        left: "50%",
+        transform: "translateX(-50%)",
+        display: "flex",
+        gap: "clamp(6px, 1.5vw, 10px)",
+        zIndex: 2,
+        padding: "6px 12px",
+        borderRadius: "20px",
+        background: "rgba(0, 0, 0, 0.5)",
+        backdropFilter: "blur(4px)"
+      }}>
+        {service.imageurls.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => {
+              // Add function to jump to specific image
+              // You'll need to implement this
+            }}
+            style={{
+              width: idx === currentIndex ? "clamp(20px, 3vw, 24px)" : "clamp(8px, 2vw, 10px)",
+              height: "clamp(8px, 2vw, 10px)",
+              borderRadius: "50%",
+              background: idx === currentIndex ? "#fff" : "rgba(255, 255, 255, 0.6)",
+              border: "none",
+              cursor: "pointer",
+              transition: "all 0.3s ease",
+              padding: 0
+            }}
+            aria-label={`Go to image ${idx + 1}`}
+          />
+        ))}
+      </div>
+    )}
+  </div>
 
+  {/* Title and Company - Fully Responsive */}
+  <h1 style={{ 
+    textAlign: "left", 
+    width: "100%", 
+    marginTop: "clamp(16px, 3vh, 24px)",
+    // Responsive font sizes
+    fontSize: "clamp(20px, 4vw, 32px)",
+    padding: "0 clamp(12px, 3vw, 24px)",
+    fontWeight: "bold",
+    lineHeight: "1.3",
+    // Responsive margins
+    marginBottom: "clamp(8px, 1.5vh, 12px)"
+  }}>
+    <b>{service.name}</b>
+  </h1>
+
+  <p style={{ 
+    color: "#666", 
+    marginBottom: "clamp(16px, 3vh, 24px)",
+    fontSize: "clamp(14px, 2.5vw, 16px)",
+    padding: "0 clamp(12px, 3vw, 24px)",
+    lineHeight: "1.5"
+  }}>
+    {service.companyname || "N/A"}
+  </p>
+</div>
           {/* Booking Section */}
           <div className="col p-3  bs text-left" style={{
             backgroundColor: "white",

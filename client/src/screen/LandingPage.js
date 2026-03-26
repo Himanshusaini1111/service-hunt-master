@@ -289,34 +289,39 @@ const App = () => {
     };
 
     // Handle category click
-    const handleCategoryClick = (category) => {
-        if (!hasLocation) {
-            alert("Please select a location first");
-            return;
-        }
-        
-        navigate('/home', { 
-            state: { 
-                category: category,
-                location: selectedLocation
-            } 
-        });
-    };
+ // In App.js, update the handleCategoryClick function:
+const handleCategoryClick = (category) => {
+    if (!hasLocation) {
+        alert("Please select a location first");
+        return;
+    }
+    
+    // Pass the selected location object to the navigate state
+    navigate('/home', { 
+        state: { 
+            category: category,
+            location: selectedLocation  // This should be the location object from state
+        } 
+    });
+};
+
+// Similarly for handleSubCategoryClick:
+const handleSubCategoryClick = (subCategory) => {
+    if (!hasLocation) {
+        alert("Please select a location first");
+        return;
+    }
+    
+    navigate('/home', { 
+        state: { 
+            subCategory: subCategory,
+            location: selectedLocation  // Pass the location object
+        } 
+    });
+};
 
     // Handle subcategory click
-    const handleSubCategoryClick = (subCategory) => {
-        if (!hasLocation) {
-            alert("Please select a location first");
-            return;
-        }
-        
-        navigate('/home', { 
-            state: { 
-                subCategory: subCategory,
-                location: selectedLocation
-            } 
-        });
-    };
+   
 
     // Image slider for banners
     useEffect(() => {

@@ -380,18 +380,47 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
             </div>
 
             {/* Tabs Section */}
-            <div className="tabs-container">
-                {bookingTabs.map(type => (
-                    <button
-                        key={type}
-                        className={`tab-btn ${filterTab === type ? 'active' : ''}`}
-                        onClick={() => setFilterTab(type)}
-                    >
-                        {type === 'all' ? 'All Bookings' : type.replace(' Booking', '')}
-                        <span className="tab-underline"></span>
-                    </button>
-                ))}
-            </div>
+         <div className="tabs-container" style={{
+  display: "flex",
+  overflowX: "auto",
+  overflowY: "hidden",
+  whiteSpace: "nowrap",
+  WebkitOverflowScrolling: "touch",
+  scrollbarWidth: "thin",
+  gap: "8px",
+  padding: "4px 0 8px 0",
+  marginBottom: "16px",
+  // Hide scrollbar for Chrome/Safari but keep functionality
+  "&::-webkit-scrollbar": {
+    height: "4px"
+  },
+  "&::-webkit-scrollbar-track": {
+    background: "#f1f1f1",
+    borderRadius: "10px"
+  },
+  "&::-webkit-scrollbar-thumb": {
+    background: "#888",
+    borderRadius: "10px"
+  }
+}}>
+  {bookingTabs.map(type => (
+    <button
+      key={type}
+      className={`tab-btn ${filterTab === type ? 'active' : ''}`}
+      onClick={() => setFilterTab(type)}
+      style={{
+        flex: "0 0 auto",
+        whiteSpace: "nowrap",
+        padding: "8px 16px",
+        fontSize: "clamp(13px, 4vw, 14px)",
+        // Rest of your button styles
+      }}
+    >
+      {type === 'all' ? 'All Bookings' : type.replace(' Booking', '')}
+      <span className="tab-underline"></span>
+    </button>
+  ))}
+</div>
 
             {/* Table */}
             <div className="table-wrapper">
