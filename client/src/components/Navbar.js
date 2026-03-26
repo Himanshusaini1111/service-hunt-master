@@ -158,6 +158,18 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                "Location";
     };
 
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+});
+
+function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+  }
+}
     // Styles
     const styles = {
         navbar: {
@@ -378,6 +390,7 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                                             <button className="dropdown-item" onClick={() => handleNavigation("/helperpanel")}>
                                                 <i className="fa fa-life-ring"></i> Helper Panel
                                             </button>
+                                            <button onClick={installApp}>Download App</button>
                                             <div className="dropdown-divider"></div>
                                             <button className="dropdown-item" onClick={logout}>
                                                 <i className="fa fa-sign-out"></i> Logout
