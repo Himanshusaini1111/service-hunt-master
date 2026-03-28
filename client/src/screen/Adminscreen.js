@@ -304,42 +304,59 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
         );
     };
 
-    const ActionButtons = ({ booking, onStatusUpdate, onJobAssign }) => (
-        <td onClick={(e) => e.stopPropagation()}>
-            <div className="d-flex flex-wrap gap-2">
-                {booking.status === "confirmed" || booking.status === "booked" ? (
+  const ActionButtons = ({ booking, onStatusUpdate, onJobAssign }) => (
+    <td onClick={(e) => e.stopPropagation()}>
+        <div className="d-flex flex-wrap gap-2">
+            {/* Show Job Assign button only for confirmed or assigned status */}
+            {(booking.status === "confirmed" || booking.status === "assigned") && (
+                <button
+                    className="btn btn-info btn-sm px-3 py-1 rounded-pill"
+                    onClick={() => onJobAssign(booking._id)}
+                >
+                    Job Assign
+                </button>
+            )}
+            
+            {/* Show Confirm/Reject buttons only for pending/booked status */}
+            {(booking.status === "booked" || booking.status === "pending" || booking.status === "inquiry") && (
+                <>
                     <button
-                        className="btn btn-info btn-sm px-3 py-1 rounded-pill"
-                        onClick={() => onJobAssign(booking._id)}
+                        className="btn btn-success btn-sm px-3 py-1 rounded-pill"
+                        onClick={() => onStatusUpdate(booking._id, "confirmed")}
                     >
-                        Job Assign
+                        Confirm
                     </button>
-                ) : booking.status === "rejected" ? (
                     <button
                         className="btn btn-danger btn-sm px-3 py-1 rounded-pill"
-                        disabled
+                        onClick={() => onStatusUpdate(booking._id, "rejected")}
                     >
-                        Rejected
+                        Reject
                     </button>
-                ) : (
-                    <>
-                        <button
-                            className="btn btn-success btn-sm px-3 py-1 rounded-pill"
-                            onClick={() => onStatusUpdate(booking._id, "confirmed")}
-                        >
-                            Confirm
-                        </button>
-                        <button
-                            className="btn btn-danger btn-sm px-3 py-1 rounded-pill"
-                            onClick={() => onStatusUpdate(booking._id, "rejected")}
-                        >
-                            Reject
-                        </button>
-                    </>
-                )}
-            </div>
-        </td>
-    );
+                </>
+            )}
+            
+            {/* Show message for rejected bookings */}
+            {booking.status === "rejected" && (
+                <button
+                    className="btn btn-danger btn-sm px-3 py-1 rounded-pill"
+                    disabled
+                >
+                    Rejected
+                </button>
+            )}
+            
+            {/* Show message for completed bookings */}
+            {booking.status === "completed" && (
+                <button
+                    className="btn btn-secondary btn-sm px-3 py-1 rounded-pill"
+                    disabled
+                >
+                    Completed
+                </button>
+            )}
+        </div>
+    </td>
+);
 
     const bookingTabs = ['all', 'Automatic Booking', 'Manual Booking', 'Inquari Booking'];
 

@@ -3,6 +3,7 @@ import axios from "axios";
 import Error from '../components/Error';
 import Loader from '../components/Loader';
 import Success from '../components/Success';
+import { GoogleLogin } from '@react-oauth/google';
 
 function RegisterScreen() {
   const [formData, setFormData] = useState({
@@ -125,6 +126,46 @@ function RegisterScreen() {
     }
   }
 
+  // Handle Google Registration/Signup
+  const handleGoogleRegister = async (credentialResponse) => {
+    console.log('Google Registration Success:', credentialResponse);
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Send the Google credential to your backend
+      const result = await axios.post('/api/users/google-login', {
+        credential: credentialResponse.credential
+      });
+      
+      console.log('Google registration successful:', result.data);
+      setSuccess(true);
+      
+      // Show success message and redirect to login
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
+      
+    } catch (error) {
+      let errorMessage = 'Google registration failed. Please try again.';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      setError(errorMessage);
+      console.error('Google registration error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    console.log('Google Registration Failed');
+    setError('Google registration failed. Please try again.');
+  };
+
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleRegister(e);
@@ -139,18 +180,15 @@ function RegisterScreen() {
   return (
     <div className="min-vh-100 bg-light">
       {/* Navigation */}
-        <nav className="navbar navbar-expand-lg custom-navbar">
-                <div className="navbar-brand-section">
-                    {/* Brand Logo/Name */}
-                    <a className="navbar-brand d-flex align-items-center" href="/home">
-                        <h2 className="brand-title mb-0" >
-                            Service Hunt
-                        </h2>
-                    </a>
-
-
-                </div>
-            </nav>
+      <nav className="navbar navbar-expand-lg custom-navbar">
+        <div className="navbar-brand-section">
+          <a className="navbar-brand d-flex align-items-center" href="/home">
+            <h2 className="brand-title mb-0">
+              Service Hunt
+            </h2>
+          </a>
+        </div>
+      </nav>
 
       {/* Main Content */}
       <div className="container">
@@ -297,6 +335,28 @@ function RegisterScreen() {
                     )}
                   </button>
                 </form>
+
+                {/* Divider */}
+                <div className="position-relative my-4">
+                  <hr className="border-1" />
+                  <span className="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted">
+                    OR
+                  </span>
+                </div>
+
+                {/* Google Registration Button */}
+                <div className="d-flex justify-content-center">
+                  <GoogleLogin
+                    onSuccess={handleGoogleRegister}
+                    onError={handleGoogleError}
+                    useOneTap={false}
+                    theme="outline"
+                    size="large"
+                    text="signup_with"
+                    shape="rectangular"
+                    width="100%"
+                  />
+                </div>
 
                 {/* Footer Links */}
                 <div className="text-center mt-4 pt-3 border-top">

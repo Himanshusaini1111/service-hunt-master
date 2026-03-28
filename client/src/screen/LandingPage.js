@@ -410,40 +410,73 @@ const handleSubCategoryClick = (subCategory) => {
             />
             <br />
 
-            {/* Search Results Section */}
-            {showSearchResults && (
-                <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {filteredServices.length > 0 ? (
-                            filteredServices.map((service) => (
-                                <div key={service._id}>
-                                    <Service service={service} />
-                                </div>
-                            ))
-                        ) : (
-                            <div style={{ textAlign: "center", padding: "40px" }}>
-                                <p>No services found matching your criteria in this location.</p>
-                                <button
-                                    onClick={handleClearSearch}
-                                    style={{
-                                        marginTop: "10px",
-                                        padding: "8px 16px",
-                                        backgroundColor: "#4a54e1",
-                                        color: "white",
-                                        border: "none",
-                                        borderRadius: "6px",
-                                        cursor: "pointer"
-                                    }}
-                                >
-                                    Clear Search
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+{/* Search Results Section */}
+{showSearchResults && (
+    <>
 
-            {/* Rest of the Content - Only show when no search results */}
+        <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
+            {/* Add Header for Search Results */}
+            <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '20px',
+                paddingBottom: '15px',
+                borderBottom: '2px solid #f0f0f0'
+            }}>
+                {/* Optional: Add a back button here too for mobile users */}
+                <button
+                    onClick={handleClearSearch}
+                    style={{
+                        padding: "8px 16px",
+                        backgroundColor: "#6c757d",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "5px",
+                        fontSize: "14px",
+                        fontWeight: "500"
+                    }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = "#5a6268"}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = "#6c757d"}
+                >
+                    ← Back
+                </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {filteredServices.length > 0 ? (
+                    filteredServices.map((service) => (
+                        <div key={service._id}>
+                            <Service service={service} />
+                        </div>
+                    ))
+                ) : (
+                    <div style={{ textAlign: "center", padding: "40px" }}>
+                        <p>No services found matching your criteria in this location.</p>
+                        <button
+                            onClick={handleClearSearch}
+                            style={{
+                                marginTop: "10px",
+                                padding: "8px 16px",
+                                backgroundColor: "#4a54e1",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "6px",
+                                cursor: "pointer"
+                            }}
+                        >
+                            Clear Search
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    </>
+)}        {/* Rest of the Content - Only show when no search results */}
             {!showSearchResults && (
                 <>
                     {/* Hero Section */}

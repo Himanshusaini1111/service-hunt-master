@@ -11,7 +11,7 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
     const [showLocationSearch, setShowLocationSearch] = useState(false);
     const [currentLocation, setCurrentLocation] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-    
+
     const menuRef = useRef(null);
     const dropdownRef = useRef(null);
     const locationSearchRef = useRef(null);
@@ -77,7 +77,7 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
 
     const handleLocationSelect = (location) => {
         console.log("Location selected in Navbar:", location);
-        
+
         if (location) {
             localStorage.setItem("selectedLocation", JSON.stringify(location));
             setCurrentLocation(location);
@@ -92,7 +92,7 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
             }
         }
         setShowLocationSearch(false);
-        
+
         if (isMobile && isMenuOpen) {
             setIsMenuOpen(false);
         }
@@ -117,15 +117,15 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
     // Close menus when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (menuRef.current && !menuRef.current.contains(event.target) && 
+            if (menuRef.current && !menuRef.current.contains(event.target) &&
                 !event.target.closest('.navbar-toggler')) {
                 setIsMenuOpen(false);
             }
-            
+
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsDropdownOpen(false);
             }
-            
+
             if (locationSearchRef.current && !locationSearchRef.current.contains(event.target)) {
                 setShowLocationSearch(false);
             }
@@ -140,8 +140,8 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
     // Check user roles for navigation items
     const isVendor = user?.role === 'vendor' || user?.isVendor;
     const isAdmin = user?.role === 'admin' || user?.isAdmin;
-    const isSuperAdmin = user?.email === 'himanshufa875@gmail.com' && 
-                         (user?.role === 'superadmin' || user?.isAdmin);
+    const isSuperAdmin = user?.email === 'himanshufa875@gmail.com' &&
+        (user?.role === 'superadmin' || user?.isAdmin);
 
     const handleNavigation = (path) => {
         navigate(path);
@@ -152,24 +152,12 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
 
     const getDisplayLocationName = () => {
         if (!currentLocation) return "Select Location";
-        return currentLocation.display_name?.split(',')[0] || 
-               currentLocation.city || 
-               currentLocation.name || 
-               "Location";
+        return currentLocation.display_name?.split(',')[0] ||
+            currentLocation.city ||
+            currentLocation.name ||
+            "Location";
     };
 
-let deferredPrompt;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-});
-
-function installApp() {
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-  }
-}
     // Styles
     const styles = {
         navbar: {
@@ -273,9 +261,9 @@ function installApp() {
         <nav className="navbar navbar-expand-lg custom-navbar" style={styles.navbar}>
             <div className="container-fluid px-3 px-md-4">
                 {/* Brand Section */}
-                <a 
-                    className="navbar-brand" 
-                    href="/home" 
+                <a
+                    className="navbar-brand"
+                    href="/home"
                     onClick={(e) => {
                         e.preventDefault();
                         handleNavigation('/home');
@@ -303,7 +291,7 @@ function installApp() {
                                         </span>
                                         <i className={`fa fa-chevron-${showLocationSearch ? 'up' : 'down'}`} style={{ fontSize: "10px" }}></i>
                                     </button>
-                                    
+
                                     {showLocationSearch && (
                                         <div style={styles.locationDropdown} onMouseLeave={() => !isMobile && setShowLocationSearch(false)}>
                                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
@@ -346,14 +334,14 @@ function installApp() {
                                         onClick={toggleDropdown}
                                     >
                                         <i className="fa fa-user"></i>
-                                        <span style={{ fontSize: "14px", fontWeight: "500" ,color:"black"}}>
+                                        <span style={{ fontSize: "14px", fontWeight: "500", color: "black" }}>
                                             {user.name?.split(' ')[0]}
                                         </span>
                                         <div style={styles.userInitials}>
                                             {user.name?.charAt(0).toUpperCase()}
                                         </div>
                                     </button>
-                                    
+
                                     {isDropdownOpen && (
                                         <div style={styles.dropdownMenu}>
                                             <div style={{ padding: '8px 16px', borderBottom: '1px solid #e0e0e0' }}>
@@ -390,7 +378,6 @@ function installApp() {
                                             <button className="dropdown-item" onClick={() => handleNavigation("/helperpanel")}>
                                                 <i className="fa fa-life-ring"></i> Helper Panel
                                             </button>
-                                            <button onClick={installApp}>Download App</button>
                                             <div className="dropdown-divider"></div>
                                             <button className="dropdown-item" onClick={logout}>
                                                 <i className="fa fa-sign-out"></i> Logout
@@ -402,16 +389,22 @@ function installApp() {
                         ) : (
                             <>
                                 <li className="nav-item">
-                                    <button 
+                                    <button
                                         className="btn btn-outline-primary"
                                         onClick={() => handleNavigation("/register")}
-                                        style={{ padding: "8px 20px", borderRadius: "8px" }}
+                                        style={{
+                                            padding: "8px 20px",
+                                            borderRadius: "8px",
+                                            background: "transparent !important",
+                                            backgroundColor: "transparent !important",
+                                            border: "1px solid #0d6efd"
+                                        }}
                                     >
                                         Register
                                     </button>
                                 </li>
                                 <li className="nav-item">
-                                    <button 
+                                    <button
                                         className="btn btn-primary"
                                         onClick={() => handleNavigation("/login")}
                                         style={{ padding: "8px 20px", borderRadius: "8px" }}
@@ -438,7 +431,7 @@ function installApp() {
                                     {getDisplayLocationName()}
                                 </span>
                             </button>
-                            
+
                             {showLocationSearch && (
                                 <div style={styles.locationDropdown}>
                                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
@@ -484,7 +477,7 @@ function installApp() {
                                     {user.name?.charAt(0).toUpperCase()}
                                 </div>
                             </button>
-                            
+
                             {isDropdownOpen && (
                                 <div style={styles.mobileDropdownMenu}>
                                     <div style={{ padding: '12px 16px', borderBottom: '1px solid #e0e0e0' }}>

@@ -3,6 +3,7 @@ import axios from "axios";
 import Error from '../components/Error';
 import Loader from '../components/Loader';
 import Success from "../components/Success";
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function LoginScreen() {
     const [formData, setFormData] = useState({
@@ -67,19 +68,47 @@ export default function LoginScreen() {
         }
     };
 
+    const handleGoogleLoginSuccess = async (credentialResponse) => {
+        console.log('Google Login Success:', credentialResponse);
+        
+        try {
+            setLoading(true);
+            // Send the credential to your backend for verification
+            const result = await axios.post('/api/users/google-login', {
+                credential: credentialResponse.credential
+            });
+            
+            localStorage.setItem('currentUser', JSON.stringify(result.data));
+            setSuccess(true);
+            
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1000);
+            
+        } catch (error) {
+            setError(error.response?.data?.message || 'Google login failed. Please try again.');
+            console.error('Google login error:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoogleLoginError = () => {
+        console.log('Google Login Failed');
+        setError('Google login failed. Please try again.');
+    };
+
     return (
         <div className="min-vh-100 bg-light">
             {/* Navigation */}
-           <nav className="navbar navbar-expand-lg custom-navbar">
+            <nav className="navbar navbar-expand-lg custom-navbar">
                 <div className="navbar-brand-section">
                     {/* Brand Logo/Name */}
                     <a className="navbar-brand d-flex align-items-center" href="/home">
-                        <h2 className="brand-title mb-0" >
+                        <h2 className="brand-title mb-0">
                             Service Hunt
                         </h2>
                     </a>
-
-
                 </div>
             </nav>
 
@@ -168,6 +197,27 @@ export default function LoginScreen() {
                                         )}
                                     </button>
                                 </form>
+
+                                {/* Divider */}
+                                <div className="position-relative my-4">
+                                    <hr className="border-1" />
+                                    <span className="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted">
+                                        OR
+                                    </span>
+                                </div>
+
+                                {/* Google Login Button */}
+                                <div className="d-flex justify-content-center">
+                                    <GoogleLogin
+                                        onSuccess={handleGoogleLoginSuccess}
+                                        onError={handleGoogleLoginError}
+                                        useOneTap={false}
+                                        theme="outline"
+                                        size="large"
+                                        text="signin_with"
+                                        shape="rectangular"
+                                    />
+                                </div>
 
                                 {/* Footer Links */}
                                 <div className="text-center mt-4 pt-3 border-top">
