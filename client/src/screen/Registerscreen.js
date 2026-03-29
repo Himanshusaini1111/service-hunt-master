@@ -344,7 +344,7 @@ function RegisterScreen() {
                   </span>
                 </div>
 
-                {/* Google Registration Button - Improved for mobile */}
+                {/* Google Registration Button */}
                 <div className="d-flex justify-content-center">
                   <GoogleLogin
                     onSuccess={handleGoogleRegister}
@@ -355,13 +355,6 @@ function RegisterScreen() {
                     text="signup_with"
                     shape="rectangular"
                     width="100%"
-                    locale="en"
-                    ux_mode="popup"  // Changed to popup for better mobile support
-                    type="standard"
-                    context="signup"
-                    logo_alignment="center"
-                    auto_select={false}
-                    cancel_on_tap_outside={true}
                   />
                 </div>
 

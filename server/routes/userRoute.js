@@ -75,28 +75,37 @@ router.post("/login", async (req, res) => {
 router.post("/google-login", async (req, res) => {
   const { credential } = req.body;
 
+  if (!credential) {
+    return res.status(400).json({ message: "No credential provided" });
+  }
+
   try {
-    // Verify the Google token
+    // Verify the Google token with proper audience
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
 
     const payload = ticket.getPayload();
-    const { email, name, picture, sub: googleId } = payload;
+    const { email, name, picture, sub: googleId, email_verified } = payload;
 
-    console.log("Google Login Payload:", { email, name, googleId });
+    console.log("Google Login Payload:", { email, name, googleId, email_verified });
+
+    // Verify email is verified
+    if (!email_verified) {
+      return res.status(400).json({ message: "Email not verified by Google" });
+    }
 
     // Check if user already exists
     let user = await User.findOne({ email });
 
     if (!user) {
-      // Create new user if doesn't exist
+      // Create new user with Google ID
       user = new User({
-        name: name,
+        name: name || email.split('@')[0], // Fallback name if not provided
         email: email,
-        password: googleId, // Store Google ID as password (or you can use a random string)
-        profileImage: picture,
+        password: googleId, // Store Google ID as password
+        profileImage: picture || '',
         isAdmin: false,
         role: 'user'
       });
@@ -112,26 +121,34 @@ router.post("/google-login", async (req, res) => {
       console.log("Existing user logged in via Google:", email);
     }
 
-    // Send user data
+    // Send user data (exclude sensitive info)
     const userData = {
       _id: user._id,
       name: user.name,
       email: user.email,
       isAdmin: user.isAdmin,
       role: user.role,
-      phone: user.phone,
-      address: user.address,
-      profileImage: user.profileImage || picture,
+      phone: user.phone || '',
+      address: user.address || '',
+      profileImage: user.profileImage || picture || '',
       isGoogleLogin: true
     };
 
     res.status(200).json(userData);
     
   } catch (error) {
-    console.error("Google Login Error:", error);
+    console.error("Google Login Error Details:", error);
+    
+    // More specific error messages
+    if (error.message.includes('audience')) {
+      return res.status(401).json({ 
+        message: "Invalid Google client ID configuration" 
+      });
+    }
+    
     res.status(500).json({ 
-      message: "Google authentication failed", 
-      error: error.message 
+      message: "Google authentication failed. Please try again.", 
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
