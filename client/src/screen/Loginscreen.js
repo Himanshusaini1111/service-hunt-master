@@ -27,14 +27,14 @@ export default function LoginScreen() {
             ...prev,
             [name]: value
         }));
-        
+
         // Clear error when user starts typing
         if (error) setError(null);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         // Basic validation
         if (!formData.email || !formData.password) {
             setError('Please fill in all fields');
@@ -44,16 +44,16 @@ export default function LoginScreen() {
         try {
             setLoading(true);
             setError(null);
-            
+
             const result = await axios.post('/api/users/login', formData);
             localStorage.setItem('currentUser', JSON.stringify(result.data));
             setSuccess(true);
-            
+
             // Redirect after successful login
             setTimeout(() => {
                 window.location.href = '/';
             }, 1000);
-            
+
         } catch (error) {
             setError(error.response?.data?.message || 'Invalid credentials. Please try again.');
             console.error('Login error:', error);
@@ -70,21 +70,21 @@ export default function LoginScreen() {
 
     const handleGoogleLoginSuccess = async (credentialResponse) => {
         console.log('Google Login Success:', credentialResponse);
-        
+
         try {
             setLoading(true);
             // Send the credential to your backend for verification
             const result = await axios.post('/api/users/google-login', {
                 credential: credentialResponse.credential
             });
-            
+
             localStorage.setItem('currentUser', JSON.stringify(result.data));
             setSuccess(true);
-            
+
             setTimeout(() => {
                 window.location.href = '/';
             }, 1000);
-            
+
         } catch (error) {
             setError(error.response?.data?.message || 'Google login failed. Please try again.');
             console.error('Google login error:', error);
@@ -214,8 +214,14 @@ export default function LoginScreen() {
                                         useOneTap={false}
                                         theme="outline"
                                         size="large"
-                                        text="signin_with"
+                                        text="signin_with" // or "signup_with" for register
                                         shape="rectangular"
+                                        width="100%"
+                                        locale="en"
+                                        ux_mode="redirect" // Add this for mobile - uses redirect instead of popup
+                                        type="standard"
+                                        context="signin"
+                                        logo_alignment="center"
                                     />
                                 </div>
 
@@ -223,15 +229,15 @@ export default function LoginScreen() {
                                 <div className="text-center mt-4 pt-3 border-top">
                                     <p className="text-muted mb-2">
                                         Don't have an account?{' '}
-                                        <a 
-                                            href="/register" 
+                                        <a
+                                            href="/register"
                                             className="text-primary fw-semibold text-decoration-none"
                                         >
                                             Create Account
                                         </a>
                                     </p>
-                                    <a 
-                                        href="/forgot-password" 
+                                    <a
+                                        href="/forgot-password"
                                         className="text-muted text-decoration-none small"
                                     >
                                         Forgot your password?
