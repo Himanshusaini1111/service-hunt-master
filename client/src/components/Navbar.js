@@ -289,6 +289,12 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
             cursor: 'pointer',
             color: '#333',
             borderBottom: '1px solid #f0f0f0'
+        },
+        mobileAuthButtons: {
+            display: 'flex',
+            gap: '12px',
+            padding: '12px 16px',
+            borderBottom: '1px solid #f0f0f0'
         }
     };
 
@@ -311,58 +317,58 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                 {/* Desktop Navigation Links */}
                 <div className="collapse navbar-collapse" style={{ display: isMobile ? 'none' : 'flex', justifyContent: 'flex-end' }}>
                     <ul className="navbar-nav" style={{ flexDirection: 'row', gap: '12px', alignItems: 'center' }}>
+                        {/* Location Search - Desktop */}
+                        <li className="nav-item" ref={locationSearchRef} style={{ position: 'relative' }}>
+                            <button
+                                style={styles.locationButton(!!currentLocation)}
+                                onClick={toggleLocationSearch}
+                                onMouseEnter={() => !isMobile && setShowLocationSearch(true)}
+                            >
+                                <i className="fa fa-map-marker"></i>
+                                <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {getDisplayLocationName()}
+                                </span>
+                                <i className={`fa fa-chevron-${showLocationSearch ? 'up' : 'down'}`} style={{ fontSize: "10px" }}></i>
+                            </button>
+
+                            {showLocationSearch && (
+                                <div style={styles.locationDropdown} onMouseLeave={() => !isMobile && setShowLocationSearch(false)}>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+                                        <h4 style={{ margin: 0, fontSize: "18px", fontWeight: "600" }}>Select Location</h4>
+                                        <button
+                                            onClick={() => setShowLocationSearch(false)}
+                                            style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "#666" }}
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                    <LocationSearch onLocationSelect={handleLocationSelect} placeholder="Search for city, area..." />
+                                    {currentLocation && (
+                                        <button
+                                            onClick={() => handleLocationSelect(null)}
+                                            style={{
+                                                marginTop: "12px",
+                                                padding: "10px",
+                                                backgroundColor: "#ff4444",
+                                                color: "white",
+                                                border: "none",
+                                                borderRadius: "8px",
+                                                cursor: "pointer",
+                                                fontSize: "14px",
+                                                width: "100%",
+                                                fontWeight: "500"
+                                            }}
+                                        >
+                                            Clear Location
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </li>
+
                         {user ? (
                             <>
-                                {/* Location Search */}
-                                <li className="nav-item" ref={locationSearchRef} style={{ position: 'relative' }}>
-                                    <button
-                                        style={styles.locationButton(!!currentLocation)}
-                                        onClick={toggleLocationSearch}
-                                        onMouseEnter={() => !isMobile && setShowLocationSearch(true)}
-                                    >
-                                        <i className="fa fa-map-marker"></i>
-                                        <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                            {getDisplayLocationName()}
-                                        </span>
-                                        <i className={`fa fa-chevron-${showLocationSearch ? 'up' : 'down'}`} style={{ fontSize: "10px" }}></i>
-                                    </button>
-
-                                    {showLocationSearch && (
-                                        <div style={styles.locationDropdown} onMouseLeave={() => !isMobile && setShowLocationSearch(false)}>
-                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-                                                <h4 style={{ margin: 0, fontSize: "18px", fontWeight: "600" }}>Select Location</h4>
-                                                <button
-                                                    onClick={() => setShowLocationSearch(false)}
-                                                    style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "#666" }}
-                                                >
-                                                    ×
-                                                </button>
-                                            </div>
-                                            <LocationSearch onLocationSelect={handleLocationSelect} placeholder="Search for city, area..." />
-                                            {currentLocation && (
-                                                <button
-                                                    onClick={() => handleLocationSelect(null)}
-                                                    style={{
-                                                        marginTop: "12px",
-                                                        padding: "10px",
-                                                        backgroundColor: "#ff4444",
-                                                        color: "white",
-                                                        border: "none",
-                                                        borderRadius: "8px",
-                                                        cursor: "pointer",
-                                                        fontSize: "14px",
-                                                        width: "100%",
-                                                        fontWeight: "500"
-                                                    }}
-                                                >
-                                                    Clear Location
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
-                                </li>
-
-                                {/* User Dropdown */}
+                                {/* User Dropdown - Desktop */}
                                 <li className="nav-item" ref={dropdownRef} style={{ position: 'relative' }}>
                                     <button
                                         style={styles.userButton}
@@ -452,11 +458,11 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                     </ul>
                 </div>
 
-                {/* Mobile Header */}
-                {user && isMobile && (
+                {/* Mobile Header - Shows for ALL users on mobile */}
+                {isMobile && (
                     <>
                         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                            {/* Location Button */}
+                            {/* Location Button - Mobile */}
                             <div ref={locationSearchRef} style={{ position: 'relative' }}>
                                 <button
                                     style={styles.locationButton(!!currentLocation)}
@@ -503,60 +509,90 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                                 )}
                             </div>
 
-                            {/* User Button */}
-                            <div ref={dropdownRef} style={{ position: 'relative' }}>
-                                <button
-                                    style={styles.userButton}
-                                    onClick={toggleDropdown}
-                                >
-                                    <div style={styles.userInitials}>
-                                        {user.name?.charAt(0).toUpperCase()}
-                                    </div>
-                                </button>
+                            {/* User Section - Mobile */}
+                            {user ? (
+                                <>
+                                    <div ref={dropdownRef} style={{ position: 'relative' }}>
+                                        <button
+                                            style={styles.userButton}
+                                            onClick={toggleDropdown}
+                                        >
+                                            <div style={styles.userInitials}>
+                                                {user.name?.charAt(0).toUpperCase()}
+                                            </div>
+                                        </button>
 
-                                {isDropdownOpen && (
-                                    <div style={styles.mobileDropdownMenu}>
-                                        <div style={{ padding: '12px 16px', borderBottom: '1px solid #e0e0e0' }}>
-                                            <strong style={{ fontSize: '16px' }}>{user.name}</strong>
-                                            <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>{user.email}</div>
-                                        </div>
-                                        <button className="dropdown-item" onClick={() => handleNavigation("/profile")}>
-                                            <i className="fa fa-user-o"></i> Profile
-                                        </button>
-                                        <button className="dropdown-item" onClick={() => handleNavigation("/myorders")}>
-                                            <i className="fa fa-gavel"></i> Orders
-                                        </button>
-                                        <button className="dropdown-item" onClick={() => handleNavigation("/form")}>
-                                            <i className="fa fa-handshake-o"></i> Partner
-                                        </button>
-                                        {isVendor && (
-                                            <button className="dropdown-item" onClick={() => handleNavigation("/vendor-dashboard")}>
-                                                <i className="fa fa-dashboard"></i> Vendor Dashboard
-                                            </button>
+                                        {isDropdownOpen && (
+                                            <div style={styles.mobileDropdownMenu}>
+                                                <div style={{ padding: '12px 16px', borderBottom: '1px solid #e0e0e0' }}>
+                                                    <strong style={{ fontSize: '16px' }}>{user.name}</strong>
+                                                    <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>{user.email}</div>
+                                                </div>
+                                                <button className="dropdown-item" onClick={() => handleNavigation("/profile")}>
+                                                    <i className="fa fa-user-o"></i> Profile
+                                                </button>
+                                                <button className="dropdown-item" onClick={() => handleNavigation("/myorders")}>
+                                                    <i className="fa fa-gavel"></i> Orders
+                                                </button>
+                                                <button className="dropdown-item" onClick={() => handleNavigation("/form")}>
+                                                    <i className="fa fa-handshake-o"></i> Partner
+                                                </button>
+                                                {isVendor && (
+                                                    <button className="dropdown-item" onClick={() => handleNavigation("/vendor-dashboard")}>
+                                                        <i className="fa fa-dashboard"></i> Vendor Dashboard
+                                                    </button>
+                                                )}
+                                                {isAdmin && !isVendor && (
+                                                    <button className="dropdown-item" onClick={() => handleNavigation("/adminscreen")}>
+                                                        <i className="fa fa-shield"></i> Admin Panel
+                                                    </button>
+                                                )}
+                                                {isSuperAdmin && (
+                                                    <button className="dropdown-item" onClick={() => handleNavigation("/superadmin")}>
+                                                        <i className="fa fa-star"></i> Super Admin
+                                                    </button>
+                                                )}
+                                                <button className="dropdown-item" onClick={() => handleNavigation("/about")}>
+                                                    <i className="fa fa-info-circle"></i> About
+                                                </button>
+                                                <button className="dropdown-item" onClick={() => handleNavigation("/helperpanel")}>
+                                                    <i className="fa fa-life-ring"></i> Helper Panel
+                                                </button>
+                                                <div className="dropdown-divider"></div>
+                                                <button className="dropdown-item text-danger" onClick={logout}>
+                                                    <i className="fa fa-sign-out"></i> Logout
+                                                </button>
+                                            </div>
                                         )}
-                                        {isAdmin && !isVendor && (
-                                            <button className="dropdown-item" onClick={() => handleNavigation("/adminscreen")}>
-                                                <i className="fa fa-shield"></i> Admin Panel
-                                            </button>
-                                        )}
-                                        {isSuperAdmin && (
-                                            <button className="dropdown-item" onClick={() => handleNavigation("/superadmin")}>
-                                                <i className="fa fa-star"></i> Super Admin
-                                            </button>
-                                        )}
-                                        <button className="dropdown-item" onClick={() => handleNavigation("/about")}>
-                                            <i className="fa fa-info-circle"></i> About
-                                        </button>
-                                        <button className="dropdown-item" onClick={() => handleNavigation("/helperpanel")}>
-                                            <i className="fa fa-life-ring"></i> Helper Panel
-                                        </button>
-                                        <div className="dropdown-divider"></div>
-                                        <button className="dropdown-item text-danger" onClick={logout}>
-                                            <i className="fa fa-sign-out"></i> Logout
-                                        </button>
                                     </div>
-                                )}
-                            </div>
+                                </>
+                            ) : (
+                                /* Login/Register Buttons for Non-Logged In Users on Mobile */
+                                <div style={styles.mobileAuthButtons}>
+                                    <button
+                                        className="btn btn-outline-primary"
+                                        onClick={() => handleNavigation("/register")}
+                                        style={{
+                                            padding: "8px 20px",
+                                            borderRadius: "8px",
+                                            fontSize: "14px"
+                                        }}
+                                    >
+                                        Register
+                                    </button>
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={() => handleNavigation("/login")}
+                                        style={{
+                                            padding: "8px 20px",
+                                            borderRadius: "8px",
+                                            fontSize: "14px"
+                                        }}
+                                    >
+                                        Login
+                                    </button>
+                                </div>
+                            )}
 
                             {/* Hamburger Menu Button */}
                             <button
@@ -571,66 +607,85 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                         {/* Mobile Menu */}
                         {isMenuOpen && (
                             <div ref={menuRef} style={styles.mobileMenu}>
-                                <button
-                                    style={styles.mobileNavLink}
-                                    onClick={() => handleNavigation("/profile")}
-                                >
-                                    <i className="fa fa-user-o"></i> Profile
-                                </button>
-                                <button
-                                    style={styles.mobileNavLink}
-                                    onClick={() => handleNavigation("/myorders")}
-                                >
-                                    <i className="fa fa-gavel"></i> Orders
-                                </button>
-                                <button
-                                    style={styles.mobileNavLink}
-                                    onClick={() => handleNavigation("/form")}
-                                >
-                                    <i className="fa fa-handshake-o"></i> Partner
-                                </button>
-                                {isVendor && (
-                                    <button
-                                        style={styles.mobileNavLink}
-                                        onClick={() => handleNavigation("/vendor-dashboard")}
-                                    >
-                                        <i className="fa fa-dashboard"></i> Vendor Dashboard
-                                    </button>
+                                {user ? (
+                                    <>
+                                        <button
+                                            style={styles.mobileNavLink}
+                                            onClick={() => handleNavigation("/profile")}
+                                        >
+                                            <i className="fa fa-user-o"></i> Profile
+                                        </button>
+                                        <button
+                                            style={styles.mobileNavLink}
+                                            onClick={() => handleNavigation("/myorders")}
+                                        >
+                                            <i className="fa fa-gavel"></i> Orders
+                                        </button>
+                                        <button
+                                            style={styles.mobileNavLink}
+                                            onClick={() => handleNavigation("/form")}
+                                        >
+                                            <i className="fa fa-handshake-o"></i> Partner
+                                        </button>
+                                        {isVendor && (
+                                            <button
+                                                style={styles.mobileNavLink}
+                                                onClick={() => handleNavigation("/vendor-dashboard")}
+                                            >
+                                                <i className="fa fa-dashboard"></i> Vendor Dashboard
+                                            </button>
+                                        )}
+                                        {isAdmin && !isVendor && (
+                                            <button
+                                                style={styles.mobileNavLink}
+                                                onClick={() => handleNavigation("/adminscreen")}
+                                            >
+                                                <i className="fa fa-shield"></i> Admin Panel
+                                            </button>
+                                        )}
+                                        {isSuperAdmin && (
+                                            <button
+                                                style={styles.mobileNavLink}
+                                                onClick={() => handleNavigation("/superadmin")}
+                                            >
+                                                <i className="fa fa-star"></i> Super Admin
+                                            </button>
+                                        )}
+                                        <button
+                                            style={styles.mobileNavLink}
+                                            onClick={() => handleNavigation("/about")}
+                                        >
+                                            <i className="fa fa-info-circle"></i> About
+                                        </button>
+                                        <button
+                                            style={styles.mobileNavLink}
+                                            onClick={() => handleNavigation("/helperpanel")}
+                                        >
+                                            <i className="fa fa-life-ring"></i> Helper Panel
+                                        </button>
+                                        <button
+                                            style={{ ...styles.mobileNavLink, color: '#dc3545' }}
+                                            onClick={logout}
+                                        >
+                                            <i className="fa fa-sign-out"></i> Logout
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button
+                                            style={styles.mobileNavLink}
+                                            onClick={() => handleNavigation("/about")}
+                                        >
+                                            <i className="fa fa-info-circle"></i> About
+                                        </button>
+                                        <button
+                                            style={styles.mobileNavLink}
+                                            onClick={() => handleNavigation("/helperpanel")}
+                                        >
+                                            <i className="fa fa-life-ring"></i> Helper Panel
+                                        </button>
+                                    </>
                                 )}
-                                {isAdmin && !isVendor && (
-                                    <button
-                                        style={styles.mobileNavLink}
-                                        onClick={() => handleNavigation("/adminscreen")}
-                                    >
-                                        <i className="fa fa-shield"></i> Admin Panel
-                                    </button>
-                                )}
-                                {isSuperAdmin && (
-                                    <button
-                                        style={styles.mobileNavLink}
-                                        onClick={() => handleNavigation("/superadmin")}
-                                    >
-                                        <i className="fa fa-star"></i> Super Admin
-                                    </button>
-                                )}
-                                <button
-                                    style={styles.mobileNavLink}
-                                    onClick={() => handleNavigation("/about")}
-                                >
-                                    <i className="fa fa-info-circle"></i> About
-                                </button>
-                                <button
-                                    style={styles.mobileNavLink}
-                                    onClick={() => handleNavigation("/helperpanel")}
-                                >
-                                    <i className="fa fa-life-ring"></i> Helper Panel
-                                </button>
-                                <button
-                                    style={{ ...styles.mobileNavLink, color: '#dc3545' }}
-                                    onClick={logout}
-                                >
-                                    <i className="fa fa-sign-out"></i> Logout
-                                </button>
                             </div>
                         )}
                     </>
