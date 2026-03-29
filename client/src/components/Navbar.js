@@ -25,25 +25,9 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Load saved location from localStorage on component mount
+    // Load saved location from localStorage on component mount (only if user is logged in)
     useEffect(() => {
-        const savedLocation = localStorage.getItem("selectedLocation");
-        if (savedLocation) {
-            try {
-                const location = JSON.parse(savedLocation);
-                setCurrentLocation(location);
-                if (onLocationSelect) {
-                    onLocationSelect(location);
-                }
-            } catch (error) {
-                console.error("Error parsing saved location:", error);
-            }
-        }
-    }, [onLocationSelect]);
-
-    // Listen for location selection from other components
-    useEffect(() => {
-        const handleStorageChange = () => {
+        if (user) {
             const savedLocation = localStorage.getItem("selectedLocation");
             if (savedLocation) {
                 try {
@@ -56,14 +40,42 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                     console.error("Error parsing saved location:", error);
                 }
             }
+        } else {
+            // Clear location when user logs out
+            setCurrentLocation(null);
+            localStorage.removeItem("selectedLocation");
+            if (onLocationSelect) {
+                onLocationSelect(null);
+            }
+        }
+    }, [user, onLocationSelect]);
+
+    // Listen for location selection from other components (only if user is logged in)
+    useEffect(() => {
+        const handleStorageChange = () => {
+            if (user) {
+                const savedLocation = localStorage.getItem("selectedLocation");
+                if (savedLocation) {
+                    try {
+                        const location = JSON.parse(savedLocation);
+                        setCurrentLocation(location);
+                        if (onLocationSelect) {
+                            onLocationSelect(location);
+                        }
+                    } catch (error) {
+                        console.error("Error parsing saved location:", error);
+                    }
+                }
+            }
         };
 
         window.addEventListener('storage', handleStorageChange);
         return () => window.removeEventListener('storage', handleStorageChange);
-    }, [onLocationSelect]);
+    }, [user, onLocationSelect]);
 
     function logout() {
         localStorage.removeItem("currentUser");
+        localStorage.removeItem("selectedLocation"); // Clear location on logout
         window.location.href = "/login";
     }
 
@@ -76,6 +88,13 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
     };
 
     const handleLocationSelect = (location) => {
+        // Only allow location selection if user is logged in
+        if (!user) {
+            console.log("User not logged in, cannot select location");
+            setShowLocationSearch(false);
+            return;
+        }
+
         console.log("Location selected in Navbar:", location);
 
         if (location) {
@@ -110,6 +129,12 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
     };
 
     const toggleLocationSearch = () => {
+        // Only allow location search if user is logged in
+        if (!user) {
+            console.log("Please login to select location");
+            // Optional: Show a toast/notification message
+            return;
+        }
         setShowLocationSearch(!showLocationSearch);
         setIsDropdownOpen(false);
     };
@@ -151,7 +176,8 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
     };
 
     const getDisplayLocationName = () => {
-        if (!currentLocation) return "Select Location";
+        if (!user) return "Login";
+        if (!currentLocation) return "Location";
         return currentLocation.display_name?.split(',')[0] ||
             currentLocation.city ||
             currentLocation.name ||
@@ -171,26 +197,28 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
             margin: 0,
             color: '#4a54e1',
             fontWeight: 'bold',
-            fontSize: isMobile ? '1.25rem' : '1.5rem'
+            fontSize: isMobile ? '1rem' : '1.5rem',
+            whiteSpace: 'nowrap'
         },
-        locationButton: (hasLocation) => ({
+        locationButton: (hasLocation, isLoggedIn) => ({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: "8px",
-            width: "100%",
-            padding: isMobile ? "10px 16px" : "8px 20px",
-            backgroundColor: hasLocation ? "#4a54e1" : "#f8f9fa",
+            gap: "4px",
+            padding: isMobile ? "6px 10px" : "8px 20px",
+            backgroundColor: hasLocation ? "#4a54e1" : (!isLoggedIn ? "#f0f0f0" : "#f8f9fa"),
             border: hasLocation ? "none" : "1px solid #e0e0e0",
             borderRadius: "8px",
-            cursor: "pointer",
+            cursor: isLoggedIn ? "pointer" : "not-allowed",
             transition: "all 0.3s ease",
-            color: hasLocation ? "white" : "#333",
-            fontSize: isMobile ? "13px" : "14px",
+            color: hasLocation ? "white" : (!isLoggedIn ? "#999" : "#333"),
+            fontSize: isMobile ? "12px" : "14px",
             fontWeight: "500",
             whiteSpace: "nowrap",
             overflow: "hidden",
-            textOverflow: "ellipsis"
+            textOverflow: "ellipsis",
+            opacity: isLoggedIn ? 1 : 0.7,
+            minWidth: isMobile ? "auto" : "auto"
         }),
         locationDropdown: {
             position: isMobile ? "fixed" : "absolute",
@@ -211,8 +239,8 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: "8px",
-            padding: isMobile ? "8px 12px" : "8px 16px",
+            gap: "4px",
+            padding: isMobile ? "4px 8px" : "8px 16px",
             backgroundColor: "#f8f9fa",
             border: "1px solid #e0e0e0",
             borderRadius: "8px",
@@ -292,102 +320,110 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
         },
         mobileAuthButtons: {
             display: 'flex',
-            gap: '12px',
-            padding: '12px 16px',
-            borderBottom: '1px solid #f0f0f0'
+            gap: '8px',
+            alignItems: 'center'
+        },
+        mobileContainer: {
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            width: '100%',
+            gap: '8px'
+        },
+        mobileRightSection: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
         }
     };
 
     return (
         <nav className="navbar navbar-expand-lg custom-navbar" style={styles.navbar}>
-            <div className="container-fluid px-3 px-md-4">
-                {/* Brand Section */}
-                <a
-                    className="navbar-brand"
-                    href="/home"
-                    onClick={(e) => {
-                        e.preventDefault();
-                        handleNavigation('/home');
-                    }}
-                    style={{ padding: 0 }}
-                >
-                    <h5 style={styles.brand}>Smart Seva</h5>
-                </a>
+            <div className="container-fluid px-2 px-md-4">
+                {/* Mobile Layout - Everything in one line */}
+                {isMobile ? (
+                    <div style={styles.mobileContainer}>
+                        {/* Brand Section */}
+                        <a
+                            className="navbar-brand"
+                            href="/home"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleNavigation('/home');
+                            }}
+                            style={{ padding: 0, margin: 0 }}
+                        >
+                            <h5 style={styles.brand}>Smart Seva</h5>
+                        </a>
 
-                {/* Desktop Navigation Links */}
-                <div className="collapse navbar-collapse" style={{ display: isMobile ? 'none' : 'flex', justifyContent: 'flex-end' }}>
-                    <ul className="navbar-nav" style={{ flexDirection: 'row', gap: '12px', alignItems: 'center' }}>
-                        {/* Location Search - Desktop */}
-                        <li className="nav-item" ref={locationSearchRef} style={{ position: 'relative' }}>
-                            <button
-                                style={styles.locationButton(!!currentLocation)}
-                                onClick={toggleLocationSearch}
-                                onMouseEnter={() => !isMobile && setShowLocationSearch(true)}
-                            >
-                                <i className="fa fa-map-marker"></i>
-                                <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {getDisplayLocationName()}
-                                </span>
-                                <i className={`fa fa-chevron-${showLocationSearch ? 'up' : 'down'}`} style={{ fontSize: "10px" }}></i>
-                            </button>
+                        {/* Right Section - Location and User */}
+                        <div style={styles.mobileRightSection}>
+                            {/* Location Button - Mobile (Only show if user is logged in) */}
+                            {user && (
+                                <div ref={locationSearchRef} style={{ position: 'relative' }}>
+                                    <button
+                                        style={styles.locationButton(!!currentLocation, true)}
+                                        onClick={toggleLocationSearch}
+                                    >
+                                        <i className="fa fa-map-marker" style={{ fontSize: '10px' }}></i>
+                                        <span style={{ maxWidth: '70px', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '11px' }}>
+                                            {getDisplayLocationName()}
+                                        </span>
+                                    </button>
 
-                            {showLocationSearch && (
-                                <div style={styles.locationDropdown} onMouseLeave={() => !isMobile && setShowLocationSearch(false)}>
-                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-                                        <h4 style={{ margin: 0, fontSize: "18px", fontWeight: "600" }}>Select Location</h4>
-                                        <button
-                                            onClick={() => setShowLocationSearch(false)}
-                                            style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "#666" }}
-                                        >
-                                            ×
-                                        </button>
-                                    </div>
-                                    <LocationSearch onLocationSelect={handleLocationSelect} placeholder="Search for city, area..." />
-                                    {currentLocation && (
-                                        <button
-                                            onClick={() => handleLocationSelect(null)}
-                                            style={{
-                                                marginTop: "12px",
-                                                padding: "10px",
-                                                backgroundColor: "#ff4444",
-                                                color: "white",
-                                                border: "none",
-                                                borderRadius: "8px",
-                                                cursor: "pointer",
-                                                fontSize: "14px",
-                                                width: "100%",
-                                                fontWeight: "500"
-                                            }}
-                                        >
-                                            Clear Location
-                                        </button>
+                                    {showLocationSearch && (
+                                        <div style={styles.locationDropdown}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+                                                <h4 style={{ margin: 0, fontSize: "18px", fontWeight: "600" }}>Select Location</h4>
+                                                <button
+                                                    onClick={() => setShowLocationSearch(false)}
+                                                    style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "#666" }}
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                            <LocationSearch onLocationSelect={handleLocationSelect} placeholder="Search for city, area..." />
+                                            {currentLocation && (
+                                                <button
+                                                    onClick={() => handleLocationSelect(null)}
+                                                    style={{
+                                                        marginTop: "12px",
+                                                        padding: "10px",
+                                                        backgroundColor: "#ff4444",
+                                                        color: "white",
+                                                        border: "none",
+                                                        borderRadius: "8px",
+                                                        cursor: "pointer",
+                                                        fontSize: "14px",
+                                                        width: "100%",
+                                                        fontWeight: "500"
+                                                    }}
+                                                >
+                                                    Clear Location
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             )}
-                        </li>
 
-                        {user ? (
-                            <>
-                                {/* User Dropdown - Desktop */}
-                                <li className="nav-item" ref={dropdownRef} style={{ position: 'relative' }}>
+                            {/* User Section - Mobile */}
+                            {user ? (
+                                <div ref={dropdownRef} style={{ position: 'relative' }}>
                                     <button
                                         style={styles.userButton}
                                         onClick={toggleDropdown}
                                     >
-                                        <i className="fa fa-user"></i>
-                                        <span style={{ fontSize: "14px", fontWeight: "500", color: "black" }}>
-                                            {user.name?.split(' ')[0]}
-                                        </span>
                                         <div style={styles.userInitials}>
                                             {user.name?.charAt(0).toUpperCase()}
                                         </div>
                                     </button>
 
                                     {isDropdownOpen && (
-                                        <div style={styles.dropdownMenu}>
-                                            <div style={{ padding: '8px 16px', borderBottom: '1px solid #e0e0e0' }}>
-                                                <strong>{user.name}</strong>
-                                                <div style={{ fontSize: '12px', color: '#666' }}>{user.email}</div>
+                                        <div style={styles.mobileDropdownMenu}>
+                                            <div style={{ padding: '12px 16px', borderBottom: '1px solid #e0e0e0' }}>
+                                                <strong style={{ fontSize: '16px' }}>{user.name}</strong>
+                                                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>{user.email}</div>
                                             </div>
                                             <button className="dropdown-item" onClick={() => handleNavigation("/profile")}>
                                                 <i className="fa fa-user-o"></i> Profile
@@ -420,152 +456,12 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                                                 <i className="fa fa-life-ring"></i> Helper Panel
                                             </button>
                                             <div className="dropdown-divider"></div>
-                                            <button className="dropdown-item" onClick={logout}>
+                                            <button className="dropdown-item text-danger" onClick={logout}>
                                                 <i className="fa fa-sign-out"></i> Logout
                                             </button>
                                         </div>
                                     )}
-                                </li>
-                            </>
-                        ) : (
-                            <>
-                                <li className="nav-item">
-                                    <button
-                                        className="btn btn-outline-primary"
-                                        onClick={() => handleNavigation("/register")}
-                                        style={{
-                                            padding: "8px 20px",
-                                            borderRadius: "8px",
-                                            background: "transparent !important",
-                                            backgroundColor: "transparent !important",
-                                            border: "1px solid #0d6efd"
-                                        }}
-                                    >
-                                        Register
-                                    </button>
-                                </li>
-                                <li className="nav-item">
-                                    <button
-                                        className="btn btn-primary"
-                                        onClick={() => handleNavigation("/login")}
-                                        style={{ padding: "8px 20px", borderRadius: "8px" }}
-                                    >
-                                        Login
-                                    </button>
-                                </li>
-                            </>
-                        )}
-                    </ul>
-                </div>
-
-                {/* Mobile Header - Shows for ALL users on mobile */}
-                {isMobile && (
-                    <>
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                            {/* Location Button - Mobile */}
-                            <div ref={locationSearchRef} style={{ position: 'relative' }}>
-                                <button
-                                    style={styles.locationButton(!!currentLocation)}
-                                    onClick={toggleLocationSearch}
-                                >
-                                    <i className="fa fa-map-marker"></i>
-                                    <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {getDisplayLocationName()}
-                                    </span>
-                                </button>
-
-                                {showLocationSearch && (
-                                    <div style={styles.locationDropdown}>
-                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
-                                            <h4 style={{ margin: 0, fontSize: "18px", fontWeight: "600" }}>Select Location</h4>
-                                            <button
-                                                onClick={() => setShowLocationSearch(false)}
-                                                style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "#666" }}
-                                            >
-                                                ×
-                                            </button>
-                                        </div>
-                                        <LocationSearch onLocationSelect={handleLocationSelect} placeholder="Search for city, area..." />
-                                        {currentLocation && (
-                                            <button
-                                                onClick={() => handleLocationSelect(null)}
-                                                style={{
-                                                    marginTop: "12px",
-                                                    padding: "10px",
-                                                    backgroundColor: "#ff4444",
-                                                    color: "white",
-                                                    border: "none",
-                                                    borderRadius: "8px",
-                                                    cursor: "pointer",
-                                                    fontSize: "14px",
-                                                    width: "100%",
-                                                    fontWeight: "500"
-                                                }}
-                                            >
-                                                Clear Location
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* User Section - Mobile */}
-                            {user ? (
-                                <>
-                                    <div ref={dropdownRef} style={{ position: 'relative' }}>
-                                        <button
-                                            style={styles.userButton}
-                                            onClick={toggleDropdown}
-                                        >
-                                            <div style={styles.userInitials}>
-                                                {user.name?.charAt(0).toUpperCase()}
-                                            </div>
-                                        </button>
-
-                                        {isDropdownOpen && (
-                                            <div style={styles.mobileDropdownMenu}>
-                                                <div style={{ padding: '12px 16px', borderBottom: '1px solid #e0e0e0' }}>
-                                                    <strong style={{ fontSize: '16px' }}>{user.name}</strong>
-                                                    <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>{user.email}</div>
-                                                </div>
-                                                <button className="dropdown-item" onClick={() => handleNavigation("/profile")}>
-                                                    <i className="fa fa-user-o"></i> Profile
-                                                </button>
-                                                <button className="dropdown-item" onClick={() => handleNavigation("/myorders")}>
-                                                    <i className="fa fa-gavel"></i> Orders
-                                                </button>
-                                                <button className="dropdown-item" onClick={() => handleNavigation("/form")}>
-                                                    <i className="fa fa-handshake-o"></i> Partner
-                                                </button>
-                                                {isVendor && (
-                                                    <button className="dropdown-item" onClick={() => handleNavigation("/vendor-dashboard")}>
-                                                        <i className="fa fa-dashboard"></i> Vendor Dashboard
-                                                    </button>
-                                                )}
-                                                {isAdmin && !isVendor && (
-                                                    <button className="dropdown-item" onClick={() => handleNavigation("/adminscreen")}>
-                                                        <i className="fa fa-shield"></i> Admin Panel
-                                                    </button>
-                                                )}
-                                                {isSuperAdmin && (
-                                                    <button className="dropdown-item" onClick={() => handleNavigation("/superadmin")}>
-                                                        <i className="fa fa-star"></i> Super Admin
-                                                    </button>
-                                                )}
-                                                <button className="dropdown-item" onClick={() => handleNavigation("/about")}>
-                                                    <i className="fa fa-info-circle"></i> About
-                                                </button>
-                                                <button className="dropdown-item" onClick={() => handleNavigation("/helperpanel")}>
-                                                    <i className="fa fa-life-ring"></i> Helper Panel
-                                                </button>
-                                                <div className="dropdown-divider"></div>
-                                                <button className="dropdown-item text-danger" onClick={logout}>
-                                                    <i className="fa fa-sign-out"></i> Logout
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </>
+                                </div>
                             ) : (
                                 /* Login/Register Buttons for Non-Logged In Users on Mobile */
                                 <div style={styles.mobileAuthButtons}>
@@ -573,9 +469,10 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                                         className="btn btn-outline-primary"
                                         onClick={() => handleNavigation("/register")}
                                         style={{
-                                            padding: "8px 20px",
+                                            padding: "6px 12px",
                                             borderRadius: "8px",
-                                            fontSize: "14px"
+                                            fontSize: "12px",
+                                            whiteSpace: "nowrap"
                                         }}
                                     >
                                         Register
@@ -584,110 +481,179 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                                         className="btn btn-primary"
                                         onClick={() => handleNavigation("/login")}
                                         style={{
-                                            padding: "8px 20px",
+                                            padding: "6px 12px",
                                             borderRadius: "8px",
-                                            fontSize: "14px"
+                                            fontSize: "12px",
+                                            whiteSpace: "nowrap"
                                         }}
                                     >
                                         Login
                                     </button>
                                 </div>
                             )}
-
-                            {/* Hamburger Menu Button */}
-                            <button
-                                className="navbar-toggler"
-                                onClick={toggleMenu}
-                                style={styles.hamburgerButton}
-                            >
-                                <i className={`fa ${isMenuOpen ? 'fa-times' : 'fa-bars'}`}></i>
-                            </button>
                         </div>
+                    </div>
+                ) : (
+                    /* Desktop Layout */
+                    <>
+                        {/* Brand Section */}
+                        <a
+                            className="navbar-brand"
+                            href="/home"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                handleNavigation('/home');
+                            }}
+                            style={{ padding: 0 }}
+                        >
+                            <h5 style={styles.brand}>Smart Seva</h5>
+                        </a>
 
-                        {/* Mobile Menu */}
-                        {isMenuOpen && (
-                            <div ref={menuRef} style={styles.mobileMenu}>
+                        {/* Desktop Navigation Links */}
+                        <div className="collapse navbar-collapse" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <ul className="navbar-nav" style={{ flexDirection: 'row', gap: '12px', alignItems: 'center' }}>
+                                {/* Location Search - Desktop (Only show if user is logged in) */}
+                                {user && (
+                                    <li className="nav-item" ref={locationSearchRef} style={{ position: 'relative' }}>
+                                        <button
+                                            style={styles.locationButton(!!currentLocation, true)}
+                                            onClick={toggleLocationSearch}
+                                            onMouseEnter={() => !isMobile && setShowLocationSearch(true)}
+                                        >
+                                            <i className="fa fa-map-marker"></i>
+                                            <span style={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {getDisplayLocationName()}
+                                            </span>
+                                            <i className={`fa fa-chevron-${showLocationSearch ? 'up' : 'down'}`} style={{ fontSize: "10px" }}></i>
+                                        </button>
+
+                                        {showLocationSearch && (
+                                            <div style={styles.locationDropdown} onMouseLeave={() => !isMobile && setShowLocationSearch(false)}>
+                                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px" }}>
+                                                    <h4 style={{ margin: 0, fontSize: "18px", fontWeight: "600" }}>Select Location</h4>
+                                                    <button
+                                                        onClick={() => setShowLocationSearch(false)}
+                                                        style={{ background: "none", border: "none", fontSize: "24px", cursor: "pointer", color: "#666" }}
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                                <LocationSearch onLocationSelect={handleLocationSelect} placeholder="Search for city, area..." />
+                                                {currentLocation && (
+                                                    <button
+                                                        onClick={() => handleLocationSelect(null)}
+                                                        style={{
+                                                            marginTop: "12px",
+                                                            padding: "10px",
+                                                            backgroundColor: "#ff4444",
+                                                            color: "white",
+                                                            border: "none",
+                                                            borderRadius: "8px",
+                                                            cursor: "pointer",
+                                                            fontSize: "14px",
+                                                            width: "100%",
+                                                            fontWeight: "500"
+                                                        }}
+                                                    >
+                                                        Clear Location
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
+                                    </li>
+                                )}
+
                                 {user ? (
                                     <>
-                                        <button
-                                            style={styles.mobileNavLink}
-                                            onClick={() => handleNavigation("/profile")}
-                                        >
-                                            <i className="fa fa-user-o"></i> Profile
-                                        </button>
-                                        <button
-                                            style={styles.mobileNavLink}
-                                            onClick={() => handleNavigation("/myorders")}
-                                        >
-                                            <i className="fa fa-gavel"></i> Orders
-                                        </button>
-                                        <button
-                                            style={styles.mobileNavLink}
-                                            onClick={() => handleNavigation("/form")}
-                                        >
-                                            <i className="fa fa-handshake-o"></i> Partner
-                                        </button>
-                                        {isVendor && (
+                                        {/* User Dropdown - Desktop */}
+                                        <li className="nav-item" ref={dropdownRef} style={{ position: 'relative' }}>
                                             <button
-                                                style={styles.mobileNavLink}
-                                                onClick={() => handleNavigation("/vendor-dashboard")}
+                                                style={styles.userButton}
+                                                onClick={toggleDropdown}
                                             >
-                                                <i className="fa fa-dashboard"></i> Vendor Dashboard
+                                                <i className="fa fa-user"></i>
+                                                <span style={{ fontSize: "14px", fontWeight: "500", color: "black" }}>
+                                                    {user.name?.split(' ')[0]}
+                                                </span>
+                                                <div style={styles.userInitials}>
+                                                    {user.name?.charAt(0).toUpperCase()}
+                                                </div>
                                             </button>
-                                        )}
-                                        {isAdmin && !isVendor && (
-                                            <button
-                                                style={styles.mobileNavLink}
-                                                onClick={() => handleNavigation("/adminscreen")}
-                                            >
-                                                <i className="fa fa-shield"></i> Admin Panel
-                                            </button>
-                                        )}
-                                        {isSuperAdmin && (
-                                            <button
-                                                style={styles.mobileNavLink}
-                                                onClick={() => handleNavigation("/superadmin")}
-                                            >
-                                                <i className="fa fa-star"></i> Super Admin
-                                            </button>
-                                        )}
-                                        <button
-                                            style={styles.mobileNavLink}
-                                            onClick={() => handleNavigation("/about")}
-                                        >
-                                            <i className="fa fa-info-circle"></i> About
-                                        </button>
-                                        <button
-                                            style={styles.mobileNavLink}
-                                            onClick={() => handleNavigation("/helperpanel")}
-                                        >
-                                            <i className="fa fa-life-ring"></i> Helper Panel
-                                        </button>
-                                        <button
-                                            style={{ ...styles.mobileNavLink, color: '#dc3545' }}
-                                            onClick={logout}
-                                        >
-                                            <i className="fa fa-sign-out"></i> Logout
-                                        </button>
+
+                                            {isDropdownOpen && (
+                                                <div style={styles.dropdownMenu}>
+                                                    <div style={{ padding: '8px 16px', borderBottom: '1px solid #e0e0e0' }}>
+                                                        <strong>{user.name}</strong>
+                                                        <div style={{ fontSize: '12px', color: '#666' }}>{user.email}</div>
+                                                    </div>
+                                                    <button className="dropdown-item" onClick={() => handleNavigation("/profile")}>
+                                                        <i className="fa fa-user-o"></i> Profile
+                                                    </button>
+                                                    <button className="dropdown-item" onClick={() => handleNavigation("/myorders")}>
+                                                        <i className="fa fa-gavel"></i> Orders
+                                                    </button>
+                                                    <button className="dropdown-item" onClick={() => handleNavigation("/form")}>
+                                                        <i className="fa fa-handshake-o"></i> Partner
+                                                    </button>
+                                                    {isVendor && (
+                                                        <button className="dropdown-item" onClick={() => handleNavigation("/vendor-dashboard")}>
+                                                            <i className="fa fa-dashboard"></i> Vendor Dashboard
+                                                        </button>
+                                                    )}
+                                                    {isAdmin && !isVendor && (
+                                                        <button className="dropdown-item" onClick={() => handleNavigation("/adminscreen")}>
+                                                            <i className="fa fa-shield"></i> Admin Panel
+                                                        </button>
+                                                    )}
+                                                    {isSuperAdmin && (
+                                                        <button className="dropdown-item" onClick={() => handleNavigation("/superadmin")}>
+                                                            <i className="fa fa-star"></i> Super Admin
+                                                        </button>
+                                                    )}
+                                                    <button className="dropdown-item" onClick={() => handleNavigation("/about")}>
+                                                        <i className="fa fa-info-circle"></i> About
+                                                    </button>
+                                                    <button className="dropdown-item" onClick={() => handleNavigation("/helperpanel")}>
+                                                        <i className="fa fa-life-ring"></i> Helper Panel
+                                                    </button>
+                                                    <div className="dropdown-divider"></div>
+                                                    <button className="dropdown-item" onClick={logout}>
+                                                        <i className="fa fa-sign-out"></i> Logout
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </li>
                                     </>
                                 ) : (
                                     <>
-                                        <button
-                                            style={styles.mobileNavLink}
-                                            onClick={() => handleNavigation("/about")}
-                                        >
-                                            <i className="fa fa-info-circle"></i> About
-                                        </button>
-                                        <button
-                                            style={styles.mobileNavLink}
-                                            onClick={() => handleNavigation("/helperpanel")}
-                                        >
-                                            <i className="fa fa-life-ring"></i> Helper Panel
-                                        </button>
+                                        <li className="nav-item">
+                                            <button
+                                                className="btn btn-outline-primary"
+                                                onClick={() => handleNavigation("/register")}
+                                                style={{
+                                                    padding: "8px 20px",
+                                                    borderRadius: "8px",
+                                                    background: "transparent !important",
+                                                    backgroundColor: "transparent !important",
+                                                    border: "1px solid #0d6efd"
+                                                }}
+                                            >
+                                                Register
+                                            </button>
+                                        </li>
+                                        <li className="nav-item">
+                                            <button
+                                                className="btn btn-primary"
+                                                onClick={() => handleNavigation("/login")}
+                                                style={{ padding: "8px 20px", borderRadius: "8px" }}
+                                            >
+                                                Login
+                                            </button>
+                                        </li>
                                     </>
                                 )}
-                            </div>
-                        )}
+                            </ul>
+                        </div>
                     </>
                 )}
             </div>
