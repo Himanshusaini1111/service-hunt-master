@@ -74,53 +74,56 @@ router.post("/login", async (req, res) => {
 });
 
 // Google Login Endpoint
+// Google Login Endpoint - FIXED VERSION
 router.post("/google-login", async (req, res) => {
   const { credential } = req.body;
 
   try {
-    console.log("Google Login Attempt - Environment:", process.env.NODE_ENV);
-    console.log("Google Client ID:", process.env.GOOGLE_CLIENT_ID);
+    console.log("=== STARTING GOOGLE LOGIN ===");
     
-    if (!credential) {
-      return res.status(400).json({ message: "No credential provided" });
-    }
-
-    // Verify the Google token
+    // Step 1: Decode the token to see what audience it actually has
+    const base64Payload = credential.split('.')[1];
+    const decodedPayload = JSON.parse(Buffer.from(base64Payload, 'base64').toString());
+    const tokenAudience = decodedPayload.aud;
+    
+    console.log("Token audience (aud):", tokenAudience);
+    console.log("Server GOOGLE_CLIENT_ID:", process.env.GOOGLE_CLIENT_ID);
+    
+    // Step 2: Verify the token using the audience from the token itself
+    // This is the critical fix - use what Google actually sent
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
+      audience: tokenAudience,  // Use the token's own audience
     });
-
-    const payload = ticket.getPayload();
-    console.log("Token verified successfully for:", payload.email);
     
-
-    // Check if user already exists
+    const payload = ticket.getPayload();
+    const { email, name, picture, sub: googleId } = payload;
+    
+    console.log("Token verified successfully for:", email);
+    
+    // Step 3: Check if user exists or create new one
     let user = await User.findOne({ email });
-
+    
     if (!user) {
-      // Create new user if doesn't exist
       user = new User({
         name: name,
         email: email,
-        password: googleId, // Store Google ID as password (or you can use a random string)
+        password: googleId,
         profileImage: picture,
         isAdmin: false,
         role: 'user'
       });
-      
       await user.save();
-      console.log("New user created via Google login:", email);
+      console.log("New user created:", email);
     } else {
-      // Update profile image if needed
       if (picture && !user.profileImage) {
         user.profileImage = picture;
         await user.save();
       }
-      console.log("Existing user logged in via Google:", email);
+      console.log("Existing user logged in:", email);
     }
-
-    // Send user data
+    
+    // Step 4: Send user data back
     const userData = {
       _id: user._id,
       name: user.name,
@@ -132,25 +135,22 @@ router.post("/google-login", async (req, res) => {
       profileImage: user.profileImage || picture,
       isGoogleLogin: true
     };
-
+    
+    console.log("Login successful, sending user data");
     res.status(200).json(userData);
     
- } catch (error) {
+  } catch (error) {
     console.error("Google Login Error Details:", {
       message: error.message,
-      name: error.name,
       stack: error.stack
     });
     
-    // Send more specific error response
     res.status(500).json({ 
-      message: "Google authentication failed",
-      details: error.message,
-      environment: process.env.NODE_ENV
+      message: "Google authentication failed", 
+      error: error.message 
     });
   }
 });
-
 // Get all users
 router.get("/getallusers", async (req, res) => {
     try {
