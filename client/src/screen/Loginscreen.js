@@ -21,20 +21,22 @@ export default function LoginScreen() {
         }
     }, []);
 
+    const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
             [name]: value
         }));
-        
+
         // Clear error when user starts typing
         if (error) setError(null);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         // Basic validation
         if (!formData.email || !formData.password) {
             setError('Please fill in all fields');
@@ -44,16 +46,16 @@ export default function LoginScreen() {
         try {
             setLoading(true);
             setError(null);
-            
+
             const result = await axios.post('/api/users/login', formData);
             localStorage.setItem('currentUser', JSON.stringify(result.data));
             setSuccess(true);
-            
+
             // Redirect after successful login
             setTimeout(() => {
                 window.location.href = '/';
             }, 1000);
-            
+
         } catch (error) {
             setError(error.response?.data?.message || 'Invalid credentials. Please try again.');
             console.error('Login error:', error);
@@ -70,21 +72,21 @@ export default function LoginScreen() {
 
     const handleGoogleLoginSuccess = async (credentialResponse) => {
         console.log('Google Login Success:', credentialResponse);
-        
+
         try {
             setLoading(true);
             // Send the credential to your backend for verification
             const result = await axios.post('/api/users/google-login', {
                 credential: credentialResponse.credential
             });
-            
+
             localStorage.setItem('currentUser', JSON.stringify(result.data));
             setSuccess(true);
-            
+
             setTimeout(() => {
                 window.location.href = '/';
             }, 1000);
-            
+
         } catch (error) {
             setError(error.response?.data?.message || 'Google login failed. Please try again.');
             console.error('Google login error:', error);
@@ -216,6 +218,8 @@ export default function LoginScreen() {
                                         size="large"
                                         text="signin_with"
                                         shape="rectangular"
+                                        // Optionally specify the client ID explicitly
+                                        clientId={googleClientId}
                                     />
                                 </div>
 
@@ -223,15 +227,15 @@ export default function LoginScreen() {
                                 <div className="text-center mt-4 pt-3 border-top">
                                     <p className="text-muted mb-2">
                                         Don't have an account?{' '}
-                                        <a 
-                                            href="/register" 
+                                        <a
+                                            href="/register"
                                             className="text-primary fw-semibold text-decoration-none"
                                         >
                                             Create Account
                                         </a>
                                     </p>
-                                    <a 
-                                        href="/forgot-password" 
+                                    <a
+                                        href="/forgot-password"
                                         className="text-muted text-decoration-none small"
                                     >
                                         Forgot your password?

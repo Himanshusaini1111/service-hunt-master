@@ -20,11 +20,14 @@ const superadmin =require("./routes/superadmin.js")
 
 // Middleware
 app.use(express.json());
+// In server.js
 app.use(cors({
-    origin: "http://localhost:3000",
-     credentials: true
-})); // Allow requests from frontend origin
-
+    origin: [
+        "http://localhost:3000",
+        "https://service-hunt-master.onrender.com"
+    ],
+    credentials: true
+}));
 // Routes
 app.use("/api/vendor", vendorRoutes); // Register the routes under /api/vendor-helper
 

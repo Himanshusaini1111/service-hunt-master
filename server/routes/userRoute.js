@@ -3,9 +3,11 @@ const router = express.Router();
 const User = require("../models/user");
 const { OAuth2Client } = require('google-auth-library');
 
-// Initialize Google OAuth client
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
+const googleClient = new OAuth2Client({
+  clientId: process.env.GOOGLE_CLIENT_ID,
+  // Optional: Add client secret if needed
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+});
 // Regular registration
 router.post("/register", async (req, res) => {
   const { name, email, password } = req.body;
@@ -76,6 +78,13 @@ router.post("/google-login", async (req, res) => {
   const { credential } = req.body;
 
   try {
+    console.log("Google Login Attempt - Environment:", process.env.NODE_ENV);
+    console.log("Google Client ID:", process.env.GOOGLE_CLIENT_ID);
+    
+    if (!credential) {
+      return res.status(400).json({ message: "No credential provided" });
+    }
+
     // Verify the Google token
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
@@ -83,9 +92,8 @@ router.post("/google-login", async (req, res) => {
     });
 
     const payload = ticket.getPayload();
-    const { email, name, picture, sub: googleId } = payload;
-
-    console.log("Google Login Payload:", { email, name, googleId });
+    console.log("Token verified successfully for:", payload.email);
+    
 
     // Check if user already exists
     let user = await User.findOne({ email });
@@ -127,11 +135,18 @@ router.post("/google-login", async (req, res) => {
 
     res.status(200).json(userData);
     
-  } catch (error) {
-    console.error("Google Login Error:", error);
+ } catch (error) {
+    console.error("Google Login Error Details:", {
+      message: error.message,
+      name: error.name,
+      stack: error.stack
+    });
+    
+    // Send more specific error response
     res.status(500).json({ 
-      message: "Google authentication failed", 
-      error: error.message 
+      message: "Google authentication failed",
+      details: error.message,
+      environment: process.env.NODE_ENV
     });
   }
 });
