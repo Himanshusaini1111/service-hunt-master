@@ -36,4 +36,4 @@ coverage/
 
 # MongoDB related (if applicable, adjust as needed)
 data/
-dump/
+dump/server/service-account.json
