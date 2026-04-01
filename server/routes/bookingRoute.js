@@ -6,13 +6,79 @@ const Booking = require("../models/booking");
 const Service = require("../models/service");
 const User = require("../models/user");  // Import User model for role checks
 const Helper = require("../models/Helper");  // Import Helper model if needed
+const admin = require('../firebase-admin'); // Path to your firebase-admin.js
 
-// Book a service
-// Book a service
-// bookingRoute.js - Update the bookservice endpoint
 
-// Book a service - Update the bookservice endpoint
-// Book a service - Update the bookservice endpoint
+// Function to send push notification to users
+async function sendPushNotification(userIds, bookingData) {
+    try {
+        // Get all FCM tokens for these users
+        const users = await User.find({ _id: { $in: userIds } });
+        const tokens = users.flatMap(user => user.fcmTokens || []);
+        
+        if (tokens.length === 0) {
+            console.log('⚠️ No FCM tokens found for users:', userIds);
+            return;
+        }
+        
+        // Remove duplicates
+        const uniqueTokens = [...new Set(tokens)];
+        
+        console.log(`📤 Sending push to ${uniqueTokens.length} devices`);
+        
+        // Prepare notification payload
+        const payload = {
+            notification: {
+                title: '📢 New Booking!',
+                body: `${bookingData.service} - ₹${bookingData.totalAmount || 0}`,
+                sound: 'default'
+            },
+            webpush: {
+                notification: {
+                    icon: '/icon-192.png',
+                    badge: '/icon-192.png',
+                    vibrate: [200, 100, 200],
+                    sound: 'default',
+                    requireInteraction: true
+                },
+                fcmOptions: {
+                    link: '/admin'
+                }
+            },
+            data: {
+                bookingId: bookingData._id.toString(),
+                type: 'new_booking',
+                click_action: 'OPEN_ADMIN_PANEL'
+            }
+        };
+        
+        // Send to all tokens
+        const promises = uniqueTokens.map(token => 
+            admin.messaging().send({
+                token: token,
+                ...payload
+            }).catch(err => {
+                console.log('❌ Failed to send to token:', err.message);
+                // If token is invalid, remove it
+                if (err.code === 'messaging/registration-token-not-registered') {
+                    User.updateMany(
+                        { fcmTokens: token },
+                        { $pull: { fcmTokens: token } }
+                    ).exec();
+                }
+            })
+        );
+        
+        await Promise.all(promises);
+        console.log(`✅ Push notifications sent successfully`);
+        
+    } catch (error) {
+        console.error('❌ Error sending push notifications:', error);
+    }
+}
+
+
+
 router.post("/bookservice", async (req, res) => {
     try {
         const {
@@ -121,13 +187,50 @@ router.post("/bookservice", async (req, res) => {
         }
 
         // Save booking
-        const newBooking = new Booking(bookingData);
-        await newBooking.save();
+// Save booking
+const newBooking = new Booking(bookingData);
+await newBooking.save();
 
-        console.log(`✅ Booking created: ${newBooking._id} for vendor: ${vendorId} (Type: ${bookingType})`);
+console.log(`✅ Booking created: ${newBooking._id} for vendor: ${vendorId} (Type: ${bookingType})`);
 
-        // Skip availability update for inquiry bookings
-        if (fromDate && bookingType !== 'Inquari Booking') {
+// ============================================
+// ✅ ADD PUSH NOTIFICATION CODE HERE
+// ============================================
+
+// Find users to notify (admins + vendor)
+const adminUsers = await User.find({ 
+    $or: [
+        { role: 'admin' },
+        { isAdmin: true },
+        { role: 'superadmin' },
+        { email: 'himanshufa875@gmail.com' }
+    ]
+});
+
+// Get the vendor (service owner)
+const vendorUser = await User.findById(vendorId);
+
+// Combine users to notify
+const usersToNotify = [...adminUsers];
+if (vendorUser && !usersToNotify.some(u => u._id.equals(vendorUser._id))) {
+    usersToNotify.push(vendorUser);
+}
+
+// Send push notifications
+if (usersToNotify.length > 0) {
+    await sendPushNotification(
+        usersToNotify.map(u => u._id),
+        newBooking
+    );
+}
+
+// ============================================
+// END OF PUSH NOTIFICATION CODE
+// ============================================
+
+// Skip availability update for inquiry bookings
+if (fromDate && bookingType !== 'Inquari Booking') {
+    
             const dateStr = moment(fromDate).format('YYYY-MM-DD');
             let unavailableDates = serviceData.unavailableDates || [];
             

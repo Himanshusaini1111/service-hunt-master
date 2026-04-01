@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { Tabs, Table, Button, Form, Input, Select, message, Tag } from "antd";
 
@@ -467,7 +467,7 @@ function ViewHelpers({ bookingId, userId }) {
     );
 }
 
-function AddHelper({ userId }) {  // Receive userId as prop from VendorHelperInfo
+function AddHelper({ userId }) {
     const [inputHelperInfo, setInputHelperInfo] = useState({
         name: "",
         phone: "",
@@ -482,6 +482,10 @@ function AddHelper({ userId }) {  // Receive userId as prop from VendorHelperInf
         pastWorkPhotos: [],
     });
     const [loading, setLoading] = useState(false);
+    
+    // Add refs for file inputs
+    const idProofRef = useRef(null);
+    const pastWorkPhotosRef = useRef(null);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -493,7 +497,7 @@ function AddHelper({ userId }) {  // Receive userId as prop from VendorHelperInf
         
         // Basic validation
         if (!inputHelperInfo.name || !inputHelperInfo.phone || !inputHelperInfo.email || 
-            !inputHelperInfo.idProof) {  // Removed password check as it's not in the state
+            !inputHelperInfo.idProof) {
             message.error("Please fill all required fields");
             return;
         }
@@ -518,7 +522,7 @@ function AddHelper({ userId }) {  // Receive userId as prop from VendorHelperInf
             }
         });
 
-        // Append vendorId (using userId from props)
+        // Append vendorId
         formData.append("vendorId", userId);
 
         try {
@@ -546,9 +550,13 @@ function AddHelper({ userId }) {  // Receive userId as prop from VendorHelperInf
                     pastWorkPhotos: [],
                 });
                 
-                // Clear file inputs
-                const fileInputs = document.querySelectorAll('input[type="file"]');
-                fileInputs.forEach(input => input.value = '');
+                // ✅ CORRECT WAY: Clear file inputs using refs
+                if (idProofRef.current) {
+                    idProofRef.current.value = '';
+                }
+                if (pastWorkPhotosRef.current) {
+                    pastWorkPhotosRef.current.value = '';
+                }
             }
         } catch (error) {
             console.error("Submission error:", error);
@@ -632,6 +640,7 @@ function AddHelper({ userId }) {  // Receive userId as prop from VendorHelperInf
             <Form.Item label="ID Proof" required>
                 <Input
                     type="file"
+                    ref={idProofRef}  // ✅ Add ref here
                     onChange={handleIdProofChange}
                     accept=".pdf,.jpg,.png,.jpeg"
                 />
@@ -641,6 +650,7 @@ function AddHelper({ userId }) {  // Receive userId as prop from VendorHelperInf
                 <Input
                     type="file"
                     multiple
+                    ref={pastWorkPhotosRef}  // ✅ Add ref here
                     onChange={handlePastWorkPhotosChange}
                     accept=".jpg,.png,.jpeg"
                 />

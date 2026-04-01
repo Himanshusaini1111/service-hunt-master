@@ -161,6 +161,48 @@ router.get("/getallusers", async (req, res) => {
     }
 });
 
+// Save FCM token for push notifications
+router.post("/save-fcm-token", async (req, res) => {
+    try {
+        const { token, userId, userType, deviceInfo } = req.body;
+        
+        if (!token || !userId) {
+            return res.status(400).json({ message: "Token and userId required" });
+        }
+        
+        // Add token if not already exists
+        await User.findByIdAndUpdate(
+            userId,
+            { 
+                $addToSet: { fcmTokens: token },
+                $set: { deviceInfo: deviceInfo || '' }
+            }
+        );
+        
+        console.log(`✅ FCM token saved for user ${userId}`);
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Error saving FCM token:", error);
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Remove token (when user logs out)
+router.post("/remove-fcm-token", async (req, res) => {
+    try {
+        const { token, userId } = req.body;
+        
+        await User.findByIdAndUpdate(
+            userId,
+            { $pull: { fcmTokens: token } }
+        );
+        
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // Delete user
 router.post("/deleteuser", async (req, res) => {
     const userid = req.body.userid;

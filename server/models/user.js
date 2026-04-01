@@ -80,6 +80,14 @@ const userSchema = mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'user'
     },
+    fcmTokens: {
+    type: [String],
+    default: []
+},
+deviceInfo: {
+    type: String,
+    default: ''
+},
     approvedDate: {
         type: Date
     }

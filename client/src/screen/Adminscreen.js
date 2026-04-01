@@ -9,6 +9,7 @@ import Calendar from "react-calendar";
 import { VendorProfile } from "../components/VendorProfile .js";
 import "react-calendar/dist/Calendar.css";
 import { Link } from 'react-router-dom';
+import { requestNotificationPermission, onMessageListener } from '../firebase';
 
 const { TabPane } = Tabs;
 function Adminscreen() {
@@ -45,6 +46,29 @@ function Adminscreen() {
         fetchDashboardData();
     }, [user._id]);
 
+
+
+// Add inside Adminscreen component, after user is loaded
+useEffect(() => {
+    if (user?._id) {
+        // Determine user type
+        let userType = 'vendor';
+        if (isSuperAdmin) userType = 'superadmin';
+        else if (isAdmin) userType = 'admin';
+        
+        // Register for push notifications
+        requestNotificationPermission(user._id, userType);
+        
+        // Listen for foreground notifications
+        onMessageListener().then(payload => {
+            console.log('Foreground notification:', payload);
+            // Refresh bookings if on Bookings tab
+            if (activeTab === '1') {
+                window.dispatchEvent(new Event('bookingRefresh'));
+            }
+        });
+    }
+}, [user?._id]);
     // Get display name based on role
     const getDashboardTitle = () => {
         if (isSuperAdmin) return "Super Admin Dashboard";
