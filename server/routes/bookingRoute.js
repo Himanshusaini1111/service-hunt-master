@@ -10,6 +10,7 @@ const admin = require('../firebase-admin'); // Path to your firebase-admin.js
 
 
 // Function to send push notification to users
+// Function to send push notification to users
 async function sendPushNotification(userIds, bookingData) {
     try {
         // Get all FCM tokens for these users
@@ -26,19 +27,19 @@ async function sendPushNotification(userIds, bookingData) {
         
         console.log(`📤 Sending push to ${uniqueTokens.length} devices`);
         
-        // Prepare notification payload
+        // Prepare notification payload - CORRECT FORMAT
         const payload = {
             notification: {
                 title: '📢 New Booking!',
-                body: `${bookingData.service} - ₹${bookingData.totalAmount || 0}`,
-                sound: 'default'
+                body: `${bookingData.service} - ₹${bookingData.totalAmount || 0}`
+                // sound goes in webpush.notification, not here
             },
             webpush: {
                 notification: {
                     icon: '/icon-192.png',
                     badge: '/icon-192.png',
                     vibrate: [200, 100, 200],
-                    sound: 'default',
+                    sound: 'default',  // ✅ Sound is correct here
                     requireInteraction: true
                 },
                 fcmOptions: {
@@ -76,7 +77,6 @@ async function sendPushNotification(userIds, bookingData) {
         console.error('❌ Error sending push notifications:', error);
     }
 }
-
 
 
 router.post("/bookservice", async (req, res) => {
@@ -752,4 +752,63 @@ router.get("/dashboard", async (req, res) => {
         });
     }
 });
+
+// Check for new bookings since last check (for polling)
+router.get("/check-new", async (req, res) => {
+    try {
+        const { userid, lastId } = req.query;
+        
+        if (!userid) {
+            return res.status(400).json({ message: "User ID required" });
+        }
+
+        const user = await User.findById(userid);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const isSuperAdmin = user?.email === 'himanshufa875@gmail.com' && 
+                            (user?.role === 'superadmin' || user?.isAdmin);
+        const isAdmin = user?.role === 'admin' || user?.isAdmin;
+        const isVendor = user?.role === 'vendor' || user?.isVendor;
+
+        let filter = {};
+
+        // Build filter based on user role
+        if (isSuperAdmin) {
+            filter = {};
+        } else if (isAdmin || isVendor) {
+            const vendorServices = await Service.find({ vendorId: userid }).select('_id');
+            const serviceIds = vendorServices.map(service => service._id);
+            filter = {
+                $or: [
+                    { serviceid: { $in: serviceIds } },
+                    { vendorId: userid }
+                ]
+            };
+        } else {
+            return res.status(403).json({ message: "Access denied" });
+        }
+
+        // Add lastId filter if provided
+        if (lastId && lastId !== '') {
+            filter._id = { $gt: lastId };
+        }
+
+        const newBookings = await Booking.find(filter)
+            .sort({ createdAt: -1 })
+            .limit(10);
+
+        res.json(newBookings);
+
+    } catch (error) {
+        console.error("Check new bookings error:", error);
+        res.status(500).json({ 
+            message: "Failed to check new bookings", 
+            error: error.message 
+        });
+    }
+});
+
+
 module.exports = router;
