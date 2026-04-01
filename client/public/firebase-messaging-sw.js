@@ -23,7 +23,7 @@ messaging.onBackgroundMessage((payload) => {
         icon: '/icon-192.png',
         badge: '/icon-192.png',
         vibrate: [200, 100, 200],
-        sound: '\booking.mp3',
+sound: '/sounds/booking.mp3',
         data: {
             click_action: payload.data?.click_action,
             bookingId: payload.data?.bookingId

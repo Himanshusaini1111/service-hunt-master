@@ -60,8 +60,7 @@ export function onMessageListener() {
         onMessage(messaging, (payload) => {
             console.log('📢 Notification received while app open:', payload);
             
-            // Play sound
-            const audio = new Audio('/sounds/booking.mp3');
+         const audio = new Audio('/sounds/booking.mp3');
             audio.play().catch(e => console.log('Sound play failed:', e));
             
             // Show browser notification

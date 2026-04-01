@@ -1,10 +1,17 @@
 const admin = require('firebase-admin');
+const fs = require('fs');
+const path = require('path');
 
-// Check if we have environment variables (production) or local file (development)
-let serviceAccount;
+// Try to load service account from local file first (for development)
+let serviceAccount = null;
+const localFilePath = path.join(__dirname, 'service-account.json');
 
-if (process.env.FIREBASE_PRIVATE_KEY) {
-    // Production: Use environment variables
+if (fs.existsSync(localFilePath)) {
+    // Use local file for development
+    serviceAccount = require('./service-account.json');
+    console.log('✅ Firebase initialized with local service-account.json');
+} else if (process.env.FIREBASE_PRIVATE_KEY) {
+    // Use environment variables for production
     serviceAccount = {
         type: "service_account",
         project_id: process.env.FIREBASE_PROJECT_ID,
@@ -19,14 +26,8 @@ if (process.env.FIREBASE_PRIVATE_KEY) {
     };
     console.log('✅ Firebase initialized with environment variables');
 } else {
-    // Development: Use local JSON file
-    try {
-        serviceAccount = require('./service-account.json');
-        console.log('✅ Firebase initialized with local service-account.json');
-    } catch (e) {
-        console.error('❌ No Firebase credentials found. Set environment variables or add service-account.json');
-        process.exit(1);
-    }
+    console.error('❌ No Firebase credentials found. Set environment variables or add service-account.json');
+    process.exit(1);
 }
 
 admin.initializeApp({
