@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { 
     Card, 
@@ -20,7 +20,6 @@ import {
     Grid
 } from 'antd';
 import { requestNotificationPermission, onMessageListener } from '../firebase';
-import { onMessageListener } from '../firebase';
  
 const { useBreakpoint } = Grid;
 const { Text } = Typography;
@@ -146,6 +145,9 @@ function HelperDashboard({ helperData, onLogout }) {
             const newWorks = response.data.works;
             
             if (newWorks && newWorks.length > 0) {
+
+                            const count = newWorks.length;  // ✅ Define count here
+
                 // ✅ Play sound
                 if (soundEnabled && audioRef.current) {
                     audioRef.current.currentTime = 0;
