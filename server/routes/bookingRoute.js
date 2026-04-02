@@ -452,12 +452,65 @@ router.post("/updatestatus", async (req, res) => {
         });
     }
 });
-// Assign helpers to booking - UPDATED (minor fix for consistency)
-// In bookingRoute.js - Fix the /assign-helpers endpoint
-// In bookingRoute.js - Updated /assign-helpers endpoint with better debugging
-// bookingRoute.js - Fixed /assign-helpers endpoint
-// bookingRoute.js - Fixed /assign-helpers endpoint for string IDs
-// In bookingRoute.js - Update the /assign-helpers endpoint
+
+async function sendPushNotificationToHelpers(helperIds, bookingData) {
+    try {
+        const helpers = await Helper.find({ _id: { $in: helperIds } });
+        const tokens = helpers.flatMap(helper => helper.fcmTokens || []);
+        
+        if (tokens.length === 0) {
+            console.log('⚠️ No FCM tokens found for helpers');
+            return;
+        }
+        
+        const uniqueTokens = [...new Set(tokens)];
+        
+        const payload = {
+            notification: {
+                title: '📢 New Work Assigned!',
+                body: `${bookingData.service} - Customer: ${bookingData.customerName}`
+            },
+            webpush: {
+                notification: {
+                    icon: '/icon-192.png',
+                    badge: '/icon-192.png',
+                    vibrate: [200, 100, 200],
+                    sound: 'default',
+                    requireInteraction: true
+                },
+                fcmOptions: {
+                    link: '/helperpanel'
+                }
+            },
+            data: {
+                bookingId: bookingData._id.toString(),
+                type: 'new_work_assigned',
+                customerName: bookingData.customerName,
+                customerPhone: bookingData.customerPhone
+            }
+        };
+        
+        const promises = uniqueTokens.map(token => 
+            admin.messaging().send({ token, ...payload }).catch(err => {
+                console.log('❌ Failed to send to helper:', err.message);
+                // If token is invalid, remove it
+                if (err.code === 'messaging/registration-token-not-registered') {
+                    Helper.updateMany(
+                        { fcmTokens: token },
+                        { $pull: { fcmTokens: token } }
+                    ).exec();
+                }
+            })
+        );
+        
+        await Promise.all(promises);
+        console.log(`✅ Push notifications sent to ${uniqueTokens.length} helpers`);
+    } catch (error) {
+        console.error('❌ Error sending to helpers:', error);
+    }
+}
+
+// Assign helpers to booking
 router.post("/assign-helpers", async (req, res) => {
     try {
         const { bookingId, helperIds } = req.body;
@@ -520,17 +573,34 @@ router.post("/assign-helpers", async (req, res) => {
         
         console.log('Helpers assigned successfully to booking:', bookingId);
         
+        // ============================================
+        // ✅ SEND PUSH NOTIFICATIONS TO HELPERS
+        // ============================================
+        if (helpers && helpers.length > 0) {
+            const helperIdList = helpers.map(h => h._id);
+            
+            // Send push notification to each helper
+            await sendPushNotificationToHelpers(helperIdList, {
+                _id: bookingId,
+                service: service.name,
+                totalAmount: booking.totalAmount,
+                customerName: booking.name,
+                customerPhone: booking.phone
+            });
+        }
+        // ============================================
+        
         res.json({ 
             message: "Helpers assigned successfully", 
             booking: updatedBooking,
-            helpers: helpers // Return the helper details for immediate display
+            helpers: helpers
         });
+        
     } catch (error) {
         console.error("Error assigning helpers:", error);
         res.status(500).json({ message: "Failed to assign helpers: " + error.message });
     }
 });
-
 // Get user bookings
 // Get user bookings - FIXED to populate assignedHelpers
 // bookingRoute.js - Update the getuserbookings endpoint

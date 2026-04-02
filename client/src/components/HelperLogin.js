@@ -19,7 +19,9 @@ import {
     Typography,
     Grid
 } from 'antd';
-
+import { requestNotificationPermission, onMessageListener } from '../firebase';
+import { onMessageListener } from '../firebase';
+ 
 const { useBreakpoint } = Grid;
 const { Text } = Typography;
 const { Option } = Select;
@@ -35,14 +37,22 @@ export function HelperLogin() {
             const response = await axios.post('/api/helper/login', { code: loginCode });
             if (response.data.success) {
                 setIsLoggedIn(true);
-                setHelperData(response.data.helper);  // Now includes vendor: { name }
+                setHelperData(response.data.helper);
                 localStorage.setItem('helperToken', response.data.token);
+                
+                // ✅ Save FCM token for helper
+                const token = await requestNotificationPermission(
+                    response.data.helper._id, 
+                    'helper'
+                );
+                
                 message.success('Login successful!');
             }
         } catch (error) {
             message.error(error.response?.data?.message || 'Login failed');
         }
     };
+
 
 
     const handleLogout = () => {
@@ -100,13 +110,80 @@ function HelperDashboard({ helperData, onLogout }) {
     const [loading, setLoading] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [showBookingDetails, setShowBookingDetails] = useState(false);
+    const [lastWorkId, setLastWorkId] = useState(localStorage.getItem('lastWorkId') || '');
+    const [soundEnabled, setSoundEnabled] = useState(localStorage.getItem('helperSoundEnabled') !== 'false');
+
+    // ✅ Audio ref for sound
+    const audioRef = useRef(null);
 
     useEffect(() => {
         if (helperData) {
             fetchAssignedWorks();
             checkConnectionStatus();
+            
+            // ✅ Listen for foreground notifications
+            onMessageListener().then(payload => {
+                console.log('📢 New work notification:', payload);
+                // Refresh works
+                fetchAssignedWorks();
+            });
+            
+            // ✅ Start polling for new works
+            const interval = setInterval(checkNewWorks, 10000);
+            return () => clearInterval(interval);
         }
     }, [helperData]);
+
+    // ✅ Function to check for new assigned works
+    const checkNewWorks = async () => {
+        try {
+            const token = localStorage.getItem('helperToken');
+            const response = await axios.get('/api/helper/check-new-works', {
+                headers: { Authorization: `Bearer ${token}` },
+                params: { lastId: lastWorkId }
+            });
+            
+            const newWorks = response.data.works;
+            
+            if (newWorks && newWorks.length > 0) {
+                // ✅ Play sound
+                if (soundEnabled && audioRef.current) {
+                    audioRef.current.currentTime = 0;
+                    audioRef.current.play().catch(e => console.log('Sound play failed:', e));
+                }
+                
+                // ✅ Show browser notification
+                if (Notification.permission === 'granted') {
+                    const count = newWorks.length;
+                    new Notification(`📢 New Work Assigned!`, {
+                        body: `${count} new work${count > 1 ? 's have' : ' has'} been assigned to you`,
+                        icon: '/icon-192.png',
+                        vibrate: [200, 100, 200]
+                    });
+                }
+                
+                // ✅ Update last work ID
+                const latestId = newWorks[0]._id;
+                setLastWorkId(latestId);
+                localStorage.setItem('lastWorkId', latestId);
+                
+                // ✅ Refresh works list
+                fetchAssignedWorks();
+                
+                message.info(`${count} new work${count > 1 ? 's' : ''} assigned to you!`);
+            }
+        } catch (error) {
+            console.log('Error checking new works:', error);
+        }
+    };
+
+    // ✅ Toggle sound function
+    const toggleSound = () => {
+        const newState = !soundEnabled;
+        setSoundEnabled(newState);
+        localStorage.setItem('helperSoundEnabled', newState);
+        message.info(`Sound notifications ${newState ? 'enabled' : 'disabled'}`);
+    };
 
     const fetchAssignedWorks = async () => {
         setLoading(true);
@@ -376,6 +453,10 @@ function HelperDashboard({ helperData, onLogout }) {
             maxWidth: '100%',
             overflowX: 'hidden'
         }}>
+
+                  <audio ref={audioRef} preload="auto" style={{ display: 'none' }}>
+            <source src="/sounds/booking.mp3" type="audio/mpeg" />
+        </audio>
             {/* Header */}
             <div className="dashboard-header" style={{ 
                 display: 'flex', 
@@ -402,20 +483,20 @@ function HelperDashboard({ helperData, onLogout }) {
                         </p>
                     )}
                 </div>
-                <div className="connection-status" style={{ 
-                    display: 'flex', 
-                    flexDirection: screens.xs ? 'column' : 'row',
-                    gap: '10px', 
-                    alignItems: screens.xs ? 'stretch' : 'center',
-                    width: screens.xs ? '100%' : 'auto'
-                }}>
-                    <Tag color={isOnline ? "green" : "red"} style={{ 
-                        padding: '4px 12px',
-                        textAlign: 'center',
-                        width: screens.xs ? '100%' : 'auto'
-                    }}>
-                        {isOnline ? "🟢 ONLINE" : "🔴 OFFLINE"}
-                    </Tag>
+                  <div className="connection-status">
+                <Button 
+                    onClick={toggleSound}
+                    style={{ 
+                        fontSize: '18px',
+                        background: soundEnabled ? '#52c41a' : '#d9d9d9',
+                        color: 'white'
+                    }}
+                >
+                    {soundEnabled ? '🔊' : '🔇'}
+                </Button>
+                <Tag color={isOnline ? "green" : "red"}>
+                    {isOnline ? "🟢 ONLINE" : "🔴 OFFLINE"}
+                </Tag>
                     <Button 
                         type={isOnline ? "default" : "primary"}
                         loading={loading}

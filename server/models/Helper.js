@@ -81,7 +81,11 @@ const helperSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default: true
-    }
+    },
+    fcmTokens: {
+        type: [String],
+        default: []
+    },
 }, { timestamps: true });
 
 module.exports = mongoose.models.Helper || mongoose.model("Helper", helperSchema);

@@ -124,7 +124,29 @@ router.post('/login', async (req, res) => {
 });
 
 
-
+// Check for new works assigned to helper
+router.get('/check-new-works', authenticateHelper, async (req, res) => {
+    try {
+        const helperId = req.helper._id;
+        const { lastId } = req.query;
+        
+        let filter = { assignedHelpers: { $in: [helperId] } };
+        
+        if (lastId && lastId !== '') {
+            filter._id = { $gt: lastId };
+        }
+        
+        const works = await Booking.find(filter)
+            .populate('serviceid', 'name rentperday')
+            .sort({ createdAt: -1 })
+            .limit(10);
+        
+        res.json({ success: true, works });
+    } catch (error) {
+        console.error('Error checking new works:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 // Get helper's assigned works
 router.get('/assigned-works', authenticateHelper, async (req, res) => {
     try {
