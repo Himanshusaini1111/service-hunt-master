@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { 
-    Card, 
-    Button, 
-    Table, 
-    Tag, 
-    message, 
-    Modal, 
-    Form, 
+import {
+    Card,
+    Button,
+    Table,
+    Tag,
+    message,
+    Modal,
+    Form,
     Spin,
-    Input, 
+    Input,
     Select,
     Space,
     Descriptions,
@@ -20,7 +20,7 @@ import {
     Grid
 } from 'antd';
 import { requestNotificationPermission, onMessageListener } from '../firebase';
- 
+
 const { useBreakpoint } = Grid;
 const { Text } = Typography;
 const { Option } = Select;
@@ -31,20 +31,20 @@ export function HelperLogin() {
     const [helperData, setHelperData] = useState(null);
     const [loginCode, setLoginCode] = useState('');
 
-  const handleLogin = async () => {
+    const handleLogin = async () => {
         try {
             const response = await axios.post('/api/helper/login', { code: loginCode });
             if (response.data.success) {
                 setIsLoggedIn(true);
                 setHelperData(response.data.helper);
                 localStorage.setItem('helperToken', response.data.token);
-                
+
                 // ✅ Save FCM token for helper
                 const token = await requestNotificationPermission(
-                    response.data.helper._id, 
+                    response.data.helper._id,
                     'helper'
                 );
-                
+
                 message.success('Login successful!');
             }
         } catch (error) {
@@ -63,19 +63,19 @@ export function HelperLogin() {
 
     if (!isLoggedIn) {
         return (
-            <div className="helper-login-container" style={{ 
-                display: 'flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
+            <div className="helper-login-container" style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
                 minHeight: '100vh',
                 padding: '16px',
                 background: '#f0f2f5'
             }}>
-                <Card 
-                    title="Helper Login" 
+                <Card
+                    title="Helper Login"
                     className="login-card"
-                    style={{ 
-                        width: '100%', 
+                    style={{
+                        width: '100%',
                         maxWidth: '400px',
                         boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                     }}
@@ -114,65 +114,73 @@ function HelperDashboard({ helperData, onLogout }) {
 
     // ✅ Audio ref for sound
     const audioRef = useRef(null);
-
     useEffect(() => {
         if (helperData) {
+            // Reset lastWorkId when dashboard loads to prevent stale comparisons
+            const savedLastId = localStorage.getItem('lastWorkId');
+            setLastWorkId(savedLastId || '');
+
             fetchAssignedWorks();
             checkConnectionStatus();
-            
-            // ✅ Listen for foreground notifications
+
+            // Listen for foreground notifications
             onMessageListener().then(payload => {
                 console.log('📢 New work notification:', payload);
-                // Refresh works
                 fetchAssignedWorks();
             });
-            
-            // ✅ Start polling for new works
-            const interval = setInterval(checkNewWorks, 10000);
+
+            // Start polling for new works
+            const interval = setInterval(checkNewWorks, 15000); // Increased to 15 seconds
             return () => clearInterval(interval);
         }
     }, [helperData]);
 
     // ✅ Function to check for new assigned works
+    // ✅ Function to check for new assigned works
     const checkNewWorks = async () => {
         try {
             const token = localStorage.getItem('helperToken');
+            if (!token) return;
+
             const response = await axios.get('/api/helper/check-new-works', {
                 headers: { Authorization: `Bearer ${token}` },
-                params: { lastId: lastWorkId }
+                params: { lastId: lastWorkId || '' }
             });
-            
-            const newWorks = response.data.works;
-            
-            if (newWorks && newWorks.length > 0) {
 
-                            const count = newWorks.length;  // ✅ Define count here
+            const newWorks = response.data.works || [];
 
-                // ✅ Play sound
-                if (soundEnabled && audioRef.current) {
-                    audioRef.current.currentTime = 0;
-                    audioRef.current.play().catch(e => console.log('Sound play failed:', e));
-                }
-                
-                // ✅ Show browser notification
-                if (Notification.permission === 'granted') {
-                    const count = newWorks.length;
-                    new Notification(`📢 New Work Assigned!`, {
-                        body: `${count} new work${count > 1 ? 's have' : ' has'} been assigned to you`,
-                        icon: '/icon-192.png',
-                        vibrate: [200, 100, 200]
-                    });
-                }
-                
-                // ✅ Update last work ID
+            if (newWorks.length > 0) {
+                // Get the latest work ID from the response
                 const latestId = newWorks[0]._id;
-                setLastWorkId(latestId);
-                localStorage.setItem('lastWorkId', latestId);
-                
-                // ✅ Refresh works list
-                fetchAssignedWorks();
-                
-                message.info(`${count} new work${count > 1 ? 's' : ''} assigned to you!`);
+
+                // Check if this is actually a NEW work (not already seen)
+                if (latestId !== lastWorkId) {
+                    const count = newWorks.length;
+
+                    // ✅ Play sound only for NEW works
+                    if (soundEnabled && audioRef.current) {
+                        audioRef.current.currentTime = 0;
+                        audioRef.current.play().catch(e => console.log('Sound play failed:', e));
+                    }
+
+                    // ✅ Show browser notification
+                    if (Notification.permission === 'granted') {
+                        new Notification(`📢 New Work Assigned!`, {
+                            body: `${count} new work${count > 1 ? 's have' : ' has'} been assigned to you`,
+                            icon: '/icon-192.png',
+                            vibrate: [200, 100, 200]
+                        });
+                    }
+
+                    // ✅ Update last work ID
+                    setLastWorkId(latestId);
+                    localStorage.setItem('lastWorkId', latestId);
+
+                    // ✅ Refresh works list
+                    fetchAssignedWorks();
+
+                    message.info(`${count} new work${count > 1 ? 's' : ''} assigned to you!`);
+                }
             }
         } catch (error) {
             console.log('Error checking new works:', error);
@@ -192,13 +200,13 @@ function HelperDashboard({ helperData, onLogout }) {
         try {
             const token = localStorage.getItem('helperToken');
             console.log('Fetching assigned works with token:', token);
-            
+
             const response = await axios.get('/api/helper/assigned-works', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            
+
             console.log('Assigned works response:', response.data);
-            
+
             if (response.data.success) {
                 setAssignedWorks(response.data.works || []);
             } else {
@@ -226,7 +234,7 @@ function HelperDashboard({ helperData, onLogout }) {
     const toggleConnection = async () => {
         setLoading(true);
         try {
-            const response = await axios.post('/api/helper/toggle-connection', 
+            const response = await axios.post('/api/helper/toggle-connection',
                 { isConnected: !isOnline },
                 { headers: { Authorization: `Bearer ${localStorage.getItem('helperToken')}` } }
             );
@@ -241,7 +249,7 @@ function HelperDashboard({ helperData, onLogout }) {
 
     const updateWorkStatus = async (workId, newStatus) => {
         try {
-            await axios.put(`/api/helper/update-status`, 
+            await axios.put(`/api/helper/update-status`,
                 { bookingId: workId, status: newStatus },
                 { headers: { Authorization: `Bearer ${localStorage.getItem('helperToken')}` } }
             );
@@ -258,7 +266,7 @@ function HelperDashboard({ helperData, onLogout }) {
             content: 'Are you sure you want to cancel this work?',
             onOk: async () => {
                 try {
-                    await axios.post('/api/helper/cancel-work', 
+                    await axios.post('/api/helper/cancel-work',
                         { workId },
                         { headers: { Authorization: `Bearer ${localStorage.getItem('helperToken')}` } }
                     );
@@ -322,7 +330,7 @@ function HelperDashboard({ helperData, onLogout }) {
 
     const formatTimeSlots = (work) => {
         if (!work.slots || work.slots.length === 0) return 'No specific time slots';
-        
+
         return work.slots.map(slot => {
             if (typeof slot === 'string') return slot;
             if (slot.date && slot.slot) return `${formatDateOnly(slot.date)}: ${slot.slot}`;
@@ -333,7 +341,7 @@ function HelperDashboard({ helperData, onLogout }) {
 
     const formatOptionalServices = (work) => {
         if (!work.optionalInputs || work.optionalInputs.length === 0) return null;
-        
+
         return work.optionalInputs.map((opt, i) => (
             <div key={i} style={{ marginBottom: '5px' }}>
                 <Tag color="purple">{opt.name}</Tag>
@@ -347,7 +355,7 @@ function HelperDashboard({ helperData, onLogout }) {
     const totalEarnings = assignedWorks
         .filter(w => w.status === 'completed')
         .reduce((sum, w) => sum + (w.price || 0), 0);
-    
+
     const completedJobs = assignedWorks.filter(w => w.status === 'completed').length;
     const pendingJobs = assignedWorks.filter(w => w.status === 'assigned' || w.status === 'in-progress').length;
 
@@ -420,8 +428,8 @@ function HelperDashboard({ helperData, onLogout }) {
                 key: 'action',
                 render: (_, record) => (
                     <Space direction={screens.xs ? "vertical" : "horizontal"} size={screens.xs ? 2 : 8}>
-                        <Button 
-                            size="small" 
+                        <Button
+                            size="small"
                             type="primary"
                             onClick={() => handleViewDetails(record)}
                             style={{ marginBottom: screens.xs ? '4px' : 0 }}
@@ -429,9 +437,9 @@ function HelperDashboard({ helperData, onLogout }) {
                             Details
                         </Button>
                         {record.status === 'assigned' && (
-                            <Button 
-                                size="small" 
-                                danger 
+                            <Button
+                                size="small"
+                                danger
                                 onClick={() => cancelWork(record._id)}
                             >
                                 Cancel
@@ -450,20 +458,20 @@ function HelperDashboard({ helperData, onLogout }) {
     };
 
     return (
-        <div className="helper-dashboard" style={{ 
+        <div className="helper-dashboard" style={{
             padding: screens.xs ? '12px' : '20px',
             maxWidth: '100%',
             overflowX: 'hidden'
         }}>
 
-                  <audio ref={audioRef} preload="auto" style={{ display: 'none' }}>
-            <source src="/sounds/booking.mp3" type="audio/mpeg" />
-        </audio>
+            <audio ref={audioRef} preload="auto" style={{ display: 'none' }}>
+                <source src="/sounds/booking.mp3" type="audio/mpeg" />
+            </audio>
             {/* Header */}
-            <div className="dashboard-header" style={{ 
-                display: 'flex', 
+            <div className="dashboard-header" style={{
+                display: 'flex',
                 flexDirection: screens.xs ? 'column' : 'row',
-                justifyContent: 'space-between', 
+                justifyContent: 'space-between',
                 alignItems: screens.xs ? 'stretch' : 'center',
                 marginBottom: '20px',
                 padding: screens.xs ? '16px' : '20px',
@@ -485,21 +493,21 @@ function HelperDashboard({ helperData, onLogout }) {
                         </p>
                     )}
                 </div>
-                  <div className="connection-status">
-                <Button 
-                    onClick={toggleSound}
-                    style={{ 
-                        fontSize: '18px',
-                        background: soundEnabled ? '#52c41a' : '#d9d9d9',
-                        color: 'white'
-                    }}
-                >
-                    {soundEnabled ? '🔊' : '🔇'}
-                </Button>
-                <Tag color={isOnline ? "green" : "red"}>
-                    {isOnline ? "🟢 ONLINE" : "🔴 OFFLINE"}
-                </Tag>
-                    <Button 
+                <div className="connection-status">
+                    <Button
+                        onClick={toggleSound}
+                        style={{
+                            fontSize: '18px',
+                            background: soundEnabled ? '#52c41a' : '#d9d9d9',
+                            color: 'white'
+                        }}
+                    >
+                        {soundEnabled ? '🔊' : '🔇'}
+                    </Button>
+                    <Tag color={isOnline ? "green" : "red"}>
+                        {isOnline ? "🟢 ONLINE" : "🔴 OFFLINE"}
+                    </Tag>
+                    <Button
                         type={isOnline ? "default" : "primary"}
                         loading={loading}
                         onClick={toggleConnection}
@@ -514,8 +522,8 @@ function HelperDashboard({ helperData, onLogout }) {
             </div>
 
             {/* Assigned Works */}
-            <Card 
-                title={`Assigned Works (${assignedWorks.length})`} 
+            <Card
+                title={`Assigned Works (${assignedWorks.length})`}
                 className="works-card"
                 style={{ marginBottom: '20px' }}
                 bodyStyle={{ padding: screens.xs ? '12px' : '24px' }}
@@ -529,7 +537,7 @@ function HelperDashboard({ helperData, onLogout }) {
                     <Table
                         dataSource={assignedWorks}
                         rowKey="_id"
-                        pagination={{ 
+                        pagination={{
                             pageSize: 5,
                             size: screens.xs ? 'small' : 'default',
                             showSizeChanger: !screens.xs
@@ -560,9 +568,9 @@ function HelperDashboard({ helperData, onLogout }) {
             >
                 {selectedBooking && (
                     <div>
-                        <Descriptions 
-                            bordered 
-                            column={screens.xs ? 1 : 2} 
+                        <Descriptions
+                            bordered
+                            column={screens.xs ? 1 : 2}
                             size={screens.xs ? 'small' : 'default'}
                             layout={screens.xs ? 'vertical' : 'horizontal'}
                         >
@@ -579,7 +587,7 @@ function HelperDashboard({ helperData, onLogout }) {
                             <Descriptions.Item label="Address" span={screens.xs ? 1 : 2}>
                                 {formatAddress(selectedBooking)}
                             </Descriptions.Item>
-                            
+
                             {selectedBooking.selectedDates && selectedBooking.selectedDates.length > 0 && (
                                 <Descriptions.Item label="Selected Dates" span={screens.xs ? 1 : 2}>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
@@ -591,38 +599,38 @@ function HelperDashboard({ helperData, onLogout }) {
                                     </div>
                                 </Descriptions.Item>
                             )}
-                            
+
                             {selectedBooking.slots && selectedBooking.slots.length > 0 && (
                                 <Descriptions.Item label="Time Slots" span={screens.xs ? 1 : 2}>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                                         {selectedBooking.slots.map((slot, i) => (
                                             <Tag key={i} color="orange" style={{ margin: '2px' }}>
-                                                {typeof slot === 'string' ? slot : 
-                                                 slot.slot ? slot.slot : 
-                                                 slot.date ? formatDateOnly(slot.date) : 'Time slot'}
+                                                {typeof slot === 'string' ? slot :
+                                                    slot.slot ? slot.slot :
+                                                        slot.date ? formatDateOnly(slot.date) : 'Time slot'}
                                             </Tag>
                                         ))}
                                     </div>
                                 </Descriptions.Item>
                             )}
-                            
+
                             <Descriptions.Item label="Scheduled Date">
                                 {formatDate(selectedBooking.scheduledDate)}
                             </Descriptions.Item>
                             <Descriptions.Item label="Duration">
                                 {selectedBooking.duration}
                             </Descriptions.Item>
-                            
+
                             <Descriptions.Item label="Base Price" span={screens.xs ? 1 : 2}>
                                 ₹{(selectedBooking.price || 0).toFixed(2)}
                             </Descriptions.Item>
-                            
+
                             {selectedBooking.optionalInputs && selectedBooking.optionalInputs.length > 0 && (
                                 <Descriptions.Item label="Optional Services" span={screens.xs ? 1 : 2}>
                                     {formatOptionalServices(selectedBooking)}
                                 </Descriptions.Item>
                             )}
-                            
+
                             {selectedBooking.extraInputs && selectedBooking.extraInputs.length > 0 && (
                                 <Descriptions.Item label="Extra Services" span={screens.xs ? 1 : 2}>
                                     {selectedBooking.extraInputs.map((extra, i) => (
@@ -633,24 +641,24 @@ function HelperDashboard({ helperData, onLogout }) {
                                     ))}
                                 </Descriptions.Item>
                             )}
-                            
+
                             <Descriptions.Item label="Total Amount" span={screens.xs ? 1 : 2}>
                                 <Text strong style={{ fontSize: screens.xs ? '16px' : '18px', color: '#52c41a' }}>
                                     ₹{(selectedBooking.price || 0).toFixed(2)}
                                 </Text>
                             </Descriptions.Item>
-                            
+
                             {selectedBooking.specialInstructions && (
                                 <Descriptions.Item label="Special Instructions" span={screens.xs ? 1 : 2}>
                                     {selectedBooking.specialInstructions}
                                 </Descriptions.Item>
                             )}
-                            
+
                             <Descriptions.Item label="Current Status" span={screens.xs ? 1 : 2}>
                                 <Tag color={
-                                    selectedBooking.status === 'completed' ? 'green' : 
-                                    selectedBooking.status === 'cancelled' ? 'red' : 
-                                    selectedBooking.status === 'in-progress' ? 'orange' : 'blue'
+                                    selectedBooking.status === 'completed' ? 'green' :
+                                        selectedBooking.status === 'cancelled' ? 'red' :
+                                            selectedBooking.status === 'in-progress' ? 'orange' : 'blue'
                                 }>
                                     {selectedBooking.status?.toUpperCase()}
                                 </Tag>
@@ -661,31 +669,31 @@ function HelperDashboard({ helperData, onLogout }) {
             </Modal>
 
             {/* Earnings Summary */}
-            <Card 
+            <Card
                 title="Earnings Overview"
                 bodyStyle={{ padding: screens.xs ? '12px' : '24px' }}
             >
                 <Row gutter={[screens.xs ? 8 : 16, screens.xs ? 8 : 16]}>
                     <Col xs={24} sm={8}>
-                        <Statistic 
-                            title="Total Earnings" 
-                            value={totalEarnings} 
-                            precision={2} 
+                        <Statistic
+                            title="Total Earnings"
+                            value={totalEarnings}
+                            precision={2}
                             prefix="₹"
                             valueStyle={{ color: '#3f8600', fontSize: screens.xs ? '20px' : '24px' }}
                         />
                     </Col>
                     <Col xs={24} sm={8}>
-                        <Statistic 
-                            title="Completed Jobs" 
-                            value={completedJobs} 
+                        <Statistic
+                            title="Completed Jobs"
+                            value={completedJobs}
                             valueStyle={{ color: '#1890ff', fontSize: screens.xs ? '20px' : '24px' }}
                         />
                     </Col>
                     <Col xs={24} sm={8}>
-                        <Statistic 
-                            title="Pending Jobs" 
-                            value={pendingJobs} 
+                        <Statistic
+                            title="Pending Jobs"
+                            value={pendingJobs}
                             valueStyle={{ color: '#faad14', fontSize: screens.xs ? '20px' : '24px' }}
                         />
                     </Col>

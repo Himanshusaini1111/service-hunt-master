@@ -130,9 +130,13 @@ router.get('/check-new-works', authenticateHelper, async (req, res) => {
         const helperId = req.helper._id;
         const { lastId } = req.query;
         
-        let filter = { assignedHelpers: { $in: [helperId] } };
+        let filter = { 
+            assignedHelpers: { $in: [helperId] },
+            status: 'assigned'  // Only show newly assigned works
+        };
         
-        if (lastId && lastId !== '') {
+        // Only get works newer than lastId
+        if (lastId && lastId !== 'null' && lastId !== 'undefined' && lastId !== '') {
             filter._id = { $gt: lastId };
         }
         
@@ -140,6 +144,8 @@ router.get('/check-new-works', authenticateHelper, async (req, res) => {
             .populate('serviceid', 'name rentperday')
             .sort({ createdAt: -1 })
             .limit(10);
+        
+        console.log(`Found ${works.length} new works for helper ${helperId}, lastId: ${lastId}`);
         
         res.json({ success: true, works });
     } catch (error) {
