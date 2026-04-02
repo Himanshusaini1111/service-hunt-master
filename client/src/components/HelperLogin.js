@@ -114,12 +114,16 @@ function HelperDashboard({ helperData, onLogout }) {
     const [soundEnabled, setSoundEnabled] = useState(localStorage.getItem('helperSoundEnabled') !== 'false');
     const [isPlayingSound, setIsPlayingSound] = useState(false);
     const [newBookingAlert, setNewBookingAlert] = useState(null);
-    const [soundStoppedForCurrentAlert, setSoundStoppedForCurrentAlert] = useState(false); // NEW FLAG
-    
+    const [mutedBookings, setMutedBookings] = useState(
+        JSON.parse(localStorage.getItem('mutedBookings')) || []
+    );
     // Audio ref for sound
     const audioRef = useRef(null);
     const soundTimeoutRef = useRef(null);
 
+    useEffect(() => {
+    localStorage.removeItem('mutedBookings');
+}, []);
     useEffect(() => {
         if (helperData) {
             // Reset lastWorkId when dashboard loads to prevent stale comparisons
@@ -141,47 +145,39 @@ function HelperDashboard({ helperData, onLogout }) {
         }
     }, [helperData]);
 
-    // Function to stop sound
     const stopSound = () => {
         if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current.currentTime = 0;
         }
+
         if (soundTimeoutRef.current) {
             clearTimeout(soundTimeoutRef.current);
             soundTimeoutRef.current = null;
         }
-        setIsPlayingSound(false);
-        
-        // Set flag to prevent further sounds for this alert
-        setSoundStoppedForCurrentAlert(true);
-        
-        // Don't clear the alert immediately, just mark sound as stopped
-        // This keeps the banner visible but silent
-    };
 
-    // Function to dismiss/clear the new booking alert completely
-    const dismissAlert = () => {
+        // ✅ Save booking ID as muted
+        if (newBookingAlert?.works?.length > 0) {
+            const bookingId = newBookingAlert.works[0]._id;
+
+            let updatedMuted = [...mutedBookings, bookingId];
+
+            // Optional: limit size (avoid memory issue)
+            if (updatedMuted.length > 50) {
+                updatedMuted.shift();
+            }
+
+            setMutedBookings(updatedMuted);
+            localStorage.setItem('mutedBookings', JSON.stringify(updatedMuted));
+        }
+
+        setIsPlayingSound(false);
         setNewBookingAlert(null);
-        setSoundStoppedForCurrentAlert(false);
-        setIsPlayingSound(false);
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
-        }
-        if (soundTimeoutRef.current) {
-            clearTimeout(soundTimeoutRef.current);
-            soundTimeoutRef.current = null;
-        }
     };
-
     // Function to play notification sound with loop option
     const playNotificationSound = (shouldLoop = true) => {
-        // Don't play sound if:
-        // 1. Sound is disabled by user
-        // 2. Sound has been stopped for current alert
-        if (!soundEnabled || !audioRef.current || soundStoppedForCurrentAlert) return;
-        
+        if (!soundEnabled || !audioRef.current) return;
+
         try {
             audioRef.current.loop = shouldLoop;
             audioRef.current.currentTime = 0;
@@ -191,7 +187,7 @@ function HelperDashboard({ helperData, onLogout }) {
                 message.warning('Click "Allow" to enable sound notifications', 3);
             });
             setIsPlayingSound(true);
-            
+
             // Auto-stop sound after 30 seconds if not stopped manually
             if (soundTimeoutRef.current) {
                 clearTimeout(soundTimeoutRef.current);
@@ -224,26 +220,29 @@ function HelperDashboard({ helperData, onLogout }) {
                 // Get the latest work ID from the response
                 const latestId = newWorks[0]._id;
 
-                // Check if this is actually a NEW work (not already seen)
+                // ❌ If already muted → DO NOTHING
+                if (mutedBookings.includes(latestId)) {
+                    return;
+                }
+
+                // ✅ Only trigger if it's truly new
                 if (latestId !== lastWorkId) {
                     const count = newWorks.length;
+
                     const newBookingInfo = {
                         count: count,
                         works: newWorks,
                         timestamp: new Date()
                     };
-                    
+
                     setNewBookingAlert(newBookingInfo);
-                    
-                    // Reset the sound-stopped flag for this new alert
-                    setSoundStoppedForCurrentAlert(false);
-                    
-                    // ✅ Play sound for NEW works (looping until stopped)
+
+                    // ✅ Play sound
                     if (soundEnabled && audioRef.current) {
                         playNotificationSound(true);
                     }
 
-                    // ✅ Show browser notification
+                    // ✅ Browser notification
                     if (Notification.permission === 'granted') {
                         new Notification(`📢 New Work Assigned!`, {
                             body: `${count} new work${count > 1 ? 's have' : ' has'} been assigned to you`,
@@ -252,11 +251,10 @@ function HelperDashboard({ helperData, onLogout }) {
                         });
                     }
 
-                    // ✅ Update last work ID
+                    // ✅ Save latest ID
                     setLastWorkId(latestId);
                     localStorage.setItem('lastWorkId', latestId);
 
-                    // ✅ Refresh works list
                     fetchAssignedWorks();
 
                     message.info(`${count} new work${count > 1 ? 's' : ''} assigned to you!`);
@@ -272,17 +270,14 @@ function HelperDashboard({ helperData, onLogout }) {
         const newState = !soundEnabled;
         setSoundEnabled(newState);
         localStorage.setItem('helperSoundEnabled', newState);
-        
+
         if (!newState && isPlayingSound) {
             stopSound();
         }
-        
+
         message.info(`Sound notifications ${newState ? 'enabled' : 'disabled'}`);
     };
 
-    // Rest of your existing functions (fetchAssignedWorks, checkConnectionStatus, toggleConnection, updateWorkStatus, cancelWork, handleViewDetails, formatDate, etc.)
-    // ... (keep all your existing functions unchanged)
-    
     const fetchAssignedWorks = async () => {
         setLoading(true);
         try {
@@ -555,9 +550,9 @@ function HelperDashboard({ helperData, onLogout }) {
             <audio ref={audioRef} preload="auto" style={{ display: 'none' }}>
                 <source src="/sounds/booking.mp3" type="audio/mpeg" />
             </audio>
-            
+
             {/* New Booking Alert Banner */}
-            {newBookingAlert && (
+            {newBookingAlert && isPlayingSound && (
                 <div style={{
                     position: 'fixed',
                     top: screens.xs ? '10px' : '20px',
@@ -567,48 +562,37 @@ function HelperDashboard({ helperData, onLogout }) {
                     animation: 'slideDown 0.5s ease'
                 }}>
                     <Card style={{
-                        background: isPlayingSound ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#f0f0f0',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                         border: 'none',
                         boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
                         minWidth: screens.xs ? '280px' : '400px'
                     }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
                             <div>
-                                <div style={{ color: isPlayingSound ? 'white' : '#333', fontSize: '20px', marginBottom: '8px' }}>
+                                <div style={{ color: 'white', fontSize: '20px', marginBottom: '8px' }}>
                                     🔔 <strong>New Booking Alert!</strong>
                                 </div>
-                                <div style={{ color: isPlayingSound ? 'white' : '#666', fontSize: '14px' }}>
+                                <div style={{ color: 'white', fontSize: '14px' }}>
                                     {newBookingAlert.count} new work{newBookingAlert.count > 1 ? 's have' : ' has'} been assigned
                                 </div>
                                 {newBookingAlert.works.length > 0 && (
-                                    <div style={{ color: isPlayingSound ? 'rgba(255,255,255,0.9)' : '#888', fontSize: '12px', marginTop: '5px' }}>
+                                    <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '12px', marginTop: '5px' }}>
                                         {newBookingAlert.works[0].serviceType}
                                     </div>
                                 )}
                             </div>
-                            <Space direction="vertical" size={8}>
-                                {isPlayingSound && (
-                                    <Button 
-                                        danger
-                                        size={screens.xs ? "small" : "middle"}
-                                        onClick={stopSound}
-                                        icon={<span>🔇</span>}
-                                        style={{ 
-                                            fontWeight: 'bold',
-                                            animation: 'pulse 1s infinite'
-                                        }}
-                                    >
-                                        Stop Sound
-                                    </Button>
-                                )}
-                                <Button 
-                                    size={screens.xs ? "small" : "middle"}
-                                    onClick={dismissAlert}
-                                    icon={<span>✖️</span>}
-                                >
-                                    Dismiss
-                                </Button>
-                            </Space>
+                            <Button
+                                danger
+                                size={screens.xs ? "small" : "middle"}
+                                onClick={stopSound}
+                                icon={<span>🔇</span>}
+                                style={{
+                                    fontWeight: 'bold',
+                                    animation: 'pulse 1s infinite'
+                                }}
+                            >
+                                Stop Sound
+                            </Button>
                         </div>
                     </Card>
                 </div>
@@ -680,6 +664,16 @@ function HelperDashboard({ helperData, onLogout }) {
                     >
                         {soundEnabled ? '🔊' : '🔇'}
                     </Button>
+                    {isPlayingSound && (
+                        <Button
+                            danger
+                            onClick={stopSound}
+                            icon={<span>⏹️</span>}
+                            style={{ fontWeight: 'bold' }}
+                        >
+                            Stop Sound
+                        </Button>
+                    )}
                     <Tag color={isOnline ? "green" : "red"}>
                         {isOnline ? "🟢 ONLINE" : "🔴 OFFLINE"}
                     </Tag>
@@ -878,4 +872,5 @@ function HelperDashboard({ helperData, onLogout }) {
         </div>
     );
 }
+
 export default HelperDashboard;
