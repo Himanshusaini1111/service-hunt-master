@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Tabs, message, Row, Col, Card, Statistic, Table, Button } from "antd";
+import React, { useState, useEffect, useRef } from "react";
+import { Tabs, message, Row, Col, Card, Statistic, Table, Button, Tag } from "antd";
 import axios from "axios";
 import Error from "../components/Error";
 import Loader from "../components/Loader";
@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom';
 import { requestNotificationPermission, onMessageListener } from '../firebase';
 
 const { TabPane } = Tabs;
+
 function Adminscreen() {
     const user = JSON.parse(localStorage.getItem("currentUser"));
     const isSuperAdmin = user?.email === 'himanshufa875@gmail.com' && (user?.role === 'superadmin' || user?.isAdmin);
@@ -29,28 +30,25 @@ function Adminscreen() {
         recentBookings: []
     });
     const [dashboardLoading, setDashboardLoading] = useState(true);
-
-    // Add this useEffect at the top of Adminscreen component
-useEffect(() => {
-    // Register service worker on component mount
-    const registerServiceWorker = async () => {
-        if ('serviceWorker' in navigator) {
-            try {
-                const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-                console.log('Service Worker registered successfully:', registration);
-                
-                // Check for existing service worker
-                if (registration.active) {
-                    console.log('Service Worker is active');
-                }
-            } catch (error) {
-                console.error('Service Worker registration failed:', error);
-            }
-        }
-    };
     
-    registerServiceWorker();
-}, []);
+    // ✅ ADD THESE STATES (same as helper panel)
+    const [lastBookingId, setLastBookingId] = useState(localStorage.getItem('adminLastBookingId') || '');
+    const [soundEnabled, setSoundEnabled] = useState(localStorage.getItem('adminSoundEnabled') !== 'false');
+    const [isPlayingSound, setIsPlayingSound] = useState(false);
+    const [newBookingAlert, setNewBookingAlert] = useState(null);
+    const [mutedBookings, setMutedBookings] = useState(
+        JSON.parse(localStorage.getItem('adminMutedBookings')) || []
+    );
+    const [refreshKey, setRefreshKey] = useState(0);
+    
+    // Audio ref for sound
+    const audioRef = useRef(null);
+
+    // Clear muted bookings on load (optional)
+    useEffect(() => {
+        localStorage.removeItem('adminMutedBookings');
+    }, []);
+
     // Fetch dashboard data (filtered by userid)
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -67,46 +65,160 @@ useEffect(() => {
         fetchDashboardData();
     }, [user._id]);
 
+    // ✅ STOP SOUND FUNCTION (same as helper panel)
+    const stopSound = () => {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+        
+        // Save booking ID as muted
+        if (newBookingAlert?.bookings?.length > 0) {
+            const bookingId = newBookingAlert.bookings[0]._id;
+            let updatedMuted = [...mutedBookings, bookingId];
+            if (updatedMuted.length > 50) updatedMuted.shift();
+            setMutedBookings(updatedMuted);
+            localStorage.setItem('adminMutedBookings', JSON.stringify(updatedMuted));
+        }
+        
+        setIsPlayingSound(false);
+        setNewBookingAlert(null);
+    };
 
+    // ✅ PLAY NOTIFICATION SOUND (same as helper panel)
+    const playNotificationSound = (shouldLoop = true) => {
+        if (!soundEnabled || !audioRef.current) return;
+        
+        try {
+            audioRef.current.loop = shouldLoop;
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(e => {
+                console.log('Sound play failed:', e);
+                message.warning('Click "Allow" to enable sound notifications', 3);
+            });
+            setIsPlayingSound(true);
+            
+            // Auto-stop sound after 30 seconds
+            setTimeout(() => {
+                if (isPlayingSound) {
+                    stopSound();
+                    message.info('Sound stopped automatically after 30 seconds', 2);
+                }
+            }, 30000);
+        } catch (error) {
+            console.log('Error playing sound:', error);
+        }
+    };
 
-// Add inside Adminscreen component, after user is loaded
-// Update the notification useEffect in Adminscreen
-useEffect(() => {
-    const setupNotifications = async () => {
+    // ✅ CHECK FOR NEW BOOKINGS (POLLING - same as helper panel)
+    const checkNewBookings = async () => {
+        try {
+            const response = await axios.get(`/api/bookings/check-new`, {
+                params: { 
+                    userid: user._id, 
+                    lastId: lastBookingId || '' 
+                }
+            });
+            
+            const newBookings = response.data || [];
+            
+            if (newBookings.length > 0) {
+                // Get the latest booking ID
+                const latestId = newBookings[0]._id;
+                
+                // If already muted → DO NOTHING
+                if (mutedBookings.includes(latestId)) {
+                    return;
+                }
+                
+                // Only trigger if it's truly new
+                if (latestId !== lastBookingId) {
+                    const count = newBookings.length;
+                    
+                    const newBookingInfo = {
+                        count: count,
+                        bookings: newBookings,
+                        timestamp: new Date()
+                    };
+                    
+                    setNewBookingAlert(newBookingInfo);
+                    
+                    // Play sound if enabled
+                    if (soundEnabled && audioRef.current) {
+                        playNotificationSound(true);
+                    }
+                    
+                    // Browser notification
+                    if (Notification.permission === 'granted') {
+                        new Notification(`📢 New Booking${count > 1 ? 's' : ''}!`, {
+                            body: `${count} new booking${count > 1 ? 's have' : ' has'} been received`,
+                            icon: '/icon-192.png',
+                            vibrate: [200, 100, 200]
+                        });
+                    }
+                    
+                    // Save latest ID
+                    setLastBookingId(latestId);
+                    localStorage.setItem('adminLastBookingId', latestId);
+                    
+                    // Refresh bookings
+                    setRefreshKey(prev => prev + 1);
+                    
+                    message.info(`${count} new booking${count > 1 ? 's' : ''} received!`);
+                }
+            }
+        } catch (error) {
+            console.log('Error checking new bookings:', error);
+        }
+    };
+
+    // ✅ TOGGLE SOUND FUNCTION
+    const toggleSound = () => {
+        const newState = !soundEnabled;
+        setSoundEnabled(newState);
+        localStorage.setItem('adminSoundEnabled', newState);
+        
+        if (!newState && isPlayingSound) {
+            stopSound();
+        }
+        
+        message.info(`Sound notifications ${newState ? 'enabled' : 'disabled'}`);
+    };
+
+    // Register for notifications and start polling
+    useEffect(() => {
         if (user?._id) {
             // Determine user type
             let userType = 'vendor';
             if (isSuperAdmin) userType = 'superadmin';
             else if (isAdmin) userType = 'admin';
             
-            // Wait for service worker
-            await navigator.serviceWorker.ready;
-            
             // Register for push notifications
-            const token = await requestNotificationPermission(user._id, userType);
-            if (token) {
-                console.log('✅ Notifications enabled with token:', token);
-            }
+            requestNotificationPermission(user._id, userType);
             
             // Listen for foreground notifications
             onMessageListener().then(payload => {
-                console.log('Foreground notification received:', payload);
-                // Refresh bookings if on Bookings tab
-                if (activeTab === '1') {
-                    window.dispatchEvent(new Event('bookingRefresh'));
-                }
+                console.log('Foreground notification:', payload);
+                // Immediately check for new bookings
+                checkNewBookings();
+                // Refresh bookings
+                setRefreshKey(prev => prev + 1);
             });
+            
+            // Start polling for new bookings (every 10 seconds)
+            const interval = setInterval(checkNewBookings, 10000);
+            
+            // Initial check
+            checkNewBookings();
+            
+            return () => clearInterval(interval);
         }
-    };
-    
-    setupNotifications();
-}, [user?._id, isSuperAdmin, isAdmin]);
-
+    }, [user?._id]);
 
     // Get display name based on role
     const getDashboardTitle = () => {
         if (isSuperAdmin) return "Super Admin Dashboard";
-        if (isAdmin) return "Vendor Dashboard";
+        if (isAdmin) return "Admin Dashboard";
         if (isVendor) return "Vendor Dashboard";
         return "Dashboard";
     };
@@ -117,13 +229,113 @@ useEffect(() => {
 
     return (
         <div className="admin-container">
-            <header className="admin-header">
-                <h1 className="admin-title">{getDashboardTitle()}</h1>
-                <div className="user-info">
-                    <span>Welcome, {user.name}</span>
-                    <span className="role-badge">{user.role || (user.isAdmin ? 'Admin' : 'Vendor')}</span>
+            {/* ✅ AUDIO ELEMENT FOR SOUND */}
+            <audio ref={audioRef} preload="auto" style={{ display: 'none' }}>
+                <source src="/sounds/booking.mp3" type="audio/mpeg" />
+            </audio>
+            
+            {/* ✅ NEW BOOKING ALERT BANNER */}
+            {newBookingAlert && isPlayingSound && (
+                <div style={{
+                    position: 'fixed',
+                    top: '20px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 1000,
+                    animation: 'slideDown 0.5s ease'
+                }}>
+                    <Card style={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        border: 'none',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                        minWidth: '400px'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                            <div>
+                                <div style={{ color: 'white', fontSize: '20px', marginBottom: '8px' }}>
+                                    🔔 <strong>New Booking Alert!</strong>
+                                </div>
+                                <div style={{ color: 'white', fontSize: '14px' }}>
+                                    {newBookingAlert.count} new booking{newBookingAlert.count > 1 ? 's have' : ' has'} been received
+                                </div>
+                                {newBookingAlert.bookings.length > 0 && (
+                                    <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '12px', marginTop: '5px' }}>
+                                        {newBookingAlert.bookings[0].service}
+                                    </div>
+                                )}
+                            </div>
+                            <Button
+                                danger
+                                size="middle"
+                                onClick={stopSound}
+                                icon={<span>🔇</span>}
+                                style={{ fontWeight: 'bold', animation: 'pulse 1s infinite' }}
+                            >
+                                Stop Sound
+                            </Button>
+                        </div>
+                    </Card>
                 </div>
-            </header>
+            )}
+            
+            {/* CSS for animations */}
+            <style jsx>{`
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateX(-50%) translateY(-100%);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(-50%) translateY(0);
+                    }
+                }
+                @keyframes pulse {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.05); }
+                    100% { transform: scale(1); }
+                }
+            `}</style>
+            
+           <header className="admin-header">
+    <div className="header-container">
+        <h1 className="admin-title">{getDashboardTitle()}</h1>
+        
+        <div className="user-info-section">
+            <div className="user-details">
+                <div className="welcome-text">
+                    <span className="greeting">Welcome,</span>
+                    <span className="user-name">{user.name}</span>
+                </div>
+                <span className={`role-badge ${user.role === 'superadmin' ? 'superadmin' : (user.role === 'admin' || user.isAdmin ? 'admin' : 'vendor')}`}>
+                    {user.role === 'superadmin' ? 'Super Admin' : (user.role || (user.isAdmin ? 'Admin' : 'Vendor'))}
+                </span>
+            </div>
+            
+            <div className="action-buttons">
+                <button
+                    onClick={toggleSound}
+                    className={`sound-toggle-btn ${soundEnabled ? 'sound-on' : 'sound-off'}`}
+                    title={soundEnabled ? "Sound On" : "Sound Off"}
+                >
+                    {soundEnabled ? '🔊' : '🔇'}
+                    <span className="btn-label">{soundEnabled ? 'Sound On' : 'Sound Off'}</span>
+                </button>
+                
+                {isPlayingSound && (
+                    <button
+                        onClick={stopSound}
+                        className="stop-sound-btn"
+                        title="Stop Sound"
+                    >
+                        ⏹️
+                        <span className="btn-label">Stop</span>
+                    </button>
+                )}
+            </div>
+        </div>
+    </div>
+</header>
             <div className="admin-content">
                 <Tabs activeKey={activeTab} onChange={setActiveTab} className="custom-tabs" tabBarGutter={20}>
                     <TabPane tab="Dashboard" key="0">
@@ -136,6 +348,7 @@ useEffect(() => {
                     </TabPane>
                     <TabPane tab="Bookings" key="1">
                         <Bookings
+                            key={refreshKey}
                             setActiveTab={setActiveTab}
                             setActiveBookingId={setActiveBookingId}
                             userId={user._id}

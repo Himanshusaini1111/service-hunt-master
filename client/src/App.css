@@ -1582,3 +1582,252 @@ td .btn-sm {
 .ant-badge-count {
     animation: pulse 1s ease-in-out 3;
 }
+
+
+
+    .admin-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1rem 2rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+    }
+
+    .header-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .admin-title {
+        color: white;
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        backdrop-filter: blur(10px);
+    }
+
+    .user-info-section {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+    }
+
+    .user-details {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background: rgba(255, 255, 255, 0.15);
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        backdrop-filter: blur(10px);
+    }
+
+    .welcome-text {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    .greeting {
+        font-size: 0.75rem;
+        color: rgba(255, 255, 255, 0.8);
+        line-height: 1.2;
+    }
+
+    .user-name {
+        font-size: 1rem;
+        font-weight: 600;
+        color: white;
+        line-height: 1.2;
+    }
+
+    .role-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .role-badge.superadmin {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+    }
+
+    .role-badge.admin {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+    }
+
+    .role-badge.vendor {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        color: #1a1a1a;
+    }
+
+    .action-buttons {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .sound-toggle-btn,
+    .stop-sound-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 50px;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 500;
+        background: white;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .sound-toggle-btn {
+        background: white;
+        color: #1a1a1a;
+    }
+
+    .sound-toggle-btn.sound-on {
+        background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+        color: white;
+    }
+
+    .sound-toggle-btn.sound-off {
+        background: linear-gradient(135deg, #8c8c8c 0%, #595959 100%);
+        color: white;
+    }
+
+    .stop-sound-btn {
+        background: linear-gradient(135deg, #ff4d4f 0%, #cf1322 100%);
+        color: white;
+    }
+
+    .sound-toggle-btn:hover,
+    .stop-sound-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .sound-toggle-btn:active,
+    .stop-sound-btn:active {
+        transform: translateY(0);
+    }
+
+    .btn-label {
+        font-size: 0.875rem;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+        .admin-header {
+            padding: 1rem;
+        }
+
+        .header-container {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .admin-title {
+            font-size: 1.25rem;
+            text-align: center;
+        }
+
+        .user-info-section {
+            justify-content: space-between;
+        }
+
+        .user-details {
+            flex: 1;
+            justify-content: space-between;
+        }
+
+        .welcome-text {
+            align-items: flex-start;
+        }
+
+        .greeting {
+            font-size: 0.7rem;
+        }
+
+        .user-name {
+            font-size: 0.9rem;
+        }
+
+        .role-badge {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.6rem;
+        }
+
+        .btn-label {
+            display: none;
+        }
+
+        .sound-toggle-btn,
+        .stop-sound-btn {
+            padding: 0.5rem;
+            width: 36px;
+            height: 36px;
+            justify-content: center;
+        }
+
+        .sound-toggle-btn {
+            font-size: 1.2rem;
+        }
+    }
+
+    /* Small Mobile */
+    @media (max-width: 480px) {
+        .admin-title {
+            font-size: 1rem;
+            padding: 0.4rem 0.8rem;
+        }
+
+        .user-details {
+            padding: 0.4rem 0.8rem;
+        }
+
+        .user-name {
+            font-size: 0.8rem;
+        }
+
+        .greeting {
+            font-size: 0.65rem;
+        }
+
+        .sound-toggle-btn,
+        .stop-sound-btn {
+            width: 32px;
+            height: 32px;
+        }
+    }
+
+    /* Tablet */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .admin-header {
+            padding: 1rem 1.5rem;
+        }
+
+        .admin-title {
+            font-size: 1.3rem;
+        }
+
+        .btn-label {
+            font-size: 0.8rem;
+        }
+    }

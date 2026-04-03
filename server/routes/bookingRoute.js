@@ -9,6 +9,8 @@ const Helper = require("../models/Helper");  // Import Helper model if needed
 const admin = require('../firebase-admin'); // Path to your firebase-admin.js
 
 
+// Function to send push notification to users
+// Function to send push notification to users
 async function sendPushNotification(userIds, bookingData) {
     try {
         // Get all FCM tokens for these users
@@ -25,31 +27,23 @@ async function sendPushNotification(userIds, bookingData) {
         
         console.log(`📤 Sending push to ${uniqueTokens.length} devices`);
         
-        // Prepare notification payload - FIXED FORMAT
-        const messages = uniqueTokens.map(token => ({
-            token: token,
+        // Prepare notification payload - CORRECT FORMAT
+        const payload = {
             notification: {
                 title: '📢 New Booking!',
                 body: `${bookingData.service} - ₹${bookingData.totalAmount || 0}`
+                // sound goes in webpush.notification, not here
             },
             webpush: {
-                headers: {
-                    Urgency: 'high'
-                },
                 notification: {
-                    title: '📢 New Booking!',
-                    body: `${bookingData.service} - ₹${bookingData.totalAmount || 0}`,
-                    icon: 'https://yourdomain.com/icon-192.png',
-                    badge: 'https://yourdomain.com/icon-192.png',
+                    icon: '/icon-192.png',
+                    badge: '/icon-192.png',
                     vibrate: [200, 100, 200],
-                    sound: 'https://yourdomain.com/sounds/booking.mp3', // Use full URL
-                    requireInteraction: true,
-                    silent: false,
-                    tag: 'new-booking',
-                    renotify: true
+                    sound: 'default',  // ✅ Sound is correct here
+                    requireInteraction: true
                 },
                 fcmOptions: {
-                    link: 'https://yourdomain.com/admin' // Use your actual domain
+                    link: '/admin'
                 }
             },
             data: {
@@ -57,30 +51,27 @@ async function sendPushNotification(userIds, bookingData) {
                 type: 'new_booking',
                 click_action: 'OPEN_ADMIN_PANEL'
             }
-        }));
+        };
         
-        // Send all messages
-        const results = await Promise.allSettled(
-            messages.map(message => admin.messaging().send(message))
+        // Send to all tokens
+        const promises = uniqueTokens.map(token => 
+            admin.messaging().send({
+                token: token,
+                ...payload
+            }).catch(err => {
+                console.log('❌ Failed to send to token:', err.message);
+                // If token is invalid, remove it
+                if (err.code === 'messaging/registration-token-not-registered') {
+                    User.updateMany(
+                        { fcmTokens: token },
+                        { $pull: { fcmTokens: token } }
+                    ).exec();
+                }
+            })
         );
         
-        const successful = results.filter(r => r.status === 'fulfilled').length;
-        const failed = results.filter(r => r.status === 'rejected').length;
-        
-        console.log(`✅ Push notifications: ${successful} successful, ${failed} failed`);
-        
-        // Clean up invalid tokens
-        for (let i = 0; i < results.length; i++) {
-            const result = results[i];
-            if (result.status === 'rejected' && 
-                result.reason?.code === 'messaging/registration-token-not-registered') {
-                await User.updateMany(
-                    { fcmTokens: uniqueTokens[i] },
-                    { $pull: { fcmTokens: uniqueTokens[i] } }
-                );
-                console.log(`Removed invalid token: ${uniqueTokens[i]}`);
-            }
-        }
+        await Promise.all(promises);
+        console.log(`✅ Push notifications sent successfully`);
         
     } catch (error) {
         console.error('❌ Error sending push notifications:', error);
@@ -870,13 +861,15 @@ router.get("/check-new", async (req, res) => {
         }
 
         // Add lastId filter if provided
-        if (lastId && lastId !== '') {
+        if (lastId && lastId !== '' && lastId !== 'null' && lastId !== 'undefined') {
             filter._id = { $gt: lastId };
         }
 
         const newBookings = await Booking.find(filter)
             .sort({ createdAt: -1 })
             .limit(10);
+
+        console.log(`Found ${newBookings.length} new bookings for user ${userid}, lastId: ${lastId}`);
 
         res.json(newBookings);
 
@@ -888,6 +881,5 @@ router.get("/check-new", async (req, res) => {
         });
     }
 });
-
 
 module.exports = router;
