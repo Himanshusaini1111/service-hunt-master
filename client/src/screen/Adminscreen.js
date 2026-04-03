@@ -234,70 +234,41 @@ function Adminscreen() {
                 <source src="/sounds/booking.mp3" type="audio/mpeg" />
             </audio>
             
-            {/* ✅ NEW BOOKING ALERT BANNER */}
-            {newBookingAlert && isPlayingSound && (
-                <div style={{
-                    position: 'fixed',
-                    top: '20px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    zIndex: 1000,
-                    animation: 'slideDown 0.5s ease'
-                }}>
-                    <Card style={{
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        border: 'none',
-                        boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-                        minWidth: '400px'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
-                            <div>
-                                <div style={{ color: 'white', fontSize: '20px', marginBottom: '8px' }}>
-                                    🔔 <strong>New Booking Alert!</strong>
-                                </div>
-                                <div style={{ color: 'white', fontSize: '14px' }}>
-                                    {newBookingAlert.count} new booking{newBookingAlert.count > 1 ? 's have' : ' has'} been received
-                                </div>
-                                {newBookingAlert.bookings.length > 0 && (
-                                    <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '12px', marginTop: '5px' }}>
-                                        {newBookingAlert.bookings[0].service}
-                                    </div>
-                                )}
-                            </div>
-                            <Button
-                                danger
-                                size="middle"
-                                onClick={stopSound}
-                                icon={<span>🔇</span>}
-                                style={{ fontWeight: 'bold', animation: 'pulse 1s infinite' }}
-                            >
-                                Stop Sound
-                            </Button>
+      {/* ✅ NEW BOOKING ALERT BANNER */}
+{newBookingAlert && isPlayingSound && (
+    <div className="booking-alert-container">
+        <Card className="booking-alert-card">
+            <div className="alert-content">
+                <div className="alert-info">
+                    <div className="alert-title">
+                        🔔 <strong>New Booking Alert!</strong>
+                    </div>
+                    <div className="alert-message">
+                        {newBookingAlert.count} new booking
+                        {newBookingAlert.count > 1 ? 's have' : ' has'} been received
+                    </div>
+                    {newBookingAlert.bookings.length > 0 && (
+                        <div className="alert-service">
+                            {newBookingAlert.bookings[0].service}
                         </div>
-                    </Card>
+                    )}
                 </div>
-            )}
-            
-            {/* CSS for animations */}
-            <style jsx>{`
-                @keyframes slideDown {
-                    from {
-                        opacity: 0;
-                        transform: translateX(-50%) translateY(-100%);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateX(-50%) translateY(0);
-                    }
-                }
-                @keyframes pulse {
-                    0% { transform: scale(1); }
-                    50% { transform: scale(1.05); }
-                    100% { transform: scale(1); }
-                }
-            `}</style>
-            
-           <header className="admin-header">
+                <Button
+                    danger
+                    size="middle"
+                    onClick={stopSound}
+                    icon={<span>🔇</span>}
+                    className="stop-sound-btn"
+                >
+                    Stop Sound
+                </Button>
+            </div>
+        </Card>
+    </div>
+)}
+
+{/* Admin Header */}
+<header className="admin-header">
     <div className="header-container">
         <h1 className="admin-title">{getDashboardTitle()}</h1>
         
