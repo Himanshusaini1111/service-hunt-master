@@ -119,108 +119,108 @@ function Bookingscreen() {
   // Calculate total amount - FIXED for your schema
   // Find the total amount calculation useEffect and update it:
   // Calculate total amount - FIXED for your schema
-// Calculate total amount - FIXED for your schema
-useEffect(() => {
-  if (!service) return;
+  // Calculate total amount - FIXED for your schema
+  useEffect(() => {
+    if (!service) return;
 
-  let baseTotal = 0;
-  const unit = service.unit || 'per day';
-  const currentBookingType = bookingType || service.bookingType || 'Automatic Booking';
+    let baseTotal = 0;
+    const unit = service.unit || 'per day';
+    const currentBookingType = bookingType || service.bookingType || 'Automatic Booking';
 
-  // For Inquari Booking, show base price as reference but don't calculate total
-  if (currentBookingType === 'Inquari Booking') {
-    baseTotal = 0;
-  } else {
-    // Calculate base price based on unit type
-    if (unit.includes('day') || unit.includes('week') || unit.includes('month')) {
-      baseTotal = service.rentperday * daysCount * quantity;
-    } else if (unit.includes('hour')) {
-      baseTotal = service.rentperday * (selectedSlots.length || 1) * quantity;
+    // For Inquari Booking, show base price as reference but don't calculate total
+    if (currentBookingType === 'Inquari Booking') {
+      baseTotal = 0;
     } else {
-      // Quantity-based units (per person, per item, etc.)
-      baseTotal = service.rentperday * quantity;
-    }
-  }
-
-  // Calculate countable optional inputs total
-  const countableOptionalsTotal = (service.optionalInputs || []).reduce((acc, input, i) => {
-    const inputPrice = input.price || 0;
-
-    if (input.isCountable) {
-      const count = optionalInputCounts[i] || 0;
-
-      // Calculate multiplier based on input's unit and main service unit
-      let multiplier = quantity; // Default multiplier
-
-      const inputUnit = input.unit || '';
-      const mainUnit = service.unit || 'per day';
-
-      // If input uses day-based unit and main service uses days
-      if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
-        (mainUnit.includes('day') || mainUnit === 'per-day')) {
-        multiplier = daysCount * quantity;
+      // Calculate base price based on unit type
+      if (unit.includes('day') || unit.includes('week') || unit.includes('month')) {
+        baseTotal = service.rentperday * daysCount * quantity;
+      } else if (unit.includes('hour')) {
+        baseTotal = service.rentperday * (selectedSlots.length || 1) * quantity;
+      } else {
+        // Quantity-based units (per person, per item, etc.)
+        baseTotal = service.rentperday * quantity;
       }
-      // If input uses hour-based unit and main service uses hours/slots
-      else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
-        (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
-        multiplier = (selectedSlots.length || 1) * quantity;
-      }
-
-      return acc + (count * inputPrice * multiplier);
     }
-    return acc;
-  }, 0);
 
-  // Calculate non-countable optional inputs total - FIXED: using addedOptionalInputs
-  const nonCountableOptionalsTotal = (service.optionalInputs || []).reduce((acc, input, i) => {
-    if (!input.isCountable && addedOptionalInputs[i]) {
+    // Calculate countable optional inputs total
+    const countableOptionalsTotal = (service.optionalInputs || []).reduce((acc, input, i) => {
       const inputPrice = input.price || 0;
-      
-      // Calculate multiplier for non-countable items too if they have day/hour dependencies
-      let multiplier = 1;
-      const inputUnit = input.unit || '';
-      const mainUnit = service.unit || 'per day';
 
-      if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
-        (mainUnit.includes('day') || mainUnit === 'per-day')) {
-        multiplier = daysCount * quantity;
-      } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
-        (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
-        multiplier = (selectedSlots.length || 1) * quantity;
+      if (input.isCountable) {
+        const count = optionalInputCounts[i] || 0;
+
+        // Calculate multiplier based on input's unit and main service unit
+        let multiplier = quantity; // Default multiplier
+
+        const inputUnit = input.unit || '';
+        const mainUnit = service.unit || 'per day';
+
+        // If input uses day-based unit and main service uses days
+        if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
+          (mainUnit.includes('day') || mainUnit === 'per-day')) {
+          multiplier = daysCount * quantity;
+        }
+        // If input uses hour-based unit and main service uses hours/slots
+        else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
+          (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
+          multiplier = (selectedSlots.length || 1) * quantity;
+        }
+
+        return acc + (count * inputPrice * multiplier);
       }
+      return acc;
+    }, 0);
 
-      return acc + (inputPrice * multiplier);
-    }
-    return acc;
-  }, 0);
+    // Calculate non-countable optional inputs total - FIXED: using addedOptionalInputs
+    const nonCountableOptionalsTotal = (service.optionalInputs || []).reduce((acc, input, i) => {
+      if (!input.isCountable && addedOptionalInputs[i]) {
+        const inputPrice = input.price || 0;
 
-  // Calculate extra inputs total
-  const extrasTotal = (service.extraInputs || []).reduce((acc, input, i) => {
-    if (addedExtraInputs[i]) {
-      const inputPrice = input.price || 0;
-      
-      // Calculate multiplier for extra inputs
-      let multiplier = 1;
-      const inputUnit = input.unit || '';
-      const mainUnit = service.unit || 'per day';
+        // Calculate multiplier for non-countable items too if they have day/hour dependencies
+        let multiplier = 1;
+        const inputUnit = input.unit || '';
+        const mainUnit = service.unit || 'per day';
 
-      if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
-        (mainUnit.includes('day') || mainUnit === 'per-day')) {
-        multiplier = daysCount * quantity;
-      } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
-        (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
-        multiplier = (selectedSlots.length || 1) * quantity;
+        if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
+          (mainUnit.includes('day') || mainUnit === 'per-day')) {
+          multiplier = daysCount * quantity;
+        } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
+          (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
+          multiplier = (selectedSlots.length || 1) * quantity;
+        }
+
+        return acc + (inputPrice * multiplier);
       }
+      return acc;
+    }, 0);
 
-      return acc + (inputPrice * multiplier);
-    }
-    return acc;
-  }, 0);
+    // Calculate extra inputs total
+    const extrasTotal = (service.extraInputs || []).reduce((acc, input, i) => {
+      if (addedExtraInputs[i]) {
+        const inputPrice = input.price || 0;
 
-  // Set final total including all components
-  setTotalAmount(baseTotal + countableOptionalsTotal + nonCountableOptionalsTotal + extrasTotal);
+        // Calculate multiplier for extra inputs
+        let multiplier = 1;
+        const inputUnit = input.unit || '';
+        const mainUnit = service.unit || 'per day';
 
-}, [quantity, daysCount, selectedSlots, optionalInputCounts, addedOptionalInputs, addedExtraInputs, service, bookingType]);
+        if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
+          (mainUnit.includes('day') || mainUnit === 'per-day')) {
+          multiplier = daysCount * quantity;
+        } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
+          (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
+          multiplier = (selectedSlots.length || 1) * quantity;
+        }
+
+        return acc + (inputPrice * multiplier);
+      }
+      return acc;
+    }, 0);
+
+    // Set final total including all components
+    setTotalAmount(baseTotal + countableOptionalsTotal + nonCountableOptionalsTotal + extrasTotal);
+
+  }, [quantity, daysCount, selectedSlots, optionalInputCounts, addedOptionalInputs, addedExtraInputs, service, bookingType]);
   // Handle optional input quantity change
 
 
@@ -271,182 +271,182 @@ useEffect(() => {
   const locationType = service?.locations?.[0] || "No";
 
   // Handle booking submission
-// In Bookingscreen.js - Update the handleBooking function
+  // In Bookingscreen.js - Update the handleBooking function
 
-// In Bookingscreen.js - Update the handleBooking function
+  // In Bookingscreen.js - Update the handleBooking function
 
-const handleBooking = async (e) => {
-  e.preventDefault();
+  const handleBooking = async (e) => {
+    e.preventDefault();
 
-  const unit = service?.unit || 'per day';
+    const unit = service?.unit || 'per day';
 
-  const user = JSON.parse(localStorage.getItem('currentUser'));
-  if (!user || !user._id) {
-    Swal.fire('Error', 'You must be logged in to book a service.', 'error');
-    return;
-  }
-
-  // First step: Show form validation
-  if (!showBill) {
-    // Validate required fields
-    if (!name || !phone || !description) {
-      Swal.fire('Error', 'Please fill all required fields', 'error');
+    const user = JSON.parse(localStorage.getItem('currentUser'));
+    if (!user || !user._id) {
+      Swal.fire('Error', 'You must be logged in to book a service.', 'error');
       return;
     }
 
-    // Only validate dates for non-inquiry bookings
-    if (bookingType !== 'Inquari Booking') {
-      if ((unit.includes('day') || unit.includes('week') || unit.includes('month')) && selectedDates.length === 0) {
-        Swal.fire('Error', 'Please select at least one date', 'error');
+    // First step: Show form validation
+    if (!showBill) {
+      // Validate required fields
+      if (!name || !phone || !description) {
+        Swal.fire('Error', 'Please fill all required fields', 'error');
         return;
       }
 
-      // For hourly services, validate time slots
-      if (unit.includes('hour') && selectedSlots.length === 0) {
-        Swal.fire('Error', 'Please select at least one time slot', 'error');
-        return;
+      // Only validate dates for non-inquiry bookings
+      if (bookingType !== 'Inquari Booking') {
+        if ((unit.includes('day') || unit.includes('week') || unit.includes('month')) && selectedDates.length === 0) {
+          Swal.fire('Error', 'Please select at least one date', 'error');
+          return;
+        }
+
+        // For hourly services, validate time slots
+        if (unit.includes('hour') && selectedSlots.length === 0) {
+          Swal.fire('Error', 'Please select at least one time slot', 'error');
+          return;
+        }
+
+        // Location validation
+        if (locationType === 'Simple' && !address) {
+          Swal.fire('Error', 'Please provide the service address', 'error');
+          return;
+        }
+
+        if (locationType === 'Rental' && (!pickupAddress || !dropAddress)) {
+          Swal.fire('Error', 'Both pickup and drop addresses are required', 'error');
+          return;
+        }
       }
 
-      // Location validation
-      if (locationType === 'Simple' && !address) {
-        Swal.fire('Error', 'Please provide the service address', 'error');
-        return;
-      }
-
-      if (locationType === 'Rental' && (!pickupAddress || !dropAddress)) {
-        Swal.fire('Error', 'Both pickup and drop addresses are required', 'error');
-        return;
-      }
+      // Show bill
+      setShowBill(true);
+      return;
     }
 
-    // Show bill
-    setShowBill(true);
-    return;
-  }
+    // Second step: Confirm booking
+    try {
+      setLoading(true);
 
-  // Second step: Confirm booking
-  try {
-    setLoading(true);
+      // Prepare dates array - only if needed
+      const bookingDates = selectedDates.length > 0
+        ? selectedDates
+        : (fromDate ? [fromDate] : []);
 
-    // Prepare dates array - only if needed
-    const bookingDates = selectedDates.length > 0
-      ? selectedDates
-      : (fromDate ? [fromDate] : []);
-
-    // Format slots properly
-    const formattedSlots = selectedSlots.map(slot => {
-      if (typeof slot === 'object' && slot.date && slot.slot) {
-        return {
-          date: slot.date,
-          slot: slot.slot
-        };
-      } else if (typeof slot === 'string') {
-        return {
-          date: selectedDates[0] || fromDate,
-          slot: slot
-        };
-      }
-      return slot;
-    });
-
-    // Prepare booking details
-    const bookingDetails = {
-      serviceid,
-      totalAmount: bookingType === 'Inquari Booking' ? 0 : totalAmount, // Send 0 for inquiry
-      userid: user._id,
-      name,
-      phone,
-      description,
-      service: service.name,
-      locationType,
-      unit: service.unit,
-      customUnit: service.customUnit,
-      isCountable: service.isCountable,
-      quantity: quantity,
-      fromDate: bookingDates[0] || '',
-      toDate: bookingDates[bookingDates.length - 1] || '',
-      daysCount,
-      selectedDates: bookingDates,
-      slots: formattedSlots,
-      bookingType: service.bookingType || 'Automatic Booking',
-      
-      // Optional inputs (include non-countable selections too)
-      optionalInputs: (service.optionalInputs || [])
-        .map((input, index) => {
-          const isCountable = input.isCountable !== false;
-          const count = isCountable ? (optionalInputCounts[index] || 0) : (addedOptionalInputs[index] ? 1 : 0);
+      // Format slots properly
+      const formattedSlots = selectedSlots.map(slot => {
+        if (typeof slot === 'object' && slot.date && slot.slot) {
           return {
+            date: slot.date,
+            slot: slot.slot
+          };
+        } else if (typeof slot === 'string') {
+          return {
+            date: selectedDates[0] || fromDate,
+            slot: slot
+          };
+        }
+        return slot;
+      });
+
+      // Prepare booking details
+      const bookingDetails = {
+        serviceid,
+        totalAmount: bookingType === 'Inquari Booking' ? 0 : totalAmount, // Send 0 for inquiry
+        userid: user._id,
+        name,
+        phone,
+        description,
+        service: service.name,
+        locationType,
+        unit: service.unit,
+        customUnit: service.customUnit,
+        isCountable: service.isCountable,
+        quantity: quantity,
+        fromDate: bookingDates[0] || '',
+        toDate: bookingDates[bookingDates.length - 1] || '',
+        daysCount,
+        selectedDates: bookingDates,
+        slots: formattedSlots,
+        bookingType: service.bookingType || 'Automatic Booking',
+
+        // Optional inputs (include non-countable selections too)
+        optionalInputs: (service.optionalInputs || [])
+          .map((input, index) => {
+            const isCountable = input.isCountable !== false;
+            const count = isCountable ? (optionalInputCounts[index] || 0) : (addedOptionalInputs[index] ? 1 : 0);
+            return {
+              name: input.name,
+              price: input.price,
+              count,
+              unit: input.unit,
+              customUnit: input.customUnit,
+              isCountable
+            };
+          })
+          .filter(input => (input.count || 0) > 0),
+
+        // Extra inputs
+        extraInputs: (service.extraInputs || [])
+          .filter((_, index) => addedExtraInputs[index])
+          .map(input => ({
             name: input.name,
             price: input.price,
-            count,
             unit: input.unit,
-            customUnit: input.customUnit,
-            isCountable
-          };
+            customUnit: input.customUnit
+          })),
+
+        // Location data
+        ...(locationType === 'Simple' && { address }),
+        ...(locationType === 'Rental' && {
+          pickupAddress,
+          dropAddress,
+          returnTrip
+        }),
+
+        createdAt: new Date().toISOString(),
+        status: bookingType === 'Inquari Booking' ? 'inquiry' : 'pending'
+      };
+
+      console.log('Final booking details being sent:', bookingDetails);
+
+      const response = await axios.post('/api/bookings/bookservice', bookingDetails);
+
+      if (response.status === 201) {
+        Swal.fire({
+          title: bookingType === 'Inquari Booking' ? 'Inquiry Submitted!' : 'Success!',
+          text: bookingType === 'Inquari Booking'
+            ? 'Your inquiry has been submitted. Our team will contact you shortly.'
+            : 'Your service has been booked!',
+          icon: 'success',
         })
-        .filter(input => (input.count || 0) > 0),
-
-      // Extra inputs
-      extraInputs: (service.extraInputs || [])
-        .filter((_, index) => addedExtraInputs[index])
-        .map(input => ({
-          name: input.name,
-          price: input.price,
-          unit: input.unit,
-          customUnit: input.customUnit
-        })),
-
-      // Location data
-      ...(locationType === 'Simple' && { address }),
-      ...(locationType === 'Rental' && {
-        pickupAddress,
-        dropAddress,
-        returnTrip
-      }),
-
-      createdAt: new Date().toISOString(),
-      status: bookingType === 'Inquari Booking' ? 'inquiry' : 'pending'
-    };
-
-    console.log('Final booking details being sent:', bookingDetails);
-
-    const response = await axios.post('/api/bookings/bookservice', bookingDetails);
-
-    if (response.status === 201) {
-      Swal.fire({
-        title: bookingType === 'Inquari Booking' ? 'Inquiry Submitted!' : 'Success!',
-        text: bookingType === 'Inquari Booking' 
-          ? 'Your inquiry has been submitted. Our team will contact you shortly.' 
-          : 'Your service has been booked!',
-        icon: 'success',
-      })
-    }
-
-  } catch (error) {
-    console.error("Booking Error:", error);
-    let errorMessage = bookingType === 'Inquari Booking' 
-      ? 'Failed to submit inquiry.' 
-      : 'Failed to book the service.';
-
-    if (error.response) {
-      if (error.response.status === 400) {
-        errorMessage = error.response.data.message || 'Invalid booking data.';
-      } else if (error.response.status === 401) {
-        errorMessage = 'Please login again.';
-        localStorage.removeItem('currentUser');
-        navigate('/login');
-      } else if (error.response.status === 409) {
-        errorMessage = 'This time slot is already booked. Please choose different dates/times.';
       }
-    }
 
-    Swal.fire('Error', errorMessage, 'error');
-  } finally {
-    setLoading(false);
-    setShowBookingModal(false);
-    setShowBill(false);
-  }
-};
+    } catch (error) {
+      console.error("Booking Error:", error);
+      let errorMessage = bookingType === 'Inquari Booking'
+        ? 'Failed to submit inquiry.'
+        : 'Failed to book the service.';
+
+      if (error.response) {
+        if (error.response.status === 400) {
+          errorMessage = error.response.data.message || 'Invalid booking data.';
+        } else if (error.response.status === 401) {
+          errorMessage = 'Please login again.';
+          localStorage.removeItem('currentUser');
+          navigate('/login');
+        } else if (error.response.status === 409) {
+          errorMessage = 'This time slot is already booked. Please choose different dates/times.';
+        }
+      }
+
+      Swal.fire('Error', errorMessage, 'error');
+    } finally {
+      setLoading(false);
+      setShowBookingModal(false);
+      setShowBill(false);
+    }
+  };
   // Update the handleDateSelect function to support multiple dates:
   const handleDateSelect = (date) => {
     const dateStr = moment(date).format('YYYY-MM-DD');
@@ -719,7 +719,7 @@ const handleBooking = async (e) => {
         <div className="booking-controls">
 
           {/* Optional date selection */}
-          <div style={{ marginTop: "15px" }}>
+          <div style={{ marginTop: "15px", marginRight: "5px" }}>
             <p><b>Select Date for Service:</b></p>
             <div
               className="date-picker-trigger"
@@ -771,202 +771,202 @@ const handleBooking = async (e) => {
       <div style={{ marginTop: '10px', padding: '0 20px' }}>
         <div className="col-md-12 text-left">
 
-        {/* Service Header */}
-<div className="mb-3 bs">
-  {/* Image Carousel */}
-  <div className="image-carousel position-relative" style={{
-    height: "auto",
-    width: "100%",
-    overflow: "hidden",
-    borderRadius: "12px",
-    position: "relative",
-    backgroundColor: "#f5f5f5",
-    // Responsive aspect ratio
-    aspectRatio: window.innerWidth >= 1024 ? "21/9" : window.innerWidth >= 768 ? "16/9" : "4/3",
-    // Alternative using CSS clamp for better responsiveness
-    maxHeight: "70vh",
-    minHeight: "250px"
-  }}>
-    <img
-      src={service.imageurls[currentIndex]}
-      style={{
-        width: "100%",
-        height: "100%",
-        objectFit: "cover",
-        display: "block",
-        transition: "opacity 0.3s ease"
-      }}
-      alt={`Service ${currentIndex + 1}`}
-      loading="lazy"
-    />
+          {/* Service Header */}
+          <div className="mb-3 bs">
+            {/* Image Carousel */}
+            <div className="image-carousel position-relative" style={{
+              height: "auto",
+              width: "100%",
+              overflow: "hidden",
+              borderRadius: "12px",
+              position: "relative",
+              backgroundColor: "#f5f5f5",
+              // Responsive aspect ratio
+              aspectRatio: window.innerWidth >= 1024 ? "21/9" : window.innerWidth >= 768 ? "16/9" : "4/3",
+              // Alternative using CSS clamp for better responsiveness
+              maxHeight: "70vh",
+              minHeight: "250px"
+            }}>
+              <img
+                src={service.imageurls[currentIndex]}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                  transition: "opacity 0.3s ease"
+                }}
+                alt={`Service ${currentIndex + 1}`}
+                loading="lazy"
+              />
 
-    {/* Navigation Buttons - Fully Responsive */}
-    <button
-      className="carousel-control-prev"
-      onClick={handlePrevious}
-      style={{
-        position: "absolute",
-        top: "50%",
-        left: "20px",
-        transform: "translateY(-50%)",
-        background: "rgba(0, 0, 0, 0.7)",
-        color: "#fff",
-        border: "none",
-        borderRadius: "50%",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontWeight: "bold",
-        zIndex: 2,
-        backdropFilter: "blur(4px)",
-        transition: "all 0.3s ease",
-        // Responsive button size
-        width: "clamp(32px, 5vw, 48px)",
-        height: "clamp(32px, 5vw, 48px)",
-        fontSize: "clamp(20px, 4vw, 28px)",
-        // Hover effect for laptop
-        cursor: "pointer",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.2)"
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = "rgba(0, 0, 0, 0.9)";
-        e.currentTarget.style.transform = "translateY(-50%) scale(1.05)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
-        e.currentTarget.style.transform = "translateY(-50%) scale(1)";
-      }}
-      aria-label="Previous image"
-    >
-      ‹
-    </button>
+              {/* Navigation Buttons - Fully Responsive */}
+              <button
+                className="carousel-control-prev"
+                onClick={handlePrevious}
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  left: "20px",
+                  transform: "translateY(-50%)",
+                  background: "rgba(0, 0, 0, 0.7)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "50%",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: "bold",
+                  zIndex: 2,
+                  backdropFilter: "blur(4px)",
+                  transition: "all 0.3s ease",
+                  // Responsive button size
+                  width: "clamp(32px, 5vw, 48px)",
+                  height: "clamp(32px, 5vw, 48px)",
+                  fontSize: "clamp(20px, 4vw, 28px)",
+                  // Hover effect for laptop
+                  cursor: "pointer",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.2)"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(0, 0, 0, 0.9)";
+                  e.currentTarget.style.transform = "translateY(-50%) scale(1.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
+                  e.currentTarget.style.transform = "translateY(-50%) scale(1)";
+                }}
+                aria-label="Previous image"
+              >
+                ‹
+              </button>
 
-    <button
-      className="carousel-control-next"
-      onClick={handleNext}
-      style={{
-        position: "absolute",
-        top: "50%",
-        right: "20px",
-        transform: "translateY(-50%)",
-        background: "rgba(0, 0, 0, 0.7)",
-        color: "#fff",
-        border: "none",
-        borderRadius: "50%",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontWeight: "bold",
-        zIndex: 2,
-        backdropFilter: "blur(4px)",
-        transition: "all 0.3s ease",
-        // Responsive button size
-        width: "clamp(32px, 5vw, 48px)",
-        height: "clamp(32px, 5vw, 48px)",
-        fontSize: "clamp(20px, 4vw, 28px)",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.2)"
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = "rgba(0, 0, 0, 0.9)";
-        e.currentTarget.style.transform = "translateY(-50%) scale(1.05)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
-        e.currentTarget.style.transform = "translateY(-50%) scale(1)";
-      }}
-      aria-label="Next image"
-    >
-      ›
-    </button>
+              <button
+                className="carousel-control-next"
+                onClick={handleNext}
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  right: "20px",
+                  transform: "translateY(-50%)",
+                  background: "rgba(0, 0, 0, 0.7)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "50%",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: "bold",
+                  zIndex: 2,
+                  backdropFilter: "blur(4px)",
+                  transition: "all 0.3s ease",
+                  // Responsive button size
+                  width: "clamp(32px, 5vw, 48px)",
+                  height: "clamp(32px, 5vw, 48px)",
+                  fontSize: "clamp(20px, 4vw, 28px)",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.2)"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(0, 0, 0, 0.9)";
+                  e.currentTarget.style.transform = "translateY(-50%) scale(1.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(0, 0, 0, 0.7)";
+                  e.currentTarget.style.transform = "translateY(-50%) scale(1)";
+                }}
+                aria-label="Next image"
+              >
+                ›
+              </button>
 
-    {/* Image Counter - Responsive */}
-    {service.imageurls && service.imageurls.length > 1 && (
-      <div style={{
-        position: "absolute",
-        bottom: "clamp(10px, 2vh, 20px)",
-        right: "clamp(10px, 2vw, 20px)",
-        background: "rgba(0, 0, 0, 0.7)",
-        color: "#fff",
-        padding: "clamp(4px, 1.5vw, 8px) clamp(8px, 2vw, 12px)",
-        borderRadius: "20px",
-        fontSize: "clamp(11px, 2.5vw, 14px)",
-        fontWeight: "500",
-        backdropFilter: "blur(4px)",
-        zIndex: 2,
-        fontFamily: "monospace",
-        letterSpacing: "0.5px"
-      }}>
-        {currentIndex + 1} / {service.imageurls.length}
-      </div>
-    )}
+              {/* Image Counter - Responsive */}
+              {service.imageurls && service.imageurls.length > 1 && (
+                <div style={{
+                  position: "absolute",
+                  bottom: "clamp(10px, 2vh, 20px)",
+                  right: "clamp(10px, 2vw, 20px)",
+                  background: "rgba(0, 0, 0, 0.7)",
+                  color: "#fff",
+                  padding: "clamp(4px, 1.5vw, 8px) clamp(8px, 2vw, 12px)",
+                  borderRadius: "20px",
+                  fontSize: "clamp(11px, 2.5vw, 14px)",
+                  fontWeight: "500",
+                  backdropFilter: "blur(4px)",
+                  zIndex: 2,
+                  fontFamily: "monospace",
+                  letterSpacing: "0.5px"
+                }}>
+                  {currentIndex + 1} / {service.imageurls.length}
+                </div>
+              )}
 
-    {/* Optional: Dot Indicators for Mobile */}
-    {service.imageurls && service.imageurls.length > 1 && (
-      <div style={{
-        position: "absolute",
-        bottom: "clamp(10px, 2vh, 20px)",
-        left: "50%",
-        transform: "translateX(-50%)",
-        display: "flex",
-        gap: "clamp(6px, 1.5vw, 10px)",
-        zIndex: 2,
-        padding: "6px 12px",
-        borderRadius: "20px",
-        background: "rgba(0, 0, 0, 0.5)",
-        backdropFilter: "blur(4px)"
-      }}>
-        {service.imageurls.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => {
-              // Add function to jump to specific image
-              // You'll need to implement this
-            }}
-            style={{
-              width: idx === currentIndex ? "clamp(20px, 3vw, 24px)" : "clamp(8px, 2vw, 10px)",
-              height: "clamp(8px, 2vw, 10px)",
-              borderRadius: "50%",
-              background: idx === currentIndex ? "#fff" : "rgba(255, 255, 255, 0.6)",
-              border: "none",
-              cursor: "pointer",
-              transition: "all 0.3s ease",
-              padding: 0
-            }}
-            aria-label={`Go to image ${idx + 1}`}
-          />
-        ))}
-      </div>
-    )}
-  </div>
+              {/* Optional: Dot Indicators for Mobile */}
+              {service.imageurls && service.imageurls.length > 1 && (
+                <div style={{
+                  position: "absolute",
+                  bottom: "clamp(10px, 2vh, 20px)",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  display: "flex",
+                  gap: "clamp(6px, 1.5vw, 10px)",
+                  zIndex: 2,
+                  padding: "6px 12px",
+                  borderRadius: "20px",
+                  background: "rgba(0, 0, 0, 0.5)",
+                  backdropFilter: "blur(4px)"
+                }}>
+                  {service.imageurls.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        // Add function to jump to specific image
+                        // You'll need to implement this
+                      }}
+                      style={{
+                        width: idx === currentIndex ? "clamp(20px, 3vw, 24px)" : "clamp(8px, 2vw, 10px)",
+                        height: "clamp(8px, 2vw, 10px)",
+                        borderRadius: "50%",
+                        background: idx === currentIndex ? "#fff" : "rgba(255, 255, 255, 0.6)",
+                        border: "none",
+                        cursor: "pointer",
+                        transition: "all 0.3s ease",
+                        padding: 0
+                      }}
+                      aria-label={`Go to image ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
 
-  {/* Title and Company - Fully Responsive */}
-  <h1 style={{ 
-    textAlign: "left", 
-    width: "100%", 
-    marginTop: "clamp(16px, 3vh, 24px)",
-    // Responsive font sizes
-    fontSize: "clamp(20px, 4vw, 32px)",
-    padding: "0 clamp(12px, 3vw, 24px)",
-    fontWeight: "bold",
-    lineHeight: "1.3",
-    // Responsive margins
-    marginBottom: "clamp(8px, 1.5vh, 12px)"
-  }}>
-    <b>{service.name}</b>
-  </h1>
+            {/* Title and Company - Fully Responsive */}
+            <h1 style={{
+              textAlign: "left",
+              width: "100%",
+              marginTop: "clamp(16px, 3vh, 24px)",
+              // Responsive font sizes
+              fontSize: "clamp(20px, 4vw, 32px)",
+              padding: "0 clamp(12px, 3vw, 24px)",
+              fontWeight: "bold",
+              lineHeight: "1.3",
+              // Responsive margins
+              marginBottom: "clamp(8px, 1.5vh, 12px)"
+            }}>
+              <b>{service.name}</b>
+            </h1>
 
-  <p style={{ 
-    color: "#666", 
-    marginBottom: "clamp(16px, 3vh, 24px)",
-    fontSize: "clamp(14px, 2.5vw, 16px)",
-    padding: "0 clamp(12px, 3vw, 24px)",
-    lineHeight: "1.5"
-  }}>
-    {service.companyname || "N/A"}
-  </p>
-</div>
+            <p style={{
+              color: "#666",
+              marginBottom: "clamp(16px, 3vh, 24px)",
+              fontSize: "clamp(14px, 2.5vw, 16px)",
+              padding: "0 clamp(12px, 3vw, 24px)",
+              lineHeight: "1.5"
+            }}>
+              {service.companyname || "N/A"}
+            </p>
+          </div>
           {/* Booking Section */}
           <div className="col p-3  bs text-left" style={{
             backgroundColor: "white",
@@ -1122,161 +1122,164 @@ const handleBooking = async (e) => {
 
           <div style={{
             display: "flex",
-            flexWrap: "wrap",
+            flexWrap: "nowrap",   // ❌ remove wrap
             gap: "15px",
-            justifyContent: "flex-start" // Add this
+            marginTop: "15px",
+            overflowX: "auto" // Add this
           }}>          {/* Optional Inputs Section */}
-          {/* Optional Inputs Section - Only show if there are optional inputs */}
-{service.optionalInputs && service.optionalInputs.length > 0 && (
-  <div className="optional-inputs-section" style={{ marginTop: "30px" }}>
-    <h4>Optional Services</h4>
-    <div style={{
-      display: "flex",
-      flexWrap: "wrap",
-      gap: "15px",
-      marginTop: "15px"
-    }}>
-      {service.optionalInputs.map((input, index) => {
-        // Helper function to get display unit for optional input
-        const getOptionalDisplayUnit = (input) => {
-          if (input.customUnit) {
-            return input.customUnit;
-          }
-
-          const unit = input.unit || 'per item';
-
-          // Remove 'per-' prefix if present and format nicely
-          if (unit.startsWith('per-')) {
-            return unit.replace('per-', '').replace(/-/g, ' ');
-          }
-
-          return unit;
-        };
-
-        const inputName = input.name || `Option ${index + 1}`;
-        const inputPrice = input.price || 0;
-        const displayUnit = getOptionalDisplayUnit(input);
-        const inputImage = input.image || '';
-        const inputMaxCount = input.maxcount || 5;
-        const inputIsCountable = input.isCountable !== false;
-
-        return (
-          <div
-            key={index}
-            style={{
-              width: "180px",
-              background: "white",
-              borderRadius: "8px",
-              boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-              padding: "15px",
-              textAlign: "center"
-            }}
-          >
-            {inputImage && (
-              <img
-                src={inputImage}
-                alt={inputName}
-                style={{
-                  width: "100%",
-                  height: "120px",
-                  objectFit: "cover",
-                  borderRadius: "5px",
-                  marginBottom: "10px"
-                }}
-                onError={(e) => {
-                  e.target.style.display = 'none'; // Hide if image fails to load
-                }}
-              />
-            )}
-
-            <h5 style={{ fontSize: "1em", marginBottom: "5px" }}>
-              {inputName}
-            </h5>
-
-            <p style={{ color: "#007bff", fontWeight: "bold", marginBottom: "10px" }}>
-              ₹{inputPrice}
-              {displayUnit && (
-                <span> / {displayUnit}</span>
-              )}
-            </p>
-
-            {inputIsCountable ? (
-              <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
-                <button
-                  onClick={() => handleChange(index, false)}
-                  disabled={!optionalInputCounts[index]}
-                  style={{
-                    width: "30px",
-                    height: "30px",
-                    borderRadius: "5px",
-                    border: "1px solid #ddd",
-                    background: optionalInputCounts[index] ? "#f8f9fa" : "white",
-                    cursor: optionalInputCounts[index] ? "pointer" : "not-allowed",
-                    color: "black"
-                  }}
-                >
-                  -
-                </button>
-
-                <span style={{
-                  minWidth: "30px",
-                  textAlign: "center",
-                  lineHeight: "30px"
+            {/* Optional Inputs Section - Only show if there are optional inputs */}
+            {service.optionalInputs && service.optionalInputs.length > 0 && (
+              <div className="optional-inputs-section" style={{ marginTop: "30px" }}>
+                <h4>Optional Services</h4>
+                <div style={{
+                  display: "flex",
+                  flexWrap: "nowrap",   // ❌ remove wrap
+                  gap: "15px",
+                  marginTop: "15px",
+                  overflowX: "auto"     // ✅ enable horizontal scroll
                 }}>
-                  {optionalInputCounts[index] || 0}
-                </span>
+                  {service.optionalInputs.map((input, index) => {
+                    // Helper function to get display unit for optional input
+                    const getOptionalDisplayUnit = (input) => {
+                      if (input.customUnit) {
+                        return input.customUnit;
+                      }
 
-                <button
-                  onClick={() => handleChange(index, true)}
-                  disabled={optionalInputCounts[index] >= inputMaxCount}
-                  style={{
-                    width: "30px",
-                    height: "30px",
-                    borderRadius: "5px",
-                    border: "1px solid #ddd",
-                    background: "white",
-                    cursor: "pointer",
-                    color: "black"
-                  }}
-                >
-                  +
-                </button>
+                      const unit = input.unit || 'per item';
+
+                      // Remove 'per-' prefix if present and format nicely
+                      if (unit.startsWith('per-')) {
+                        return unit.replace('per-', '').replace(/-/g, ' ');
+                      }
+
+                      return unit;
+                    };
+
+                    const inputName = input.name || `Option ${index + 1}`;
+                    const inputPrice = input.price || 0;
+                    const displayUnit = getOptionalDisplayUnit(input);
+                    const inputImage = input.image || '';
+                    const inputMaxCount = input.maxcount || 5;
+                    const inputIsCountable = input.isCountable !== false;
+
+                    return (
+                      <div
+                        key={index}
+                        style={{
+                          width: "180px",
+                          background: "white",
+                          borderRadius: "8px",
+                          boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+                          padding: "15px",
+                          textAlign: "center"
+                        }}
+                      >
+                        {inputImage && (
+                          <img
+                            src={inputImage}
+                            alt={inputName}
+                            style={{
+                              width: "100%",
+                              height: "120px",
+                              objectFit: "cover",
+                              borderRadius: "5px",
+                              marginBottom: "10px"
+                            }}
+                            onError={(e) => {
+                              e.target.style.display = 'none'; // Hide if image fails to load
+                            }}
+                          />
+                        )}
+
+                        <h5 style={{ fontSize: "1em", marginBottom: "5px" }}>
+                          {inputName}
+                        </h5>
+
+                        <p style={{ color: "#007bff", fontWeight: "bold", marginBottom: "10px" }}>
+                          ₹{inputPrice}
+                          {displayUnit && (
+                            <span> / {displayUnit}</span>
+                          )}
+                        </p>
+
+                        {inputIsCountable ? (
+                          <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
+                            <button
+                              onClick={() => handleChange(index, false)}
+                              disabled={!optionalInputCounts[index]}
+                              style={{
+                                width: "30px",
+                                height: "30px",
+                                borderRadius: "5px",
+                                border: "1px solid #ddd",
+                                background: optionalInputCounts[index] ? "#f8f9fa" : "white",
+                                cursor: optionalInputCounts[index] ? "pointer" : "not-allowed",
+                                color: "black"
+                              }}
+                            >
+                              -
+                            </button>
+
+                            <span style={{
+                              minWidth: "30px",
+                              textAlign: "center",
+                              lineHeight: "30px"
+                            }}>
+                              {optionalInputCounts[index] || 0}
+                            </span>
+
+                            <button
+                              onClick={() => handleChange(index, true)}
+                              disabled={optionalInputCounts[index] >= inputMaxCount}
+                              style={{
+                                width: "30px",
+                                height: "30px",
+                                borderRadius: "5px",
+                                border: "1px solid #ddd",
+                                background: "white",
+                                cursor: "pointer",
+                                color: "black"
+                              }}
+                            >
+                              +
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              addedOptionalInputs[index]
+                                ? handleRemoveOptionalInput(index)
+                                : handleAddOptionalInput(index)
+                            }
+                            style={{
+                              width: "100%",
+                              padding: "8px",
+                              background: addedOptionalInputs[index] ? "#dc3545" : "#28a745",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "5px",
+                              cursor: "pointer"
+                            }}
+                          >
+                            {addedOptionalInputs[index] ? "Remove" : "Add"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            ) : (
-              <button
-                onClick={() =>
-                  addedOptionalInputs[index]
-                    ? handleRemoveOptionalInput(index)
-                    : handleAddOptionalInput(index)
-                }
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  background: addedOptionalInputs[index] ? "#dc3545" : "#28a745",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "5px",
-                  cursor: "pointer"
-                }}
-              >
-                {addedOptionalInputs[index] ? "Remove" : "Add"}
-              </button>
             )}
-          </div>
-        );
-      })}
-    </div>
-  </div>
-)}
 
             {/* Extra Inputs Section */}
             {service.extraInputs && service.extraInputs.length > 0 && (
               <div className="extra-inputs-section" style={{ marginTop: "30px" }}>
                 <div style={{
                   display: "flex",
-                  flexWrap: "wrap",
+                  flexWrap: "nowrap",   // ❌ remove wrap
                   gap: "15px",
-                  marginTop: "15px"
+                  marginTop: "15px",
+                  overflowX: "auto"
                 }}>
                   {service.extraInputs.map((input, index) => (
                     <div
@@ -1497,7 +1500,7 @@ const handleBooking = async (e) => {
 
                 {locationType === 'Simple' && (
                   <div style={{ marginBottom: "15px" }}>
-                                    <h4 style={{ marginBottom: "10px" }}>Location Details</h4>
+                    <h4 style={{ marginBottom: "10px" }}>Location Details</h4>
 
                     <label style={{ display: "block", marginBottom: "5px" }}>
                       Service Address *
@@ -1520,7 +1523,7 @@ const handleBooking = async (e) => {
                 {locationType === 'Rental' && (
                   <>
                     <div style={{ marginBottom: "15px" }}>
-                                      <h4 style={{ marginBottom: "10px" }}>Location Details</h4>
+                      <h4 style={{ marginBottom: "10px" }}>Location Details</h4>
 
                       <label style={{ display: "block", marginBottom: "5px" }}>
                         Pickup Address *
@@ -1671,136 +1674,136 @@ const handleBooking = async (e) => {
               {/* Show optional inputs if any - only show for non-inquiry bookings */}
               {/* In the bill summary modal, update the optional services display */}
               {/* Show optional inputs if any - only show for non-inquiry bookings */}
-           {bookingType !== 'Inquari Booking' && (
-  <div style={{ marginTop: '15px', padding: '10px', background: '#f5f5f5', borderRadius: '5px' }}>
-    <strong style={{ display: 'block', marginBottom: '8px' }}>Optional Services:</strong>
+              {bookingType !== 'Inquari Booking' && (
+                <div style={{ marginTop: '15px', padding: '10px', background: '#f5f5f5', borderRadius: '5px' }}>
+                  <strong style={{ display: 'block', marginBottom: '8px' }}>Optional Services:</strong>
 
-    {/* Countable optional inputs */}
-    {(service.optionalInputs || []).map((input, index) => {
-      const count = optionalInputCounts[index] || 0;
-      if (count > 0) {
-        // Get display unit for this optional input
-        const getDisplayUnit = (input) => {
-          if (input.customUnit) return input.customUnit;
-          const unit = input.unit || 'per item';
-          if (unit.startsWith('per-')) {
-            return unit.replace('per-', '').replace(/-/g, ' ');
-          }
-          return unit;
-        };
+                  {/* Countable optional inputs */}
+                  {(service.optionalInputs || []).map((input, index) => {
+                    const count = optionalInputCounts[index] || 0;
+                    if (count > 0) {
+                      // Get display unit for this optional input
+                      const getDisplayUnit = (input) => {
+                        if (input.customUnit) return input.customUnit;
+                        const unit = input.unit || 'per item';
+                        if (unit.startsWith('per-')) {
+                          return unit.replace('per-', '').replace(/-/g, ' ');
+                        }
+                        return unit;
+                      };
 
-        const displayUnit = getDisplayUnit(input);
-        
-        // Calculate based on optional input's own unit logic
-        let itemTotal = 0;
-        let calculationBreakdown = '';
-        
-        const inputUnit = input.unit || '';
-        
-        // If the optional input is day-based, multiply by daysCount
-        if (inputUnit.includes('day') || inputUnit === 'per-day') {
-          itemTotal = count * (input.price || 0) * daysCount;
-          calculationBreakdown = `${count} × ₹${input.price || 0} × ${daysCount} days`;
-        } 
-        // If the optional input is hour-based, multiply by selected slots
-        else if (inputUnit.includes('hour') || inputUnit === 'per-hour') {
-          const slotCount = selectedSlots.length || 1;
-          itemTotal = count * (input.price || 0) * slotCount;
-          calculationBreakdown = `${count} × ₹${input.price || 0} × ${slotCount} slots`;
-        }
-        // For other units, just multiply by count
-        else {
-          itemTotal = count * (input.price || 0);
-          calculationBreakdown = `${count} × ₹${input.price || 0}`;
-        }
+                      const displayUnit = getDisplayUnit(input);
 
-        return (
-          <div key={`countable-${index}`} style={{
-            marginTop: '5px',
-            fontSize: '0.9em',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <span>
-              <strong>{input.name || `Option ${index + 1}`}:</strong> {calculationBreakdown}
-              {displayUnit && ` /${displayUnit}`}
-            </span>
-            <span style={{ fontWeight: 'bold', color: '#007bff' }}>₹{itemTotal}</span>
-          </div>
-        );
-      }
-      return null;
-    })}
+                      // Calculate based on optional input's own unit logic
+                      let itemTotal = 0;
+                      let calculationBreakdown = '';
 
-    {/* Non-countable optional inputs */}
-    {(service.optionalInputs || []).map((input, index) => {
-      if (!input.isCountable && addedOptionalInputs[index]) {
-        // Get display unit for this optional input
-        const getDisplayUnit = (input) => {
-          if (input.customUnit) return input.customUnit;
-          const unit = input.unit || 'per item';
-          if (unit.startsWith('per-')) {
-            return unit.replace('per-', '').replace(/-/g, ' ');
-          }
-          return unit;
-        };
+                      const inputUnit = input.unit || '';
 
-        const displayUnit = getDisplayUnit(input);
-        
-        // Calculate based on optional input's own unit logic
-        let itemTotal = 0;
-        let calculationBreakdown = '';
-        
-        const inputUnit = input.unit || '';
-        
-        // If the optional input is day-based, multiply by daysCount
-        if (inputUnit.includes('day') || inputUnit === 'per-day') {
-          itemTotal = (input.price || 0) * daysCount;
-          calculationBreakdown = `₹${input.price || 0} × ${daysCount} days`;
-        } 
-        // If the optional input is hour-based, multiply by selected slots
-        else if (inputUnit.includes('hour') || inputUnit === 'per-hour') {
-          const slotCount = selectedSlots.length || 1;
-          itemTotal = (input.price || 0) * slotCount;
-          calculationBreakdown = `₹${input.price || 0} × ${slotCount} slots`;
-        }
-        // For other units, just use the price once
-        else {
-          itemTotal = input.price || 0;
-          calculationBreakdown = `₹${input.price || 0}`;
-        }
+                      // If the optional input is day-based, multiply by daysCount
+                      if (inputUnit.includes('day') || inputUnit === 'per-day') {
+                        itemTotal = count * (input.price || 0) * daysCount;
+                        calculationBreakdown = `${count} × ₹${input.price || 0} × ${daysCount} days`;
+                      }
+                      // If the optional input is hour-based, multiply by selected slots
+                      else if (inputUnit.includes('hour') || inputUnit === 'per-hour') {
+                        const slotCount = selectedSlots.length || 1;
+                        itemTotal = count * (input.price || 0) * slotCount;
+                        calculationBreakdown = `${count} × ₹${input.price || 0} × ${slotCount} slots`;
+                      }
+                      // For other units, just multiply by count
+                      else {
+                        itemTotal = count * (input.price || 0);
+                        calculationBreakdown = `${count} × ₹${input.price || 0}`;
+                      }
 
-        return (
-          <div key={`noncountable-${index}`} style={{
-            marginTop: '5px',
-            fontSize: '0.9em',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <span>
-              <strong>{input.name || `Option ${index + 1}`}:</strong> {calculationBreakdown}
-              {displayUnit && ` /${displayUnit}`}
-            </span>
-            <span style={{ fontWeight: 'bold', color: '#007bff' }}>₹{itemTotal}</span>
-          </div>
-        );
-      }
-      return null;
-    })}
+                      return (
+                        <div key={`countable-${index}`} style={{
+                          marginTop: '5px',
+                          fontSize: '0.9em',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <span>
+                            <strong>{input.name || `Option ${index + 1}`}:</strong> {calculationBreakdown}
+                            {displayUnit && ` /${displayUnit}`}
+                          </span>
+                          <span style={{ fontWeight: 'bold', color: '#007bff' }}>₹{itemTotal}</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
 
-    {/* If no optional services selected */}
-    {(!(service.optionalInputs || []).some((input, index) =>
-      optionalInputCounts[index] > 0 ||
-      (!input.isCountable && addedOptionalInputs[index])
-    )) && (
-      <p style={{ color: '#999', fontStyle: 'italic', margin: '5px 0' }}>
-        No optional services selected
-      </p>
-    )}
-  </div>
-)}
+                  {/* Non-countable optional inputs */}
+                  {(service.optionalInputs || []).map((input, index) => {
+                    if (!input.isCountable && addedOptionalInputs[index]) {
+                      // Get display unit for this optional input
+                      const getDisplayUnit = (input) => {
+                        if (input.customUnit) return input.customUnit;
+                        const unit = input.unit || 'per item';
+                        if (unit.startsWith('per-')) {
+                          return unit.replace('per-', '').replace(/-/g, ' ');
+                        }
+                        return unit;
+                      };
+
+                      const displayUnit = getDisplayUnit(input);
+
+                      // Calculate based on optional input's own unit logic
+                      let itemTotal = 0;
+                      let calculationBreakdown = '';
+
+                      const inputUnit = input.unit || '';
+
+                      // If the optional input is day-based, multiply by daysCount
+                      if (inputUnit.includes('day') || inputUnit === 'per-day') {
+                        itemTotal = (input.price || 0) * daysCount;
+                        calculationBreakdown = `₹${input.price || 0} × ${daysCount} days`;
+                      }
+                      // If the optional input is hour-based, multiply by selected slots
+                      else if (inputUnit.includes('hour') || inputUnit === 'per-hour') {
+                        const slotCount = selectedSlots.length || 1;
+                        itemTotal = (input.price || 0) * slotCount;
+                        calculationBreakdown = `₹${input.price || 0} × ${slotCount} slots`;
+                      }
+                      // For other units, just use the price once
+                      else {
+                        itemTotal = input.price || 0;
+                        calculationBreakdown = `₹${input.price || 0}`;
+                      }
+
+                      return (
+                        <div key={`noncountable-${index}`} style={{
+                          marginTop: '5px',
+                          fontSize: '0.9em',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center'
+                        }}>
+                          <span>
+                            <strong>{input.name || `Option ${index + 1}`}:</strong> {calculationBreakdown}
+                            {displayUnit && ` /${displayUnit}`}
+                          </span>
+                          <span style={{ fontWeight: 'bold', color: '#007bff' }}>₹{itemTotal}</span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+
+                  {/* If no optional services selected */}
+                  {(!(service.optionalInputs || []).some((input, index) =>
+                    optionalInputCounts[index] > 0 ||
+                    (!input.isCountable && addedOptionalInputs[index])
+                  )) && (
+                      <p style={{ color: '#999', fontStyle: 'italic', margin: '5px 0' }}>
+                        No optional services selected
+                      </p>
+                    )}
+                </div>
+              )}
 
 
               {/* Show dates */}
