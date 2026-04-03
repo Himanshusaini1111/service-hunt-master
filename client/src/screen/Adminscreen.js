@@ -30,6 +30,27 @@ function Adminscreen() {
     });
     const [dashboardLoading, setDashboardLoading] = useState(true);
 
+    // Add this useEffect at the top of Adminscreen component
+useEffect(() => {
+    // Register service worker on component mount
+    const registerServiceWorker = async () => {
+        if ('serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+                console.log('Service Worker registered successfully:', registration);
+                
+                // Check for existing service worker
+                if (registration.active) {
+                    console.log('Service Worker is active');
+                }
+            } catch (error) {
+                console.error('Service Worker registration failed:', error);
+            }
+        }
+    };
+    
+    registerServiceWorker();
+}, []);
     // Fetch dashboard data (filtered by userid)
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -49,26 +70,39 @@ function Adminscreen() {
 
 
 // Add inside Adminscreen component, after user is loaded
+// Update the notification useEffect in Adminscreen
 useEffect(() => {
-    if (user?._id) {
-        // Determine user type
-        let userType = 'vendor';
-        if (isSuperAdmin) userType = 'superadmin';
-        else if (isAdmin) userType = 'admin';
-        
-        // Register for push notifications
-        requestNotificationPermission(user._id, userType);
-        
-        // Listen for foreground notifications
-        onMessageListener().then(payload => {
-            console.log('Foreground notification:', payload);
-            // Refresh bookings if on Bookings tab
-            if (activeTab === '1') {
-                window.dispatchEvent(new Event('bookingRefresh'));
+    const setupNotifications = async () => {
+        if (user?._id) {
+            // Determine user type
+            let userType = 'vendor';
+            if (isSuperAdmin) userType = 'superadmin';
+            else if (isAdmin) userType = 'admin';
+            
+            // Wait for service worker
+            await navigator.serviceWorker.ready;
+            
+            // Register for push notifications
+            const token = await requestNotificationPermission(user._id, userType);
+            if (token) {
+                console.log('✅ Notifications enabled with token:', token);
             }
-        });
-    }
-}, [user?._id]);
+            
+            // Listen for foreground notifications
+            onMessageListener().then(payload => {
+                console.log('Foreground notification received:', payload);
+                // Refresh bookings if on Bookings tab
+                if (activeTab === '1') {
+                    window.dispatchEvent(new Event('bookingRefresh'));
+                }
+            });
+        }
+    };
+    
+    setupNotifications();
+}, [user?._id, isSuperAdmin, isAdmin]);
+
+
     // Get display name based on role
     const getDashboardTitle = () => {
         if (isSuperAdmin) return "Super Admin Dashboard";

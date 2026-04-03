@@ -9,8 +9,6 @@ const Helper = require("../models/Helper");  // Import Helper model if needed
 const admin = require('../firebase-admin'); // Path to your firebase-admin.js
 
 
-// Function to send push notification to users
-// Function to send push notification to users
 async function sendPushNotification(userIds, bookingData) {
     try {
         // Get all FCM tokens for these users
@@ -27,23 +25,31 @@ async function sendPushNotification(userIds, bookingData) {
         
         console.log(`📤 Sending push to ${uniqueTokens.length} devices`);
         
-        // Prepare notification payload - CORRECT FORMAT
-        const payload = {
+        // Prepare notification payload - FIXED FORMAT
+        const messages = uniqueTokens.map(token => ({
+            token: token,
             notification: {
                 title: '📢 New Booking!',
                 body: `${bookingData.service} - ₹${bookingData.totalAmount || 0}`
-                // sound goes in webpush.notification, not here
             },
             webpush: {
+                headers: {
+                    Urgency: 'high'
+                },
                 notification: {
-                    icon: '/icon-192.png',
-                    badge: '/icon-192.png',
+                    title: '📢 New Booking!',
+                    body: `${bookingData.service} - ₹${bookingData.totalAmount || 0}`,
+                    icon: 'https://yourdomain.com/icon-192.png',
+                    badge: 'https://yourdomain.com/icon-192.png',
                     vibrate: [200, 100, 200],
-                    sound: 'default',  // ✅ Sound is correct here
-                    requireInteraction: true
+                    sound: 'https://yourdomain.com/sounds/booking.mp3', // Use full URL
+                    requireInteraction: true,
+                    silent: false,
+                    tag: 'new-booking',
+                    renotify: true
                 },
                 fcmOptions: {
-                    link: '/admin'
+                    link: 'https://yourdomain.com/admin' // Use your actual domain
                 }
             },
             data: {
@@ -51,27 +57,30 @@ async function sendPushNotification(userIds, bookingData) {
                 type: 'new_booking',
                 click_action: 'OPEN_ADMIN_PANEL'
             }
-        };
+        }));
         
-        // Send to all tokens
-        const promises = uniqueTokens.map(token => 
-            admin.messaging().send({
-                token: token,
-                ...payload
-            }).catch(err => {
-                console.log('❌ Failed to send to token:', err.message);
-                // If token is invalid, remove it
-                if (err.code === 'messaging/registration-token-not-registered') {
-                    User.updateMany(
-                        { fcmTokens: token },
-                        { $pull: { fcmTokens: token } }
-                    ).exec();
-                }
-            })
+        // Send all messages
+        const results = await Promise.allSettled(
+            messages.map(message => admin.messaging().send(message))
         );
         
-        await Promise.all(promises);
-        console.log(`✅ Push notifications sent successfully`);
+        const successful = results.filter(r => r.status === 'fulfilled').length;
+        const failed = results.filter(r => r.status === 'rejected').length;
+        
+        console.log(`✅ Push notifications: ${successful} successful, ${failed} failed`);
+        
+        // Clean up invalid tokens
+        for (let i = 0; i < results.length; i++) {
+            const result = results[i];
+            if (result.status === 'rejected' && 
+                result.reason?.code === 'messaging/registration-token-not-registered') {
+                await User.updateMany(
+                    { fcmTokens: uniqueTokens[i] },
+                    { $pull: { fcmTokens: uniqueTokens[i] } }
+                );
+                console.log(`Removed invalid token: ${uniqueTokens[i]}`);
+            }
+        }
         
     } catch (error) {
         console.error('❌ Error sending push notifications:', error);

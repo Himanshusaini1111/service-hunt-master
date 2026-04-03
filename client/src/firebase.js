@@ -1,7 +1,7 @@
+// src/firebase.js
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
-// Your Firebase config from console - ✅ NOW CORRECT
 const firebaseConfig = {
   apiKey: "AIzaSyAXLsiAH2un_GyftMQyGqaxiCTx_4thi0Q",
   authDomain: "service-hunt-98b9a.firebaseapp.com",
@@ -9,7 +9,7 @@ const firebaseConfig = {
   storageBucket: "service-hunt-98b9a.firebasestorage.app",
   messagingSenderId: "805393578185",
   appId: "1:805393578185:web:993c0ecb942e1733c3f518",
-  measurementId: "G-JFSPG60HD1"  // Optional but good to have
+  measurementId: "G-JFSPG60HD1"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -25,12 +25,19 @@ export async function requestNotificationPermission(userId, userType) {
             return null;
         }
 
-        // Get FCM token with your VAPID key
+        // Register service worker FIRST
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        console.log('Service Worker registered:', registration);
+
+        // Get FCM token with service worker
         const token = await getToken(messaging, {
-            vapidKey: "BMGc5rDmaJgB_SZGc9yVxalR94bA7SDCz_W0isS-FJvTrpSCrhYaXFZCDGt-GoREIwHFAGAwkX_OrxdCDGsMRxk"
+            vapidKey: "BMGc5rDmaJgB_SZGc9yVxalR94bA7SDCz_W0isS-FJvTrpSCrhYaXFZCDGt-GoREIwHFAGAwkX_OrxdCDGsMRxk",
+            serviceWorkerRegistration: registration
         });
 
         if (token) {
+            console.log('✅ FCM Token obtained:', token);
+            
             // Save token to your backend
             const response = await fetch('/api/users/save-fcm-token', {
                 method: 'POST',
@@ -45,6 +52,8 @@ export async function requestNotificationPermission(userId, userType) {
             
             if (response.ok) {
                 console.log('✅ FCM Token saved successfully');
+            } else {
+                console.error('Failed to save token');
             }
         }
         return token;
@@ -60,17 +69,28 @@ export function onMessageListener() {
         onMessage(messaging, (payload) => {
             console.log('📢 Notification received while app open:', payload);
             
-         const audio = new Audio('/sounds/booking.mp3');
+            // Play sound for foreground notifications
+            const audio = new Audio('/sounds/booking.mp3');
             audio.play().catch(e => console.log('Sound play failed:', e));
             
-            // Show browser notification
+            // Show browser notification even when app is open
             if (Notification.permission === 'granted') {
-                new Notification(payload.notification?.title || 'New Booking!', {
+                const notification = new Notification(payload.notification?.title || 'New Booking!', {
                     body: payload.notification?.body || 'A new booking has arrived',
                     icon: '/icon-192.png',
                     badge: '/icon-192.png',
-                    vibrate: [200, 100, 200]
+                    vibrate: [200, 100, 200],
+                    silent: false // Ensure sound plays
                 });
+                
+                // Handle notification click
+                notification.onclick = () => {
+                    window.focus();
+                    // Navigate to admin panel if needed
+                    if (window.location.pathname !== '/admin') {
+                        window.location.href = '/admin';
+                    }
+                };
             }
             
             resolve(payload);
