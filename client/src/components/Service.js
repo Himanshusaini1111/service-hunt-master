@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import ReviewSystem from "../components/ReviewSystem";
+import { effectiveBaseRent } from "../utils/serviceAreaPricing";
 
-function Service({ service, onClick, isLandingPage = false }) {
+function Service({ service, onClick, isLandingPage = false, bookingArea = null }) {
     const [averageRating, setAverageRating] = useState("No ratings yet");
     const displayUnit = service.unit === "Other" ? service.customUnit : service.unit;
+    const displayRent = effectiveBaseRent(service, bookingArea);
 
     // Landing Page View - Keep as is (unchanged)
    if (isLandingPage) {
@@ -14,7 +16,10 @@ function Service({ service, onClick, isLandingPage = false }) {
                 <div className="position-relative d-flex justify-content-center align-items-center mb-3 mb-md-0">
 
                     {/* Image Section */}
-                    <Link to={`/book/${service._id}`}>
+                    <Link
+                        to={`/book/${service._id}`}
+                        state={bookingArea ? { selectedServiceArea: bookingArea } : undefined}
+                    >
                         <div
                             className="image-container"
                             style={{
@@ -138,8 +143,8 @@ function Service({ service, onClick, isLandingPage = false }) {
                         {/* Pricing */}
                             
                             <div className="detail-info" style={{marginLeft:"10px"}}>
-                                <span className="detail-label">Daily Rate</span>
-                                    <span className="price">₹{service?.rentperday ?? "N/A"}</span>
+                                <span className="detail-label">{bookingArea ? "Rate (your area)" : "Daily Rate"}</span>
+                                    <span className="price">₹{displayRent ?? "N/A"}</span>
                                     {displayUnit && <span className="unit"> / {displayUnit}</span>}
                             </div>
 
@@ -152,7 +157,11 @@ function Service({ service, onClick, isLandingPage = false }) {
 
                     {/* Action Buttons */}
                     <div className="action-buttons" style={{padding:"20px"}}>
-                        <Link to={`/book/${service._id}`} className="btn-book-now">
+                        <Link
+                            to={`/book/${service._id}`}
+                            state={bookingArea ? { selectedServiceArea: bookingArea } : undefined}
+                            className="btn-book-now"
+                        >
                             <span>Book Now</span>
                         </Link>
                         

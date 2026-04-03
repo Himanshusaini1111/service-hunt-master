@@ -5,7 +5,13 @@ import Swal from 'sweetalert2';
 import Error from "../components/Error";
 import Loader from "../components/Loader";
 import moment from "moment";
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import {
+  normalizeServiceAreas,
+  effectiveBaseRent,
+  effectiveOptionalUnitPrice,
+  areasMatch,
+} from '../utils/serviceAreaPricing';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -20,6 +26,7 @@ import Navbar from '../components/Navbar';
 
 function Bookingscreen() {
   const { serviceid } = useParams();
+  const locationRoute = useLocation();
 
   // State variables
   const [loading, setLoading] = useState(true);
@@ -56,6 +63,7 @@ function Bookingscreen() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showBill, setShowBill] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [selectedServiceArea, setSelectedServiceArea] = useState(null);
 
   // Time slots
   const timeSlots = [
@@ -100,6 +108,28 @@ function Bookingscreen() {
     fetchData();
   }, [serviceid]);
 
+  useEffect(() => {
+    if (!service) return;
+    const areas = normalizeServiceAreas(service.serviceAreas);
+    if (areas.length === 0) {
+      setSelectedServiceArea(null);
+      return;
+    }
+    if (areas.length === 1) {
+      setSelectedServiceArea(areas[0]);
+      return;
+    }
+    const fromNav = locationRoute.state?.selectedServiceArea;
+    if (fromNav && fromNav.city) {
+      const found = areas.find((a) => areasMatch(a, fromNav));
+      if (found) {
+        setSelectedServiceArea(found);
+        return;
+      }
+    }
+    setSelectedServiceArea(null);
+  }, [service, locationRoute.state]);
+
   // Calculate days between dates
   useEffect(() => {
     const unit = service?.unit || 'per day';
@@ -126,6 +156,7 @@ function Bookingscreen() {
     let baseTotal = 0;
     const unit = service.unit || 'per day';
     const currentBookingType = bookingType || service.bookingType || 'Automatic Booking';
+    const unitRent = effectiveBaseRent(service, selectedServiceArea);
 
     // For Inquari Booking, show base price as reference but don't calculate total
     if (currentBookingType === 'Inquari Booking') {
@@ -133,18 +164,18 @@ function Bookingscreen() {
     } else {
       // Calculate base price based on unit type
       if (unit.includes('day') || unit.includes('week') || unit.includes('month')) {
-        baseTotal = service.rentperday * daysCount * quantity;
+        baseTotal = unitRent * daysCount * quantity;
       } else if (unit.includes('hour')) {
-        baseTotal = service.rentperday * (selectedSlots.length || 1) * quantity;
+        baseTotal = unitRent * (selectedSlots.length || 1) * quantity;
       } else {
         // Quantity-based units (per person, per item, etc.)
-        baseTotal = service.rentperday * quantity;
+        baseTotal = unitRent * quantity;
       }
     }
 
     // Calculate countable optional inputs total
     const countableOptionalsTotal = (service.optionalInputs || []).reduce((acc, input, i) => {
-      const inputPrice = input.price || 0;
+      const inputPrice = effectiveOptionalUnitPrice(input, selectedServiceArea);
 
       if (input.isCountable) {
         const count = optionalInputCounts[i] || 0;
@@ -174,7 +205,7 @@ function Bookingscreen() {
     // Calculate non-countable optional inputs total - FIXED: using addedOptionalInputs
     const nonCountableOptionalsTotal = (service.optionalInputs || []).reduce((acc, input, i) => {
       if (!input.isCountable && addedOptionalInputs[i]) {
-        const inputPrice = input.price || 0;
+        const inputPrice = effectiveOptionalUnitPrice(input, selectedServiceArea);
 
         // Calculate multiplier for non-countable items too if they have day/hour dependencies
         let multiplier = 1;
@@ -220,7 +251,7 @@ function Bookingscreen() {
     // Set final total including all components
     setTotalAmount(baseTotal + countableOptionalsTotal + nonCountableOptionalsTotal + extrasTotal);
 
-  }, [quantity, daysCount, selectedSlots, optionalInputCounts, addedOptionalInputs, addedExtraInputs, service, bookingType]);
+  }, [quantity, daysCount, selectedSlots, optionalInputCounts, addedOptionalInputs, addedExtraInputs, service, bookingType, selectedServiceArea]);
   // Handle optional input quantity change
 
 
@@ -317,6 +348,12 @@ function Bookingscreen() {
           Swal.fire('Error', 'Both pickup and drop addresses are required', 'error');
           return;
         }
+
+        const coverageAreas = normalizeServiceAreas(service?.serviceAreas);
+        if (coverageAreas.length > 0 && !selectedServiceArea) {
+          Swal.fire('Error', 'Please select which area you are booking for — prices depend on the service area.', 'error');
+          return;
+        }
       }
 
       // Show bill
@@ -350,6 +387,7 @@ function Bookingscreen() {
       });
 
       // Prepare booking details
+      const effectiveRentSnapshot = effectiveBaseRent(service, selectedServiceArea);
       const bookingDetails = {
         serviceid,
         totalAmount: bookingType === 'Inquari Booking' ? 0 : totalAmount, // Send 0 for inquiry
@@ -362,6 +400,16 @@ function Bookingscreen() {
         unit: service.unit,
         customUnit: service.customUnit,
         isCountable: service.isCountable,
+        rentperday: effectiveRentSnapshot,
+        selectedServiceArea: selectedServiceArea
+          ? {
+              city: selectedServiceArea.city,
+              state: selectedServiceArea.state,
+              district: selectedServiceArea.district || '',
+              pincode: selectedServiceArea.pincode || '',
+              extraPrice: Number(selectedServiceArea.extraPrice) || 0,
+            }
+          : undefined,
         quantity: quantity,
         fromDate: bookingDates[0] || '',
         toDate: bookingDates[bookingDates.length - 1] || '',
@@ -377,7 +425,7 @@ function Bookingscreen() {
             const count = isCountable ? (optionalInputCounts[index] || 0) : (addedOptionalInputs[index] ? 1 : 0);
             return {
               name: input.name,
-              price: input.price,
+              price: effectiveOptionalUnitPrice(input, selectedServiceArea),
               count,
               unit: input.unit,
               customUnit: input.customUnit,
@@ -761,6 +809,8 @@ function Bookingscreen() {
 
   // Get display unit
   const displayUnit = service.unit === "Other" ? service.customUnit : service.unit;
+  const coverageAreas = normalizeServiceAreas(service.serviceAreas);
+  const effectiveRate = effectiveBaseRent(service, selectedServiceArea);
 
   return (
     <div>
@@ -978,16 +1028,63 @@ function Bookingscreen() {
             {/* Unit-based Controls */}
             {renderUnitBasedControls()}
 
+            {coverageAreas.length > 0 && (
+              <div style={{ margin: "15px 0", padding: "12px", background: "#f8f9fa", borderRadius: "8px" }}>
+                <label style={{ display: "block", marginBottom: "8px", fontWeight: "600" }}>
+                  Service area (updates price)
+                </label>
+                <select
+                  className="form-control"
+                  style={{ maxWidth: "420px" }}
+                  value={
+                    selectedServiceArea
+                      ? (() => {
+                          const idx = coverageAreas.findIndex((a) =>
+                            areasMatch(a, selectedServiceArea)
+                          );
+                          return idx >= 0 ? String(idx) : "";
+                        })()
+                      : ""
+                  }
+                  onChange={(e) => {
+                    const i = e.target.value;
+                    if (i === "") {
+                      setSelectedServiceArea(null);
+                      return;
+                    }
+                    const idx = parseInt(i, 10);
+                    setSelectedServiceArea(coverageAreas[idx] || null);
+                  }}
+                >
+                  <option value="">Select area…</option>
+                  {coverageAreas.map((a, i) => (
+                    <option key={i} value={String(i)}>
+                      {a.city}, {a.state}
+                      {Number(a.extraPrice) > 0 ? ` (+₹${a.extraPrice} on base)` : ""}
+                    </option>
+                  ))}
+                </select>
+                {selectedServiceArea && Number(selectedServiceArea.extraPrice) > 0 && (
+                  <small style={{ display: "block", marginTop: "8px", color: "#555" }}>
+                    List rate ₹{service.rentperday} + area ₹{selectedServiceArea.extraPrice} = ₹{effectiveRate} {displayUnit ? `/ ${displayUnit}` : ""}
+                  </small>
+                )}
+              </div>
+            )}
+
             {/* Price Display */}
             {bookingType !== 'Inquari Booking' ? (
               <p style={{ fontSize: "1.1em", margin: "15px 0" }}>
-                <b>Price:</b> ₹{service.rentperday} {displayUnit ? `/ ${displayUnit}` : ""}
+                <b>Price:</b> ₹{effectiveRate} {displayUnit ? `/ ${displayUnit}` : ""}
+                {coverageAreas.length === 0 && (
+                  <small style={{ display: "block", fontSize: "0.85em", color: "#666" }}>Same rate in all locations</small>
+                )}
               </p>
             ) : (
               <p style={{ fontSize: "1.1em", margin: "15px 0", color: "#ff9800" }}>
                 <b>Price:</b> <span style={{ fontWeight: 'bold' }}>On Inquiry</span>
                 <small style={{ display: 'block', fontSize: '0.8em', color: '#666' }}>
-                  (Base: ₹{service.rentperday} {displayUnit ? `/ ${displayUnit}` : ""})
+                  (Reference list: ₹{effectiveRate} {displayUnit ? `/ ${displayUnit}` : ""})
                 </small>
               </p>
             )}
@@ -1156,7 +1253,7 @@ function Bookingscreen() {
                     };
 
                     const inputName = input.name || `Option ${index + 1}`;
-                    const inputPrice = input.price || 0;
+                    const inputPrice = effectiveOptionalUnitPrice(input, selectedServiceArea);
                     const displayUnit = getOptionalDisplayUnit(input);
                     const inputImage = input.image || '';
                     const inputMaxCount = input.maxcount || 5;
@@ -1667,6 +1764,9 @@ function Bookingscreen() {
                 <p><strong>Quantity:</strong> {quantity}</p>
               )}
               <p><strong>Unit:</strong> {displayUnit}</p>
+              {selectedServiceArea && (
+                <p><strong>Area:</strong> {selectedServiceArea.city}, {selectedServiceArea.state}</p>
+              )}
               {daysCount > 1 && bookingType !== 'Inquari Booking' && (
                 <p><strong>Days:</strong> {daysCount}</p>
               )}
@@ -1693,6 +1793,7 @@ function Bookingscreen() {
                       };
 
                       const displayUnit = getDisplayUnit(input);
+                      const optUnitRate = effectiveOptionalUnitPrice(input, selectedServiceArea);
 
                       // Calculate based on optional input's own unit logic
                       let itemTotal = 0;
@@ -1702,19 +1803,19 @@ function Bookingscreen() {
 
                       // If the optional input is day-based, multiply by daysCount
                       if (inputUnit.includes('day') || inputUnit === 'per-day') {
-                        itemTotal = count * (input.price || 0) * daysCount;
-                        calculationBreakdown = `${count} × ₹${input.price || 0} × ${daysCount} days`;
+                        itemTotal = count * optUnitRate * daysCount;
+                        calculationBreakdown = `${count} × ₹${optUnitRate} × ${daysCount} days`;
                       }
                       // If the optional input is hour-based, multiply by selected slots
                       else if (inputUnit.includes('hour') || inputUnit === 'per-hour') {
                         const slotCount = selectedSlots.length || 1;
-                        itemTotal = count * (input.price || 0) * slotCount;
-                        calculationBreakdown = `${count} × ₹${input.price || 0} × ${slotCount} slots`;
+                        itemTotal = count * optUnitRate * slotCount;
+                        calculationBreakdown = `${count} × ₹${optUnitRate} × ${slotCount} slots`;
                       }
                       // For other units, just multiply by count
                       else {
-                        itemTotal = count * (input.price || 0);
-                        calculationBreakdown = `${count} × ₹${input.price || 0}`;
+                        itemTotal = count * optUnitRate;
+                        calculationBreakdown = `${count} × ₹${optUnitRate}`;
                       }
 
                       return (
@@ -1750,6 +1851,7 @@ function Bookingscreen() {
                       };
 
                       const displayUnit = getDisplayUnit(input);
+                      const optUnitRate = effectiveOptionalUnitPrice(input, selectedServiceArea);
 
                       // Calculate based on optional input's own unit logic
                       let itemTotal = 0;
@@ -1759,19 +1861,19 @@ function Bookingscreen() {
 
                       // If the optional input is day-based, multiply by daysCount
                       if (inputUnit.includes('day') || inputUnit === 'per-day') {
-                        itemTotal = (input.price || 0) * daysCount;
-                        calculationBreakdown = `₹${input.price || 0} × ${daysCount} days`;
+                        itemTotal = optUnitRate * daysCount;
+                        calculationBreakdown = `₹${optUnitRate} × ${daysCount} days`;
                       }
                       // If the optional input is hour-based, multiply by selected slots
                       else if (inputUnit.includes('hour') || inputUnit === 'per-hour') {
                         const slotCount = selectedSlots.length || 1;
-                        itemTotal = (input.price || 0) * slotCount;
-                        calculationBreakdown = `₹${input.price || 0} × ${slotCount} slots`;
+                        itemTotal = optUnitRate * slotCount;
+                        calculationBreakdown = `₹${optUnitRate} × ${slotCount} slots`;
                       }
                       // For other units, just use the price once
                       else {
-                        itemTotal = input.price || 0;
-                        calculationBreakdown = `₹${input.price || 0}`;
+                        itemTotal = optUnitRate;
+                        calculationBreakdown = `₹${optUnitRate}`;
                       }
 
                       return (
@@ -1827,7 +1929,7 @@ function Bookingscreen() {
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span><strong>Base Price:</strong></span>
                     <span>
-                      ₹{service.rentperday}
+                      ₹{effectiveRate}
                       {service.unit?.includes('day') && daysCount > 1 && ` × ${daysCount}`}
                       {service.isCountable && quantity > 1 && ` × ${quantity}`}
                     </span>

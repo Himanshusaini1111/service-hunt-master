@@ -11,6 +11,7 @@ import { Switch, Button, DatePicker, InputNumber, Modal, Select } from "antd";
 import AOS from "aos";
 import "aos/dist/aos.css";
 import moment from "moment";
+import { getServiceAreaMatch } from "../utils/serviceAreaPricing";
 
 AOS.init();
 
@@ -75,6 +76,10 @@ function Homescreen() {
         if (service.serviceAreas && Array.isArray(service.serviceAreas)) {
             return service.serviceAreas.some(area => {
                 if (!area) return false;
+                if (typeof area === 'string') {
+                    const al = area.toLowerCase();
+                    return al.includes(cityName) || cityName.includes(al) || al.includes(locationLower);
+                }
                 const areaCity = (area.city || '').toLowerCase();
                 const areaState = (area.state || '').toLowerCase();
                 const areaDistrict = (area.district || '').toLowerCase();
@@ -597,7 +602,11 @@ function Homescreen() {
                                 data-aos="zoom-in"
                                 key={s._id}
                             >
-                                <Service service={s} onClick={() => handleServiceClick(s._id)} />
+                                <Service
+                                    service={s}
+                                    onClick={() => handleServiceClick(s._id)}
+                                    bookingArea={getServiceAreaMatch(s, selectedLocationObject)}
+                                />
                             </div>
                         ))
                     )

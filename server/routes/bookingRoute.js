@@ -107,7 +107,8 @@ router.post("/bookservice", async (req, res) => {
             bookingType,
             optionalInputs,
             extraInputs,
-            rentperday
+            rentperday,
+            selectedServiceArea
         } = req.body;
 
         // Validate required fields - make totalAmount optional for inquiry bookings
@@ -174,7 +175,16 @@ router.post("/bookservice", async (req, res) => {
             bookingType: bookingType || 'Automatic Booking',
             optionalInputs: optionalInputs || [],
             extraInputs: extraInputs || [],
-            status: bookingType === 'Inquari Booking' ? "inquiry" : "booked" // Set different initial status
+            status: bookingType === 'Inquari Booking' ? "inquiry" : "booked", // Set different initial status
+            ...(selectedServiceArea && typeof selectedServiceArea === 'object' ? {
+                selectedServiceArea: {
+                    city: selectedServiceArea.city || '',
+                    state: selectedServiceArea.state || '',
+                    district: selectedServiceArea.district || '',
+                    pincode: selectedServiceArea.pincode != null ? String(selectedServiceArea.pincode) : '',
+                    extraPrice: parseFloat(selectedServiceArea.extraPrice) || 0
+                }
+            } : {})
         };
 
         // Add location data

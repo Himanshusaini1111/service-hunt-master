@@ -57,6 +57,13 @@ const bookingSchema = new mongoose.Schema({
     pickupAddress: { type: String },
     dropAddress: { type: String },
     returnTrip: { type: Boolean },
+    selectedServiceArea: {
+        city: String,
+        state: String,
+        district: String,
+        pincode: String,
+        extraPrice: { type: Number, default: 0 }
+    },
     assignedHelpers: [{
         type: mongoose.Schema.Types.ObjectId,  // Keep this as ObjectId since it references Helper collection
         ref: 'Helper'

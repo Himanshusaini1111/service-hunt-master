@@ -6,6 +6,46 @@ const Booking = require("../models/booking");
 
 const router = express.Router();
 
+function normalizeServiceAreas(serviceAreas) {
+    if (!serviceAreas || !Array.isArray(serviceAreas)) return [];
+    return serviceAreas.map((a) => {
+        if (typeof a === 'string') {
+            const parts = a.split(',').map((s) => s.trim());
+            return {
+                city: parts[0] || '',
+                state: parts.slice(1).join(', ') || '',
+                district: '',
+                pincode: '',
+                extraPrice: 0
+            };
+        }
+        return {
+            city: a.city || '',
+            state: a.state || '',
+            district: a.district || '',
+            pincode: a.pincode != null ? String(a.pincode) : '',
+            extraPrice: parseFloat(a.extraPrice) || 0
+        };
+    }).filter((x) => x.city || x.state);
+}
+
+function normalizeOptionalInputs(inputs) {
+    if (!inputs || !Array.isArray(inputs)) return [];
+    return inputs.map((input) => ({
+        name: input.name,
+        price: parseFloat(input.price) || 0,
+        image: input.image || '',
+        maxcount: input.maxcount != null ? parseInt(input.maxcount, 10) : 1,
+        unit: input.unit || 'per day',
+        customUnit: input.customUnit || '',
+        isCountable: input.isCountable !== false,
+        areaExtras: (input.areaExtras || []).map((row) => ({
+            city: row.city || '',
+            state: row.state || '',
+            extraPrice: parseFloat(row.extraPrice) || 0
+        })).filter((r) => r.city || r.state)
+    }));
+}
 
 // In services.js
 // Get services for admin/vendor dashboard
@@ -76,6 +116,7 @@ router.post("/addservice", async (req, res) => {
             category,
             subCategory,
             bookingType,
+            serviceAreas,
         } = req.body;
 
         // Validate required fields
@@ -105,8 +146,9 @@ router.post("/addservice", async (req, res) => {
             address: address || '',
             facility: facility || '',
             locations: locations || ['Simple'],
+            serviceAreas: normalizeServiceAreas(serviceAreas),
             imageurls: imageURLs,
-            optionalInputs: optionalInputs || [],
+            optionalInputs: normalizeOptionalInputs(optionalInputs),
             extraInputs: extraInputs || [],
             category: category || '',
             subCategory: subCategory || '',

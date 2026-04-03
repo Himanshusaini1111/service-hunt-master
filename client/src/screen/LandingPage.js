@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar';
 import About from '../components/About';
 import Service from '../components/Service';
 import LocationSearch from '../components/LocationSearch';
+import { getServiceAreaMatch } from '../utils/serviceAreaPricing';
 
 const App = () => {
     const images = [
@@ -68,6 +69,10 @@ const App = () => {
         if (service.serviceAreas && Array.isArray(service.serviceAreas)) {
             return service.serviceAreas.some(area => {
                 if (!area) return false;
+                if (typeof area === 'string') {
+                    const al = area.toLowerCase();
+                    return al.includes(cityName) || cityName.includes(al) || al.includes(locationValue);
+                }
                 const areaCity = (area.city || '').toLowerCase();
                 const areaState = (area.state || '').toLowerCase();
                 const areaDistrict = (area.district || '').toLowerCase();
@@ -451,7 +456,10 @@ const handleSubCategoryClick = (subCategory) => {
                 {filteredServices.length > 0 ? (
                     filteredServices.map((service) => (
                         <div key={service._id}>
-                            <Service service={service} />
+                            <Service
+                                service={service}
+                                bookingArea={getServiceAreaMatch(service, selectedLocation)}
+                            />
                         </div>
                     ))
                 ) : (

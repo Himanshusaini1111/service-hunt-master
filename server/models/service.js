@@ -50,13 +50,7 @@ const serviceSchema = mongoose.Schema({
         address: String
     },
 
-    // Add service areas (multiple locations where service is available)
-    serviceAreas: [{
-        city: String,
-        state: String,
-        district: String,
-        pincode: String
-    }],
+  
     currentbookings: [],
     imageurls: [],  // This is your original field name
     optionalInputs: [{

@@ -4,6 +4,7 @@ import { DownOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import LocationSearch from './LocationSearch'; // Adjust path as needed
+import { areasMatch } from '../utils/serviceAreaPricing';
 
 export function Addservice({ userId }) { // Accept userId as prop
     const [service, setService] = useState("");
@@ -27,7 +28,8 @@ export function Addservice({ userId }) { // Accept userId as prop
         maxcount: '',
         unit: 'per day',
         customUnit: '',
-        isCountable: true // Add this new field
+        isCountable: true,
+        areaExtras: []
     }]);
 
 
@@ -42,14 +44,7 @@ export function Addservice({ userId }) { // Accept userId as prop
     const [selectedLocationType, setSelectedLocationType] = useState("");
     const [locations, setLocations] = useState([]);
 
-    const [serviceAreas, setServiceAreas] = useState([]);
-    const [currentArea, setCurrentArea] = useState({
-        city: '',
-        state: '',
-        district: '',
-        pincode: ''
-    });
-
+  
     const categoryOptions = {
         "Home Maintenance & Repair Services": [
             "Plumbing Services",
@@ -191,17 +186,20 @@ export function Addservice({ userId }) { // Accept userId as prop
         setSubCategory(e.target.value);
     };
 
-    const handleAddServiceArea = () => {
-        if (currentArea.city && currentArea.state) {
-            setServiceAreas([...serviceAreas, { ...currentArea }]);
-            setCurrentArea({ city: '', state: '', district: '', pincode: '' });
-        }
-    };
 
 
     const handleAddInput = () => {
         if (inputs.length < 10) {
-            setInputs([...inputs, { name: '', price: '', image: '', maxcount: '' }]);
+            setInputs([...inputs, {
+                name: '',
+                price: '',
+                image: '',
+                maxcount: '',
+                unit: 'per day',
+                customUnit: '',
+                isCountable: true,
+                areaExtras: []
+            }]);
         }
     };
     // Update the input change handlers
@@ -309,7 +307,6 @@ const validOptionalInputs = inputs.filter(input =>
             subCategory,
             bookingType,
             locations,
-            serviceAreas: serviceAreas.map(area => `${area.city}, ${area.state}`)
         };
 
         try {
