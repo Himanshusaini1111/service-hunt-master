@@ -1,21 +1,69 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import ReviewSystem from "../components/ReviewSystem";
-import { effectiveBaseRent } from "../utils/serviceAreaPricing";
 
 function Service({ service, onClick, isLandingPage = false, bookingArea = null }) {
     const [averageRating, setAverageRating] = useState("No ratings yet");
     const displayUnit = service.unit === "Other" ? service.customUnit : service.unit;
-    const displayRent = effectiveBaseRent(service, bookingArea);
+    
+    // ✅ DIRECT PRICE CALCULATION - No utils file needed
+    const calculateDisplayRent = () => {
+        // Get base price from service (field name: rentperday)
+        const basePrice = Number(service?.rentperday) || 0;
+        
+        // If no booking area selected, show base price
+        if (!bookingArea) {
+            return basePrice;
+        }
+        
+        // If service has no location pricing configured, show base price
+        if (!service?.locationPricing || service.locationPricing.length === 0) {
+            return basePrice;
+        }
+        
+        // Normalize user's location for comparison
+        let userLocationLower = "";
+        if (typeof bookingArea === "string") {
+            userLocationLower = bookingArea.toLowerCase();
+        } else if (bookingArea.display_name) {
+            userLocationLower = bookingArea.display_name.toLowerCase();
+        } else if (bookingArea.city) {
+            userLocationLower = String(bookingArea.city).toLowerCase();
+        } else {
+            userLocationLower = String(bookingArea).toLowerCase();
+        }
+        
+        // Extract city name (first part before comma)
+        const userCity = userLocationLower.split(",")[0].trim();
+        
+        // Find matching location in service's locationPricing
+        const matchedLocation = service.locationPricing.find(location => {
+            const locationName = (location.locationName || "").toLowerCase();
+            const locationAddress = (location.locationAddress || "").toLowerCase();
+            
+            return locationName.includes(userCity) || 
+                   userCity.includes(locationName) ||
+                   locationAddress.includes(userCity) ||
+                   userCity.includes(locationAddress);
+        });
+        
+        // If location matches, add extra price
+        if (matchedLocation) {
+            const extraPrice = Number(matchedLocation.extraPrice) || 0;
+            return basePrice + extraPrice;
+        }
+        
+        // No match found, show base price
+        return basePrice;
+    };
+    
+    const displayRent = calculateDisplayRent();
 
-    // Landing Page View - Keep as is (unchanged)
-   if (isLandingPage) {
+    // Landing Page View
+    if (isLandingPage) {
         return (
             <div className="coloum m-3 p-3 bs border rounded shadow-sm bg-light" style={{ width: '300px', height: "280px" }}>
-                {/* Image Section - Clickable */}
                 <div className="position-relative d-flex justify-content-center align-items-center mb-3 mb-md-0">
-
-                    {/* Image Section */}
                     <Link
                         to={`/book/${service._id}`}
                         state={bookingArea ? { selectedServiceArea: bookingArea } : undefined}
@@ -24,34 +72,32 @@ function Service({ service, onClick, isLandingPage = false, bookingArea = null }
                             className="image-container"
                             style={{
                                 width: "275px",
-                                height: "200px", // Fixed height
+                                height: "200px",
                                 overflow: "hidden",
                                 borderRadius: "12px",
                                 position: "relative"
                             }}
                         >
                             <img
-                                src={service.imageurls[0]}
+                                src={service.imageurls?.[0] || "/placeholder-image.jpg"}
                                 className="img-fluid"
                                 style={{
                                     width: "100%",
                                     height: "100%",
-                                    objectFit: "cover", // Ensures image covers the area without distortion
-                                    objectPosition: "center", // Centers the image
+                                    objectFit: "cover",
+                                    objectPosition: "center",
                                     cursor: "pointer",
                                     transition: "transform 0.3s ease"
                                 }}
                                 onError={(e) => {
                                     e.target.onerror = null;
-                                    e.target.src = "/placeholder-image.jpg"; // Fallback image
+                                    e.target.src = "/placeholder-image.jpg";
                                 }}
                                 alt={service.name || "Service image"}
                             />
                         </div>
-
                     </Link>
 
-                    {/* Review Badge – Top Right Corner */}
                     <div
                         className="position-absolute"
                         style={{
@@ -72,18 +118,15 @@ function Service({ service, onClick, isLandingPage = false, bookingArea = null }
                     </div>
                 </div>
 
-                {/* Minimal Info Section */}
                 <div className="col-12 col-md-2 mt-2">
                     <div className="d-flex flex-column flex-md-row align-items-left justify-content-between mb-2">
-                        <h2 className="fw-bold " style={{ fontSize: "25px" }}>{service.name}</h2>
+                        <h2 className="fw-bold" style={{ fontSize: "25px" }}>{service.name}</h2>
                     </div>
                 </div>
-
-
-
             </div>
         );
     }
+    
     // Home Screen View - Professional Redesign
     return (
         <div className="service-card premium-card mb-4">
@@ -92,14 +135,13 @@ function Service({ service, onClick, isLandingPage = false, bookingArea = null }
                 <div className="service-image-section">
                     <div className="image-main">
                         <img
-                            src={service.imageurls[0]}
+                            src={service.imageurls?.[0] || "/placeholder-image.jpg"}
                             alt={service.name}
                             onError={(e) => {
                                 e.target.onerror = null;
                                 e.target.src = "/placeholder-image.jpg";
                             }}
                         />
-                        {/* Mobile Review Badge */}
                         <div className="mobile-review-badge d-md-none">
                             <ReviewSystem
                                 serviceId={service._id}
@@ -107,21 +149,16 @@ function Service({ service, onClick, isLandingPage = false, bookingArea = null }
                                 onAverageRating={(rating) => setAverageRating(rating || "")}
                             />
                         </div>
-                        {/* Image Counter Badge */}
-                        {service.imageurls.length > 1 && (
+                        {service.imageurls?.length > 1 && (
                             <div className="image-counter">
                                 <i className="fas fa-images"></i> {service.imageurls.length} photos
                             </div>
                         )}
                     </div>
-                    
-                    {/* Thumbnails for multiple images */}
-                    
                 </div>
 
                 {/* Content Section */}
                 <div className="service-content-section">
-                    {/* Header */}
                     <div className="content-header">
                         <div className="title-section">
                             <h2 className="service-title" style={{textAlign:"left", paddingLeft:"20px"}}>{service.name}</h2>
@@ -139,21 +176,23 @@ function Service({ service, onClick, isLandingPage = false, bookingArea = null }
                         </div>
                     </div>
 
-                    {/* Key Details Grid */}
-                        {/* Pricing */}
-                            
-                            <div className="detail-info" style={{marginLeft:"10px"}}>
-                                <span className="detail-label">{bookingArea ? "Rate (your area)" : "Daily Rate"}</span>
-                                    <span className="price">₹{displayRent ?? "N/A"}</span>
-                                    {displayUnit && <span className="unit"> / {displayUnit}</span>}
+                    {/* Pricing Display */}
+                    <div className="detail-info" style={{marginLeft:"10px"}}>
+                        <span className="detail-label">
+                            {bookingArea ? "Rate (your area)" : "Daily Rate"}
+                        </span>
+                        <span className="price">₹{displayRent}</span>
+                        {displayUnit && <span className="unit"> / {displayUnit}</span>}
+                        
+                        {/* Show original price if location has extra charge */}
+                        {bookingArea && displayRent !== Number(service?.rentperday) && (
+                            <div className="original-price-info">
+                                <small className="text-muted">
+                                    (Base price: ₹{service?.rentperday})
+                                </small>
                             </div>
-
-                        {/* Availability */}
-                        
-                  
-
-                        {/* Category if available */}
-                        
+                        )}
+                    </div>
 
                     {/* Action Buttons */}
                     <div className="action-buttons" style={{padding:"20px"}}>
@@ -164,13 +203,11 @@ function Service({ service, onClick, isLandingPage = false, bookingArea = null }
                         >
                             <span>Book Now</span>
                         </Link>
-                        
                     </div>
                 </div>
             </div>
 
             <style jsx>{`
-                /* Professional CSS Styles */
                 .premium-card {
                     background: #ffffff;
                     border-radius: 24px;
@@ -195,7 +232,6 @@ function Service({ service, onClick, isLandingPage = false, bookingArea = null }
                     }
                 }
 
-                /* Image Section */
                 .service-image-section {
                     flex: 0 0 100%;
                     padding: 20px;
@@ -256,34 +292,6 @@ function Service({ service, onClick, isLandingPage = false, bookingArea = null }
                     gap: 4px;
                 }
 
-                .image-thumbnails {
-                    display: flex;
-                    gap: 8px;
-                    margin-top: 12px;
-                }
-
-                .thumbnail {
-                    flex: 1;
-                    aspect-ratio: 1;
-                    border-radius: 12px;
-                    overflow: hidden;
-                    background: #dee2e6;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                }
-
-                .thumbnail img {
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                }
-
-                .thumbnail:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-                }
-
-                /* Content Section */
                 .service-content-section {
                     flex: 1;
                     padding: 24px;
@@ -351,72 +359,9 @@ function Service({ service, onClick, isLandingPage = false, bookingArea = null }
                     flex-shrink: 0;
                 }
 
-                /* Description */
-                .description {
-                    margin-bottom: 24px;
-                }
-
-                .description p {
-                    color: #6c757d;
-                    line-height: 1.6;
-                    margin: 0;
-                    text-align: justify;
-                    font-size: 0.95rem;
-                }
-
-                /* Details Grid */
-                .details-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 16px;
-                    margin-bottom: 28px;
-                }
-
-                .detail-item {
-                    display: flex;
-                    align-items: center;
-                    gap: 14px;
-                    padding: 14px;
-                    background: #f8f9fa;
-                    border-radius: 16px;
-                    transition: all 0.2s ease;
-                }
-
-                .detail-item:hover {
-                    background: #f1f3f5;
-                    transform: translateX(4px);
-                }
-
-                .detail-icon {
-                    width: 48px;
-                    height: 48px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: white;
-                    border-radius: 14px;
-                    font-size: 1.25rem;
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-                }
-
-                .pricing-icon {
-                    color: #3b82f6;
-                }
-
-                .availability-icon {
-                    color: #10b981;
-                }
-
-                .location-icon {
-                    color: #ef4444;
-                }
-
-                .category-icon {
-                    color: #8b5cf6;
-                }
-
                 .detail-info {
                     flex: 1;
+                    margin-bottom: 20px;
                 }
 
                 .detail-label {
@@ -428,26 +373,27 @@ function Service({ service, onClick, isLandingPage = false, bookingArea = null }
                     margin-bottom: 4px;
                 }
 
-                .detail-value {
-                    display: block;
-                    font-size: 1rem;
-                    font-weight: 600;
-                    color: #212529;
-                }
-
                 .price {
-                    font-size: 1.25rem;
+                    font-size: 1.5rem;
                     font-weight: 700;
                     color: #3b82f6;
                 }
 
                 .unit {
-                    font-size: 0.85rem;
+                    font-size: 0.9rem;
                     font-weight: normal;
                     color: #6c757d;
                 }
 
-                /* Action Buttons */
+                .original-price-info {
+                    margin-top: 4px;
+                }
+
+                .original-price-info small {
+                    font-size: 0.75rem;
+                    color: #9ca3af;
+                }
+
                 .action-buttons {
                     display: flex;
                     gap: 12px;
@@ -482,40 +428,12 @@ function Service({ service, onClick, isLandingPage = false, bookingArea = null }
                     color: white;
                 }
 
-                .btn-inquire {
-                    flex: 1;
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    gap: 8px;
-                    padding: 12px 24px;
-                    background: white;
-                    color: #495057;
-                    border: 1px solid #dee2e6;
-                    border-radius: 14px;
-                    font-weight: 500;
-                    font-size: 0.95rem;
-                    transition: all 0.2s ease;
-                    cursor: pointer;
-                }
-
-                .btn-inquire:hover {
-                    background: #f8f9fa;
-                    border-color: #ced4da;
-                    transform: translateY(-1px);
-                }
-
                 @media (max-width: 768px) {
                     .action-buttons {
                         flex-direction: column;
                     }
-                    
-                    .details-grid {
-                        grid-template-columns: 1fr;
-                    }
                 }
 
-                /* Animation */
                 @keyframes fadeInUp {
                     from {
                         opacity: 0;

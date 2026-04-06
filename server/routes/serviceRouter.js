@@ -6,29 +6,6 @@ const Booking = require("../models/booking");
 
 const router = express.Router();
 
-function normalizeServiceAreas(serviceAreas) {
-    if (!serviceAreas || !Array.isArray(serviceAreas)) return [];
-    return serviceAreas.map((a) => {
-        if (typeof a === 'string') {
-            const parts = a.split(',').map((s) => s.trim());
-            return {
-                city: parts[0] || '',
-                state: parts.slice(1).join(', ') || '',
-                district: '',
-                pincode: '',
-                extraPrice: 0
-            };
-        }
-        return {
-            city: a.city || '',
-            state: a.state || '',
-            district: a.district || '',
-            pincode: a.pincode != null ? String(a.pincode) : '',
-            extraPrice: parseFloat(a.extraPrice) || 0
-        };
-    }).filter((x) => x.city || x.state);
-}
-
 function normalizeOptionalInputs(inputs) {
     if (!inputs || !Array.isArray(inputs)) return [];
     return inputs.map((input) => ({
@@ -39,13 +16,9 @@ function normalizeOptionalInputs(inputs) {
         unit: input.unit || 'per day',
         customUnit: input.customUnit || '',
         isCountable: input.isCountable !== false,
-        areaExtras: (input.areaExtras || []).map((row) => ({
-            city: row.city || '',
-            state: row.state || '',
-            extraPrice: parseFloat(row.extraPrice) || 0
-        })).filter((r) => r.city || r.state)
     }));
 }
+
 
 // In services.js
 // Get services for admin/vendor dashboard
@@ -92,9 +65,8 @@ router.post("/getservicebyid", async (req, res) => {
     }
 });
 
-// Add service
-// services.js - Update the addservice endpoint
 
+// Add service - With both location types and location pricing
 router.post("/addservice", async (req, res) => {
     try {
         const { userid } = req.query; 
@@ -109,14 +81,14 @@ router.post("/addservice", async (req, res) => {
             companyname,
             address,
             facility,
-            locations,
             imageURLs,
             optionalInputs,
             extraInputs,
             category,
             subCategory,
             bookingType,
-            serviceAreas,
+            locations,        // Location Type array
+            locationPricing,  // Location Pricing array
         } = req.body;
 
         // Validate required fields
@@ -126,14 +98,18 @@ router.post("/addservice", async (req, res) => {
             });
         }
 
-        // Validate userid
+        if (!address) {
+            return res.status(400).json({
+                message: "Service location address is required"
+            });
+        }
+
         if (!userid) {
             return res.status(400).json({
                 message: "User ID is required to create a service"
             });
         }
 
-        // Create service with vendorId set to the logged-in user
         const newService = new Service({
             name: service,
             rentperday: parseFloat(rentperday) || 0,
@@ -143,27 +119,26 @@ router.post("/addservice", async (req, res) => {
             description: description || '',
             phonenumber: phonenumber || '',
             companyname: companyname || '',
-            address: address || '',
+            address: address,
             facility: facility || '',
-            locations: locations || ['Simple'],
-            serviceAreas: normalizeServiceAreas(serviceAreas),
+            locations: locations || ['Simple'],  // Location Type
+            locationPricing: locationPricing || [],  // Location Pricing
             imageurls: imageURLs,
             optionalInputs: normalizeOptionalInputs(optionalInputs),
             extraInputs: extraInputs || [],
             category: category || '',
             subCategory: subCategory || '',
             bookingType: bookingType,
-            
-            // Set both vendorId and userid to the same value
             vendorId: userid,
             userid: userid,
-            
             isVisible: true
         });
 
         await newService.save();
         
-        console.log(`✅ Service created: ${newService._id} by vendor: ${userid}`);
+        console.log(`✅ Service created: ${newService._id}`);
+        console.log(`📍 Location Types: ${locations?.join(', ') || 'Simple'}`);
+        console.log(`💰 Location Pricing: ${locationPricing?.length || 0} areas configured`);
         
         res.status(201).json({ 
             message: "Service added successfully", 

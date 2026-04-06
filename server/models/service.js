@@ -1,5 +1,25 @@
 const mongoose = require("mongoose");
 
+const locationPriceSchema = mongoose.Schema({
+    locationName: {
+        type: String,
+        required: true
+    },
+    locationAddress: {
+        type: String,
+        required: true
+    },
+    extraPrice: {
+        type: Number,
+        default: 0
+    },
+    // Optional: specific pricing for optional inputs at this location
+    optionalInputsExtra: [{
+        inputName: String,
+        extraPrice: Number
+    }]
+});
+
 const serviceSchema = mongoose.Schema({
     name: {
         type: String,
@@ -32,27 +52,12 @@ const serviceSchema = mongoose.Schema({
         type: String
     },
     locations: [String],
-    locations: [{
-        type: String,
-        required: true,
-        default: ['Simple']
-    }],
-
-    // Add location-specific details
-    serviceLocation: {
-        city: String,
-        state: String,
-        country: { type: String, default: 'India' },
-        coordinates: {
-            lat: Number,
-            lng: Number
-        },
-        address: String
-    },
-
-  
+    
+    // New: Location-based pricing
+    locationPricing: [locationPriceSchema],
+    
     currentbookings: [],
-    imageurls: [],  // This is your original field name
+    imageurls: [],
     optionalInputs: [{
         name: String,
         price: Number,
@@ -119,7 +124,7 @@ const serviceSchema = mongoose.Schema({
             default: false
         }
     }],
-    vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Links to the owner
+    vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     userid: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
 }, { timestamps: true });

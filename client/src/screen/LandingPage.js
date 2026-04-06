@@ -5,7 +5,6 @@ import Navbar from '../components/Navbar';
 import About from '../components/About';
 import Service from '../components/Service';
 import LocationSearch from '../components/LocationSearch';
-import { getServiceAreaMatch } from '../utils/serviceAreaPricing';
 
 const App = () => {
     const images = [
@@ -29,81 +28,49 @@ const App = () => {
 
     const navigate = useNavigate();
 
-    // Improved location matching function
+    // ✅ CORRECT - Check if service is available at a location using locationPricing
     const isServiceInLocation = useCallback((service, location) => {
         if (!location) return true;
         
-        // Get location string from various possible formats
-        let locationValue = '';
+        // If service has no location pricing configured, don't show (or show based on your business rule)
+        if (!service.locationPricing || service.locationPricing.length === 0) {
+            return false;
+        }
+        
+        // Get user location string
+        let userLocationLower = '';
         if (typeof location === 'string') {
-            locationValue = location.toLowerCase();
+            userLocationLower = location.toLowerCase();
         } else if (location.display_name) {
-            locationValue = location.display_name.toLowerCase();
+            userLocationLower = location.display_name.toLowerCase();
         } else if (location.city) {
-            locationValue = location.city.toLowerCase();
+            userLocationLower = location.city.toLowerCase();
         } else if (location.name) {
-            locationValue = location.name.toLowerCase();
+            userLocationLower = location.name.toLowerCase();
         } else {
-            locationValue = String(location).toLowerCase();
+            userLocationLower = String(location).toLowerCase();
         }
         
-        // Extract city name from display_name (first part before comma)
-        const cityName = locationValue.split(',')[0].trim();
+        // Extract city name (first part before comma)
+        const userCity = userLocationLower.split(',')[0].trim();
         
-        // Check primary location field
-        if (service.location) {
-            const serviceLocation = service.location.toLowerCase();
-            if (serviceLocation.includes(cityName) || 
-                cityName.includes(serviceLocation) ||
-                serviceLocation.includes(locationValue)) {
-                return true;
-            }
-        }
-        
-        // Check address
-        if (service.address && service.address.toLowerCase().includes(cityName)) {
-            return true;
-        }
-        
-        // Check serviceAreas array
-        if (service.serviceAreas && Array.isArray(service.serviceAreas)) {
-            return service.serviceAreas.some(area => {
-                if (!area) return false;
-                if (typeof area === 'string') {
-                    const al = area.toLowerCase();
-                    return al.includes(cityName) || cityName.includes(al) || al.includes(locationValue);
-                }
-                const areaCity = (area.city || '').toLowerCase();
-                const areaState = (area.state || '').toLowerCase();
-                const areaDistrict = (area.district || '').toLowerCase();
-                const areaPincode = (area.pincode || '').toString();
-                
-                return areaCity.includes(cityName) ||
-                       cityName.includes(areaCity) ||
-                       areaState.includes(cityName) ||
-                       areaDistrict.includes(cityName) ||
-                       areaPincode === locationValue;
-            });
-        }
-        
-        // Check serviceLocation object
-        if (service.serviceLocation) {
-            const locCity = (service.serviceLocation.city || '').toLowerCase();
-            const locState = (service.serviceLocation.state || '').toLowerCase();
-            const locDistrict = (service.serviceLocation.district || '').toLowerCase();
+        // Check if service's locationPricing includes this location
+        const isAvailable = service.locationPricing.some(locationPrice => {
+            const locationName = (locationPrice.locationName || "").toLowerCase();
+            const locationAddress = (locationPrice.locationAddress || "").toLowerCase();
             
-            return locCity.includes(cityName) ||
-                   cityName.includes(locCity) ||
-                   locState.includes(cityName) ||
-                   locDistrict.includes(cityName);
-        }
+            return locationName.includes(userCity) || 
+                   userCity.includes(locationName) ||
+                   locationAddress.includes(userCity) ||
+                   userCity.includes(locationAddress);
+        });
         
-        return false;
+        return isAvailable;
     }, []);
-
+    
     // Get location-based services
     const getLocationBasedServices = useCallback((location, services) => {
-        if (!location) return services;
+        if (!location) return [];
         const filtered = services.filter(service => isServiceInLocation(service, location));
         console.log(`Filtered ${filtered.length} services from ${services.length} for location:`, location);
         return filtered;
@@ -119,8 +86,8 @@ const App = () => {
                 setHasLocation(true);
                 console.log(`Location selected: ${selectedLocation.display_name || selectedLocation.city}, Found ${filtered.length} services`);
             } else {
-                setLocationBasedServices(allServices);
-                setFilteredServices(allServices);
+                setLocationBasedServices([]);
+                setFilteredServices([]);
                 setHasLocation(false);
             }
             setLoading(false);
@@ -205,14 +172,12 @@ const App = () => {
         setSelectedLocation(location);
         
         if (location) {
-            // Save location to localStorage
             localStorage.setItem("selectedLocation", JSON.stringify(location));
             setHasLocation(true);
             setShowSearchResults(false);
             setSearchTerm('');
             setLocationSearch('');
         } else {
-            // Clear location from localStorage
             localStorage.removeItem("selectedLocation");
             setHasLocation(false);
             setShowSearchResults(false);
@@ -237,7 +202,6 @@ const App = () => {
         
         let results = [...locationBasedServices];
         
-        // Filter by search term
         if (searchTerm.trim()) {
             const searchTermLower = searchTerm.trim().toLowerCase();
             results = results.filter(service =>
@@ -248,7 +212,6 @@ const App = () => {
             );
         }
         
-        // Additional location filter from hero section
         if (locationSearch.trim()) {
             results = results.filter(service => isServiceInLocation(service, locationSearch.trim()));
         }
@@ -293,40 +256,33 @@ const App = () => {
         setShowSearchResults(false);
     };
 
-    // Handle category click
- // In App.js, update the handleCategoryClick function:
-const handleCategoryClick = (category) => {
-    if (!hasLocation) {
-        alert("Please select a location first");
-        return;
-    }
-    
-    // Pass the selected location object to the navigate state
-    navigate('/home', { 
-        state: { 
-            category: category,
-            location: selectedLocation  // This should be the location object from state
-        } 
-    });
-};
+    const handleCategoryClick = (category) => {
+        if (!hasLocation) {
+            alert("Please select a location first");
+            return;
+        }
+        
+        navigate('/home', { 
+            state: { 
+                category: category,
+                location: selectedLocation
+            } 
+        });
+    };
 
-// Similarly for handleSubCategoryClick:
-const handleSubCategoryClick = (subCategory) => {
-    if (!hasLocation) {
-        alert("Please select a location first");
-        return;
-    }
-    
-    navigate('/home', { 
-        state: { 
-            subCategory: subCategory,
-            location: selectedLocation  // Pass the location object
-        } 
-    });
-};
-
-    // Handle subcategory click
-   
+    const handleSubCategoryClick = (subCategory) => {
+        if (!hasLocation) {
+            alert("Please select a location first");
+            return;
+        }
+        
+        navigate('/home', { 
+            state: { 
+                subCategory: subCategory,
+                location: selectedLocation
+            } 
+        });
+    };
 
     // Image slider for banners
     useEffect(() => {
@@ -370,7 +326,7 @@ const handleSubCategoryClick = (subCategory) => {
         "https://thumbs.dreamstime.com/b/elderly-person-assistance-vector-illustration-support-care-senior-people-social-work-volunteering-concept-flat-cartoon-322085453.jpg"
     ];
 
-    // Show loading spinner while initial load is in progress
+    // Show loading spinner
     if (loading && allServices.length === 0) {
         return (
             <div>
@@ -415,76 +371,70 @@ const handleSubCategoryClick = (subCategory) => {
             />
             <br />
 
-{/* Search Results Section */}
-{showSearchResults && (
-    <>
-
-        <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
-            {/* Add Header for Search Results */}
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                marginBottom: '20px',
-                paddingBottom: '15px',
-                borderBottom: '2px solid #f0f0f0'
-            }}>
-                {/* Optional: Add a back button here too for mobile users */}
-                <button
-                    onClick={handleClearSearch}
-                    style={{
-                        padding: "8px 16px",
-                        backgroundColor: "#6c757d",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "5px",
-                        fontSize: "14px",
-                        fontWeight: "500"
-                    }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = "#5a6268"}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = "#6c757d"}
-                >
-                    ← Back
-                </button>
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {filteredServices.length > 0 ? (
-                    filteredServices.map((service) => (
-                        <div key={service._id}>
-                            <Service
-                                service={service}
-                                bookingArea={getServiceAreaMatch(service, selectedLocation)}
-                            />
-                        </div>
-                    ))
-                ) : (
-                    <div style={{ textAlign: "center", padding: "40px" }}>
-                        <p>No services found matching your criteria in this location.</p>
+            {/* Search Results Section */}
+            {showSearchResults && (
+                <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
+                    <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        marginBottom: '20px',
+                        paddingBottom: '15px',
+                        borderBottom: '2px solid #f0f0f0'
+                    }}>
                         <button
                             onClick={handleClearSearch}
                             style={{
-                                marginTop: "10px",
                                 padding: "8px 16px",
-                                backgroundColor: "#4a54e1",
+                                backgroundColor: "#6c757d",
                                 color: "white",
                                 border: "none",
-                                borderRadius: "6px",
-                                cursor: "pointer"
+                                borderRadius: "8px",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                fontSize: "14px",
+                                fontWeight: "500"
                             }}
+                            onMouseEnter={(e) => e.target.style.backgroundColor = "#5a6268"}
+                            onMouseLeave={(e) => e.target.style.backgroundColor = "#6c757d"}
                         >
-                            Clear Search
+                            ← Back
                         </button>
                     </div>
-                )}
-            </div>
-        </div>
-    </>
-)}        {/* Rest of the Content - Only show when no search results */}
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {filteredServices.length > 0 ? (
+                            filteredServices.map((service) => (
+                                <div key={service._id}>
+                                    <Service service={service} bookingArea={selectedLocation} />
+                                </div>
+                            ))
+                        ) : (
+                            <div style={{ textAlign: "center", padding: "40px" }}>
+                                <p>No services found matching your criteria in this location.</p>
+                                <button
+                                    onClick={handleClearSearch}
+                                    style={{
+                                        marginTop: "10px",
+                                        padding: "8px 16px",
+                                        backgroundColor: "#4a54e1",
+                                        color: "white",
+                                        border: "none",
+                                        borderRadius: "6px",
+                                        cursor: "pointer"
+                                    }}
+                                >
+                                    Clear Search
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+            
+            {/* Rest of the Content */}
             {!showSearchResults && (
                 <>
                     {/* Hero Section */}
@@ -768,7 +718,7 @@ const handleSubCategoryClick = (subCategory) => {
                                             }}>
                                                 {getSuggestedServices().map((service) => (
                                                     <div key={service._id} style={{ minWidth: "250px", flexShrink: 0 }}>
-                                                        <Service service={service} isLandingPage={true} />
+                                                        <Service service={service} isLandingPage={true} bookingArea={selectedLocation} />
                                                     </div>
                                                 ))}
                                             </div>
@@ -879,7 +829,7 @@ const handleSubCategoryClick = (subCategory) => {
                                         }}>
                                             {getRotatingServices().map((service) => (
                                                 <div key={service._id} style={{ minWidth: "250px", flexShrink: 0 }}>
-                                                    <Service service={service} isLandingPage={true} />
+                                                    <Service service={service} isLandingPage={true} bookingArea={selectedLocation} />
                                                 </div>
                                             ))}
                                         </div>
@@ -1164,12 +1114,10 @@ const handleSubCategoryClick = (subCategory) => {
                             </p>
                             <button
                                 onClick={() => {
-                                    // Find and click the location button in navbar
                                     const locationBtn = document.querySelector('.location-toggle-btn');
                                     if (locationBtn) {
                                         locationBtn.click();
                                     } else {
-                                        // Fallback: scroll to top and show alert
                                         window.scrollTo({ top: 0, behavior: 'smooth' });
                                         setTimeout(() => {
                                             alert("Please click on the location button in the top navbar to select your location");

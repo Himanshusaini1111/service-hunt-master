@@ -6,12 +6,6 @@ import Error from "../components/Error";
 import Loader from "../components/Loader";
 import moment from "moment";
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import {
-  normalizeServiceAreas,
-  effectiveBaseRent,
-  effectiveOptionalUnitPrice,
-  areasMatch,
-} from '../utils/serviceAreaPricing';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -72,7 +66,37 @@ function Bookingscreen() {
     "15:00 - 16:00", "16:00 - 17:00", "17:00 - 18:00",
     "18:00 - 19:00"
   ];
+  // ✅ DIRECT FUNCTIONS - Replace the utility import
+  const normalizeLocationPricing = (locationPricing) => {
+    if (!locationPricing || !Array.isArray(locationPricing)) return [];
+    return locationPricing.map(lp => ({
+      locationName: lp.locationName || "",
+      locationAddress: lp.locationAddress || "",
+      extraPrice: Number(lp.extraPrice) || 0,
+      optionalInputsExtra: lp.optionalInputsExtra || []
+    }));
+  };
 
+  const effectiveBaseRent = (service, selectedArea) => {
+    const basePrice = Number(service?.rentperday) || 0;
+    if (!selectedArea) return basePrice;
+    const extraPrice = Number(selectedArea.extraPrice) || 0;
+    return basePrice + extraPrice;
+  };
+
+  const effectiveOptionalUnitPrice = (optionalInput, selectedArea) => {
+    const basePrice = Number(optionalInput?.price) || 0;
+    if (!selectedArea || !selectedArea.optionalInputsExtra) return basePrice;
+    const extra = selectedArea.optionalInputsExtra.find(
+      e => e.inputName === optionalInput.name
+    );
+    return basePrice + (extra ? Number(extra.extraPrice) || 0 : 0);
+  };
+
+  const areasMatch = (a, b) => {
+    if (!a || !b) return false;
+    return (a.locationName || a.city) === (b.locationName || b.city);
+  };
   // Initialize AOS
   useEffect(() => {
     AOS.init();
@@ -108,28 +132,90 @@ function Bookingscreen() {
     fetchData();
   }, [serviceid]);
 
-  useEffect(() => {
-    if (!service) return;
-    const areas = normalizeServiceAreas(service.serviceAreas);
-    if (areas.length === 0) {
-      setSelectedServiceArea(null);
-      return;
+useEffect(() => {
+  if (!service) return;
+  
+  const areas = normalizeLocationPricing(service.locationPricing);
+  console.log("Areas from service:", areas);
+  console.log("Navigation state:", locationRoute.state);
+  
+  if (areas.length === 0) {
+    setSelectedServiceArea(null);
+    return;
+  }
+  
+  if (areas.length === 1) {
+    console.log("Only one area, auto-selecting:", areas[0]);
+    setSelectedServiceArea(areas[0]);
+    return;
+  }
+  
+  // Try to get location from navigation state
+  const fromNav = locationRoute.state?.selectedServiceArea;
+  console.log("fromNav:", fromNav);
+  
+  if (fromNav) {
+    // Handle different possible formats of fromNav
+    let locationName = null;
+    
+    if (typeof fromNav === 'string') {
+      locationName = fromNav;
+    } else if (fromNav.locationName) {
+      locationName = fromNav.locationName;
+    } else if (fromNav.city) {
+      locationName = fromNav.city;
+    } else if (fromNav.name) {
+      locationName = fromNav.name;
     }
-    if (areas.length === 1) {
-      setSelectedServiceArea(areas[0]);
-      return;
-    }
-    const fromNav = locationRoute.state?.selectedServiceArea;
-    if (fromNav && fromNav.city) {
-      const found = areas.find((a) => areasMatch(a, fromNav));
+    
+    console.log("Looking for location name:", locationName);
+    
+    if (locationName) {
+      const found = areas.find((a) => 
+        a.locationName === locationName ||
+        a.locationName.toLowerCase().includes(locationName.toLowerCase()) ||
+        locationName.toLowerCase().includes(a.locationName.toLowerCase())
+      );
+      
       if (found) {
+        console.log("Found matching area:", found);
         setSelectedServiceArea(found);
         return;
       }
     }
-    setSelectedServiceArea(null);
-  }, [service, locationRoute.state]);
-
+  }
+  
+  // Try to get from localStorage
+  const savedLocation = localStorage.getItem("selectedLocation");
+  console.log("Saved location from localStorage:", savedLocation);
+  
+  if (savedLocation) {
+    try {
+      const location = JSON.parse(savedLocation);
+      let locationName = location.city || location.display_name?.split(',')[0] || location.locationName;
+      
+      if (locationName) {
+        const found = areas.find((a) => 
+          a.locationName === locationName ||
+          a.locationName.toLowerCase().includes(locationName.toLowerCase()) ||
+          locationName.toLowerCase().includes(a.locationName.toLowerCase())
+        );
+        
+        if (found) {
+          console.log("Found from localStorage:", found);
+          setSelectedServiceArea(found);
+          return;
+        }
+      }
+    } catch (error) {
+      console.error("Error parsing saved location:", error);
+    }
+  }
+  
+  // If still no match, select the first area as default
+  console.log("No match found, selecting first area:", areas[0]);
+  setSelectedServiceArea(areas[0]);
+}, [service, locationRoute.state]);
   // Calculate days between dates
   useEffect(() => {
     const unit = service?.unit || 'per day';
@@ -349,7 +435,7 @@ function Bookingscreen() {
           return;
         }
 
-        const coverageAreas = normalizeServiceAreas(service?.serviceAreas);
+        const coverageAreas = normalizeLocationPricing(service?.locationPricing);
         if (coverageAreas.length > 0 && !selectedServiceArea) {
           Swal.fire('Error', 'Please select which area you are booking for — prices depend on the service area.', 'error');
           return;
@@ -401,15 +487,13 @@ function Bookingscreen() {
         customUnit: service.customUnit,
         isCountable: service.isCountable,
         rentperday: effectiveRentSnapshot,
-        selectedServiceArea: selectedServiceArea
-          ? {
-              city: selectedServiceArea.city,
-              state: selectedServiceArea.state,
-              district: selectedServiceArea.district || '',
-              pincode: selectedServiceArea.pincode || '',
-              extraPrice: Number(selectedServiceArea.extraPrice) || 0,
-            }
-          : undefined,
+       selectedServiceArea: selectedServiceArea
+  ? {
+      locationName: selectedServiceArea.locationName,
+      locationAddress: selectedServiceArea.locationAddress,
+      extraPrice: Number(selectedServiceArea.extraPrice) || 0,
+    }
+  : undefined,
         quantity: quantity,
         fromDate: bookingDates[0] || '',
         toDate: bookingDates[bookingDates.length - 1] || '',
@@ -809,7 +893,7 @@ function Bookingscreen() {
 
   // Get display unit
   const displayUnit = service.unit === "Other" ? service.customUnit : service.unit;
-  const coverageAreas = normalizeServiceAreas(service.serviceAreas);
+  const coverageAreas = normalizeLocationPricing(service.locationPricing);
   const effectiveRate = effectiveBaseRent(service, selectedServiceArea);
 
   return (
@@ -1027,50 +1111,6 @@ function Bookingscreen() {
 
             {/* Unit-based Controls */}
             {renderUnitBasedControls()}
-
-            {coverageAreas.length > 0 && (
-              <div style={{ margin: "15px 0", padding: "12px", background: "#f8f9fa", borderRadius: "8px" }}>
-                <label style={{ display: "block", marginBottom: "8px", fontWeight: "600" }}>
-                  Service area (updates price)
-                </label>
-                <select
-                  className="form-control"
-                  style={{ maxWidth: "420px" }}
-                  value={
-                    selectedServiceArea
-                      ? (() => {
-                          const idx = coverageAreas.findIndex((a) =>
-                            areasMatch(a, selectedServiceArea)
-                          );
-                          return idx >= 0 ? String(idx) : "";
-                        })()
-                      : ""
-                  }
-                  onChange={(e) => {
-                    const i = e.target.value;
-                    if (i === "") {
-                      setSelectedServiceArea(null);
-                      return;
-                    }
-                    const idx = parseInt(i, 10);
-                    setSelectedServiceArea(coverageAreas[idx] || null);
-                  }}
-                >
-                  <option value="">Select area…</option>
-                  {coverageAreas.map((a, i) => (
-                    <option key={i} value={String(i)}>
-                      {a.city}, {a.state}
-                      {Number(a.extraPrice) > 0 ? ` (+₹${a.extraPrice} on base)` : ""}
-                    </option>
-                  ))}
-                </select>
-                {selectedServiceArea && Number(selectedServiceArea.extraPrice) > 0 && (
-                  <small style={{ display: "block", marginTop: "8px", color: "#555" }}>
-                    List rate ₹{service.rentperday} + area ₹{selectedServiceArea.extraPrice} = ₹{effectiveRate} {displayUnit ? `/ ${displayUnit}` : ""}
-                  </small>
-                )}
-              </div>
-            )}
 
             {/* Price Display */}
             {bookingType !== 'Inquari Booking' ? (
@@ -1764,9 +1804,9 @@ function Bookingscreen() {
                 <p><strong>Quantity:</strong> {quantity}</p>
               )}
               <p><strong>Unit:</strong> {displayUnit}</p>
-              {selectedServiceArea && (
-                <p><strong>Area:</strong> {selectedServiceArea.city}, {selectedServiceArea.state}</p>
-              )}
+             {selectedServiceArea && (
+  <p><strong>Area:</strong> {selectedServiceArea.locationName}</p>
+)}
               {daysCount > 1 && bookingType !== 'Inquari Booking' && (
                 <p><strong>Days:</strong> {daysCount}</p>
               )}
