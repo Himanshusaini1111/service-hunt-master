@@ -132,90 +132,90 @@ function Bookingscreen() {
     fetchData();
   }, [serviceid]);
 
-useEffect(() => {
-  if (!service) return;
-  
-  const areas = normalizeLocationPricing(service.locationPricing);
-  console.log("Areas from service:", areas);
-  console.log("Navigation state:", locationRoute.state);
-  
-  if (areas.length === 0) {
-    setSelectedServiceArea(null);
-    return;
-  }
-  
-  if (areas.length === 1) {
-    console.log("Only one area, auto-selecting:", areas[0]);
-    setSelectedServiceArea(areas[0]);
-    return;
-  }
-  
-  // Try to get location from navigation state
-  const fromNav = locationRoute.state?.selectedServiceArea;
-  console.log("fromNav:", fromNav);
-  
-  if (fromNav) {
-    // Handle different possible formats of fromNav
-    let locationName = null;
-    
-    if (typeof fromNav === 'string') {
-      locationName = fromNav;
-    } else if (fromNav.locationName) {
-      locationName = fromNav.locationName;
-    } else if (fromNav.city) {
-      locationName = fromNav.city;
-    } else if (fromNav.name) {
-      locationName = fromNav.name;
+  useEffect(() => {
+    if (!service) return;
+
+    const areas = normalizeLocationPricing(service.locationPricing);
+    console.log("Areas from service:", areas);
+    console.log("Navigation state:", locationRoute.state);
+
+    if (areas.length === 0) {
+      setSelectedServiceArea(null);
+      return;
     }
-    
-    console.log("Looking for location name:", locationName);
-    
-    if (locationName) {
-      const found = areas.find((a) => 
-        a.locationName === locationName ||
-        a.locationName.toLowerCase().includes(locationName.toLowerCase()) ||
-        locationName.toLowerCase().includes(a.locationName.toLowerCase())
-      );
-      
-      if (found) {
-        console.log("Found matching area:", found);
-        setSelectedServiceArea(found);
-        return;
+
+    if (areas.length === 1) {
+      console.log("Only one area, auto-selecting:", areas[0]);
+      setSelectedServiceArea(areas[0]);
+      return;
+    }
+
+    // Try to get location from navigation state
+    const fromNav = locationRoute.state?.selectedServiceArea;
+    console.log("fromNav:", fromNav);
+
+    if (fromNav) {
+      // Handle different possible formats of fromNav
+      let locationName = null;
+
+      if (typeof fromNav === 'string') {
+        locationName = fromNav;
+      } else if (fromNav.locationName) {
+        locationName = fromNav.locationName;
+      } else if (fromNav.city) {
+        locationName = fromNav.city;
+      } else if (fromNav.name) {
+        locationName = fromNav.name;
       }
-    }
-  }
-  
-  // Try to get from localStorage
-  const savedLocation = localStorage.getItem("selectedLocation");
-  console.log("Saved location from localStorage:", savedLocation);
-  
-  if (savedLocation) {
-    try {
-      const location = JSON.parse(savedLocation);
-      let locationName = location.city || location.display_name?.split(',')[0] || location.locationName;
-      
+
+      console.log("Looking for location name:", locationName);
+
       if (locationName) {
-        const found = areas.find((a) => 
+        const found = areas.find((a) =>
           a.locationName === locationName ||
           a.locationName.toLowerCase().includes(locationName.toLowerCase()) ||
           locationName.toLowerCase().includes(a.locationName.toLowerCase())
         );
-        
+
         if (found) {
-          console.log("Found from localStorage:", found);
+          console.log("Found matching area:", found);
           setSelectedServiceArea(found);
           return;
         }
       }
-    } catch (error) {
-      console.error("Error parsing saved location:", error);
     }
-  }
-  
-  // If still no match, select the first area as default
-  console.log("No match found, selecting first area:", areas[0]);
-  setSelectedServiceArea(areas[0]);
-}, [service, locationRoute.state]);
+
+    // Try to get from localStorage
+    const savedLocation = localStorage.getItem("selectedLocation");
+    console.log("Saved location from localStorage:", savedLocation);
+
+    if (savedLocation) {
+      try {
+        const location = JSON.parse(savedLocation);
+        let locationName = location.city || location.display_name?.split(',')[0] || location.locationName;
+
+        if (locationName) {
+          const found = areas.find((a) =>
+            a.locationName === locationName ||
+            a.locationName.toLowerCase().includes(locationName.toLowerCase()) ||
+            locationName.toLowerCase().includes(a.locationName.toLowerCase())
+          );
+
+          if (found) {
+            console.log("Found from localStorage:", found);
+            setSelectedServiceArea(found);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Error parsing saved location:", error);
+      }
+    }
+
+    // If still no match, select the first area as default
+    console.log("No match found, selecting first area:", areas[0]);
+    setSelectedServiceArea(areas[0]);
+  }, [service, locationRoute.state]);
   // Calculate days between dates
   useEffect(() => {
     const unit = service?.unit || 'per day';
@@ -487,13 +487,13 @@ useEffect(() => {
         customUnit: service.customUnit,
         isCountable: service.isCountable,
         rentperday: effectiveRentSnapshot,
-       selectedServiceArea: selectedServiceArea
-  ? {
-      locationName: selectedServiceArea.locationName,
-      locationAddress: selectedServiceArea.locationAddress,
-      extraPrice: Number(selectedServiceArea.extraPrice) || 0,
-    }
-  : undefined,
+        selectedServiceArea: selectedServiceArea
+          ? {
+            locationName: selectedServiceArea.locationName,
+            locationAddress: selectedServiceArea.locationAddress,
+            extraPrice: Number(selectedServiceArea.extraPrice) || 0,
+          }
+          : undefined,
         quantity: quantity,
         fromDate: bookingDates[0] || '',
         toDate: bookingDates[bookingDates.length - 1] || '',
@@ -698,41 +698,50 @@ useEffect(() => {
     // Day-based units (show date range or multiple dates)
     if (unit.includes('day') || unit.includes('week') || unit.includes('month')) {
       return (
-        <div className="booking-controls">
+        <div className="booking-controls" style={{
+          overflow: "visible",  // or "hidden" depending on your need
+          width: "100%"
+        }}>
+          {/* Your date picker here */}
           <legend className="section-title">Select Dates</legend>
-          <div
-            className="date-picker-trigger"
-            onClick={() => setIsCalendarOpen(true)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "10px 15px",
-              border: "1px solid #ddd",
-              borderRadius: "8px",
-              cursor: "pointer",
-              background: "white",
-              width: "300px",
-              marginBottom: "10px"
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <span>📅</span>
-              <div>
-                <small style={{ fontSize: "0.8em", color: "#666" }}>Select Dates</small>
-                <div style={{ fontSize: "1em", color: "#333", fontWeight: "bold" }}>
-                  {selectedDates.length === 0
-                    ? "No dates selected"
-                    : selectedDates.length === 1
-                      ? selectedDates[0]
-                      : `${selectedDates.length} dates selected`
-                  }
-                </div>
-              </div>
-            </div>
-            <span>▾</span>
-          </div>
-
+         <div
+  className="date-picker-trigger"
+  onClick={() => setIsCalendarOpen(true)}
+  style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "10px 15px",
+    border: "1px solid #ddd",
+    borderRadius: "8px",
+    cursor: "pointer",
+    background: "white",
+    width: "100%",  // Changed from 300px to 100%
+    maxWidth: "300px",  // Add max-width instead of fixed width
+    minWidth: "200px",  // Minimum width for small screens
+    marginBottom: "10px",
+    boxSizing: "border-box"  // Ensure padding is included in width
+  }}
+>
+  <div style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "hidden" }}>
+    <span>📅</span>
+    <div style={{ overflow: "hidden" }}>
+      <small style={{ fontSize: "0.8em", color: "#666", display: "block" }}>Select Date</small>
+      <div style={{ 
+        fontSize: "1em", 
+        color: "#333", 
+        fontWeight: "bold",
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        maxWidth: "180px"
+      }}>
+        {selectedDates[0] || "Choose a date"}
+      </div>
+    </div>
+  </div>
+  <span style={{ flexShrink: 0 }}>▾</span>
+</div>
           {selectedDates.length > 0 && (
             <div style={{ marginTop: '10px' }}>
               <p><b>Selected Dates:</b></p>
@@ -1804,9 +1813,9 @@ useEffect(() => {
                 <p><strong>Quantity:</strong> {quantity}</p>
               )}
               <p><strong>Unit:</strong> {displayUnit}</p>
-             {selectedServiceArea && (
-  <p><strong>Area:</strong> {selectedServiceArea.locationName}</p>
-)}
+              {selectedServiceArea && (
+                <p><strong>Area:</strong> {selectedServiceArea.locationName}</p>
+              )}
               {daysCount > 1 && bookingType !== 'Inquari Booking' && (
                 <p><strong>Days:</strong> {daysCount}</p>
               )}
