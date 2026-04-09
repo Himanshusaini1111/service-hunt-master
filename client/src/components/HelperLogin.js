@@ -103,6 +103,8 @@ export function HelperLogin() {
 
 // Updated HelperDashboard function with sound stop functionality
 
+// HelperDashboard function ko replace karo with this updated version
+
 function HelperDashboard({ helperData, onLogout }) {
     const screens = useBreakpoint();
     const [isOnline, setIsOnline] = useState(false);
@@ -110,88 +112,49 @@ function HelperDashboard({ helperData, onLogout }) {
     const [loading, setLoading] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [showBookingDetails, setShowBookingDetails] = useState(false);
-    const [lastWorkId, setLastWorkId] = useState(localStorage.getItem('lastWorkId') || '');
+    
+    // ✅ Updated notification states
+    const [lastCheckedTime, setLastCheckedTime] = useState(localStorage.getItem('helperLastCheckedTime') || Date.now().toString());
     const [soundEnabled, setSoundEnabled] = useState(localStorage.getItem('helperSoundEnabled') !== 'false');
     const [isPlayingSound, setIsPlayingSound] = useState(false);
-    const [newBookingAlert, setNewBookingAlert] = useState(null);
-    const [mutedBookings, setMutedBookings] = useState(
-        JSON.parse(localStorage.getItem('mutedBookings')) || []
+    const [newWorkAlert, setNewWorkAlert] = useState(null);
+    const [notifiedWorkIds, setNotifiedWorkIds] = useState(
+        new Set(JSON.parse(localStorage.getItem('helperNotifiedWorks') || '[]'))
     );
+    
     // Audio ref for sound
     const audioRef = useRef(null);
+    const pollingIntervalRef = useRef(null);
     const soundTimeoutRef = useRef(null);
 
-    useEffect(() => {
-    localStorage.removeItem('mutedBookings');
-}, []);
-    useEffect(() => {
-        if (helperData) {
-            // Reset lastWorkId when dashboard loads to prevent stale comparisons
-            const savedLastId = localStorage.getItem('lastWorkId');
-            setLastWorkId(savedLastId || '');
-
-            fetchAssignedWorks();
-            checkConnectionStatus();
-
-            // Listen for foreground notifications
-            onMessageListener().then(payload => {
-                console.log('📢 New work notification:', payload);
-                fetchAssignedWorks();
-            });
-
-            // Start polling for new works
-            const interval = setInterval(checkNewWorks, 15000); // Increased to 15 seconds
-            return () => clearInterval(interval);
-        }
-    }, [helperData]);
-
+    // ✅ Stop sound function
     const stopSound = () => {
         if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current.currentTime = 0;
         }
-
         if (soundTimeoutRef.current) {
             clearTimeout(soundTimeoutRef.current);
             soundTimeoutRef.current = null;
         }
-
-        // ✅ Save booking ID as muted
-        if (newBookingAlert?.works?.length > 0) {
-            const bookingId = newBookingAlert.works[0]._id;
-
-            let updatedMuted = [...mutedBookings, bookingId];
-
-            // Optional: limit size (avoid memory issue)
-            if (updatedMuted.length > 50) {
-                updatedMuted.shift();
-            }
-
-            setMutedBookings(updatedMuted);
-            localStorage.setItem('mutedBookings', JSON.stringify(updatedMuted));
-        }
-
         setIsPlayingSound(false);
-        setNewBookingAlert(null);
+        setNewWorkAlert(null);
     };
-    // Function to play notification sound with loop option
+
+    // ✅ Play notification sound
     const playNotificationSound = (shouldLoop = true) => {
         if (!soundEnabled || !audioRef.current) return;
-
+        
         try {
             audioRef.current.loop = shouldLoop;
             audioRef.current.currentTime = 0;
             audioRef.current.play().catch(e => {
                 console.log('Sound play failed:', e);
-                // If autoplay fails, show a visual alert instead
                 message.warning('Click "Allow" to enable sound notifications', 3);
             });
             setIsPlayingSound(true);
-
-            // Auto-stop sound after 30 seconds if not stopped manually
-            if (soundTimeoutRef.current) {
-                clearTimeout(soundTimeoutRef.current);
-            }
+            
+            // Auto-stop sound after 30 seconds
             soundTimeoutRef.current = setTimeout(() => {
                 if (isPlayingSound) {
                     stopSound();
@@ -203,7 +166,25 @@ function HelperDashboard({ helperData, onLogout }) {
         }
     };
 
-    // Function to check for new assigned works
+    // ✅ Listen for work status changes to stop sound
+    useEffect(() => {
+        const handleWorkUpdate = (event) => {
+            const { workId, status } = event.detail || {};
+            
+            // If helper changes status to in-progress or completed, stop the sound
+            if ((status === 'in-progress' || status === 'completed' || status === 'cancelled') && isPlayingSound) {
+                stopSound();
+            }
+        };
+        
+        window.addEventListener('workStatusChanged', handleWorkUpdate);
+        
+        return () => {
+            window.removeEventListener('workStatusChanged', handleWorkUpdate);
+        };
+    }, [isPlayingSound]);
+
+    // ✅ Check for new works (60 second polling)
     const checkNewWorks = async () => {
         try {
             const token = localStorage.getItem('helperToken');
@@ -211,57 +192,108 @@ function HelperDashboard({ helperData, onLogout }) {
 
             const response = await axios.get('/api/helper/check-new-works', {
                 headers: { Authorization: `Bearer ${token}` },
-                params: { lastId: lastWorkId || '' }
+                params: { lastCheckedTime: lastCheckedTime }
             });
 
             const newWorks = response.data.works || [];
 
             if (newWorks.length > 0) {
-                // Get the latest work ID from the response
-                const latestId = newWorks[0]._id;
-
-                // ❌ If already muted → DO NOTHING
-                if (mutedBookings.includes(latestId)) {
-                    return;
+                // Filter out works that have already been notified
+                const trulyNewWorks = newWorks.filter(work => 
+                    !notifiedWorkIds.has(work._id)
+                );
+                
+                if (trulyNewWorks.length > 0) {
+                    // Add these work IDs to notified set
+                    const newNotifiedIds = new Set(notifiedWorkIds);
+                    trulyNewWorks.forEach(work => {
+                        newNotifiedIds.add(work._id);
+                    });
+                    setNotifiedWorkIds(newNotifiedIds);
+                    
+                    // Save to localStorage
+                    localStorage.setItem('helperNotifiedWorks', JSON.stringify([...newNotifiedIds]));
+                    
+                    const count = trulyNewWorks.length;
+                    
+                    // Check if duplicate alert
+                    const currentAlertWorkIds = newWorkAlert?.works?.map(w => w._id) || [];
+                    const isDuplicateAlert = trulyNewWorks.some(w => 
+                        currentAlertWorkIds.includes(w._id)
+                    );
+                    
+                    if (!isDuplicateAlert) {
+                        const newWorkInfo = {
+                            count: count,
+                            works: trulyNewWorks,
+                            timestamp: new Date()
+                        };
+                        
+                        setNewWorkAlert(newWorkInfo);
+                        
+                        // Play sound if enabled
+                        if (soundEnabled && audioRef.current) {
+                            playNotificationSound(true);
+                        }
+                        
+                        // Browser notification
+                        if (Notification.permission === 'granted') {
+                            new Notification(`📢 New Work Assigned!`, {
+                                body: `${count} new work${count > 1 ? 's have' : ' has'} been assigned to you`,
+                                icon: '/icon-192.png',
+                                vibrate: [200, 100, 200]
+                            });
+                        }
+                        
+                        fetchAssignedWorks();
+                        message.info(`${count} new work${count > 1 ? 's' : ''} assigned to you!`);
+                    }
                 }
+            }
+            
+            // Update last checked time
+            const newCheckedTime = Date.now().toString();
+            setLastCheckedTime(newCheckedTime);
+            localStorage.setItem('helperLastCheckedTime', newCheckedTime);
+            
+        } catch (error) {
+            console.log('Error checking new works:', error);
+        }
+    };
 
-                // ✅ Only trigger if it's truly new
-                if (latestId !== lastWorkId) {
-                    const count = newWorks.length;
-
-                    const newBookingInfo = {
-                        count: count,
-                        works: newWorks,
-                        timestamp: new Date()
-                    };
-
-                    setNewBookingAlert(newBookingInfo);
-
-                    // ✅ Play sound
-                    if (soundEnabled && audioRef.current) {
-                        playNotificationSound(true);
-                    }
-
-                    // ✅ Browser notification
-                    if (Notification.permission === 'granted') {
-                        new Notification(`📢 New Work Assigned!`, {
-                            body: `${count} new work${count > 1 ? 's have' : ' has'} been assigned to you`,
-                            icon: '/icon-192.png',
-                            vibrate: [200, 100, 200]
-                        });
-                    }
-
-                    // ✅ Save latest ID
-                    setLastWorkId(latestId);
-                    localStorage.setItem('lastWorkId', latestId);
-
-                    fetchAssignedWorks();
-
-                    message.info(`${count} new work${count > 1 ? 's' : ''} assigned to you!`);
+    // ✅ Update work status with event dispatch
+    const updateWorkStatus = async (workId, newStatus) => {
+        try {
+            const response = await axios.put(`/api/helper/update-status`,
+                { bookingId: workId, status: newStatus },
+                { headers: { Authorization: `Bearer ${localStorage.getItem('helperToken')}` } }
+            );
+            
+            if (response.data.success) {
+                message.success(`Work status updated to ${newStatus}`);
+                fetchAssignedWorks();
+                
+                // ✅ Dispatch event to stop sound when status changes
+                if (newStatus === 'in-progress' || newStatus === 'completed' || newStatus === 'cancelled') {
+                    window.dispatchEvent(new CustomEvent('workStatusChanged', { 
+                        detail: { workId, status: newStatus } 
+                    }));
+                    
+                    // ✅ Remove from notified IDs in localStorage
+                    const storedIds = JSON.parse(localStorage.getItem('helperNotifiedWorks') || '[]');
+                    const updatedIds = storedIds.filter(id => id !== workId);
+                    localStorage.setItem('helperNotifiedWorks', JSON.stringify(updatedIds));
+                    
+                    // Update state
+                    setNotifiedWorkIds(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(workId);
+                        return newSet;
+                    });
                 }
             }
         } catch (error) {
-            console.log('Error checking new works:', error);
+            message.error('Failed to update status');
         }
     };
 
@@ -270,13 +302,63 @@ function HelperDashboard({ helperData, onLogout }) {
         const newState = !soundEnabled;
         setSoundEnabled(newState);
         localStorage.setItem('helperSoundEnabled', newState);
-
+        
         if (!newState && isPlayingSound) {
             stopSound();
         }
-
+        
         message.info(`Sound notifications ${newState ? 'enabled' : 'disabled'}`);
     };
+
+    // ✅ Listen for booking confirmed events to remove from notified IDs
+    useEffect(() => {
+        const handleWorkConfirmed = (event) => {
+            const { workId } = event.detail || {};
+            if (workId) {
+                setNotifiedWorkIds(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(workId);
+                    localStorage.setItem('helperNotifiedWorks', JSON.stringify([...newSet]));
+                    return newSet;
+                });
+            }
+        };
+        
+        window.addEventListener('workConfirmed', handleWorkConfirmed);
+        
+        return () => {
+            window.removeEventListener('workConfirmed', handleWorkConfirmed);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (helperData) {
+            fetchAssignedWorks();
+            checkConnectionStatus();
+
+            // Listen for foreground notifications
+            onMessageListener().then(payload => {
+                console.log('📢 New work notification:', payload);
+                checkNewWorks();
+                fetchAssignedWorks();
+            });
+
+            // Start polling for new works (60 seconds = 60000 ms)
+            pollingIntervalRef.current = setInterval(checkNewWorks, 60000);
+            
+            // Initial check
+            checkNewWorks();
+            
+            return () => {
+                if (pollingIntervalRef.current) {
+                    clearInterval(pollingIntervalRef.current);
+                }
+                if (soundTimeoutRef.current) {
+                    clearTimeout(soundTimeoutRef.current);
+                }
+            };
+        }
+    }, [helperData]);
 
     const fetchAssignedWorks = async () => {
         setLoading(true);
@@ -330,19 +412,6 @@ function HelperDashboard({ helperData, onLogout }) {
         }
     };
 
-    const updateWorkStatus = async (workId, newStatus) => {
-        try {
-            await axios.put(`/api/helper/update-status`,
-                { bookingId: workId, status: newStatus },
-                { headers: { Authorization: `Bearer ${localStorage.getItem('helperToken')}` } }
-            );
-            message.success(`Work status updated to ${newStatus}`);
-            fetchAssignedWorks();
-        } catch (error) {
-            message.error('Failed to update status');
-        }
-    };
-
     const cancelWork = async (workId) => {
         Modal.confirm({
             title: 'Cancel Work',
@@ -355,6 +424,17 @@ function HelperDashboard({ helperData, onLogout }) {
                     );
                     message.success('Work cancelled successfully');
                     fetchAssignedWorks();
+                    
+                    // ✅ Remove from notified IDs
+                    const storedIds = JSON.parse(localStorage.getItem('helperNotifiedWorks') || '[]');
+                    const updatedIds = storedIds.filter(id => id !== workId);
+                    localStorage.setItem('helperNotifiedWorks', JSON.stringify(updatedIds));
+                    
+                    setNotifiedWorkIds(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(workId);
+                        return newSet;
+                    });
                 } catch (error) {
                     message.error('Failed to cancel work');
                 }
@@ -367,6 +447,7 @@ function HelperDashboard({ helperData, onLogout }) {
         setShowBookingDetails(true);
     };
 
+    // Rest of your existing functions (formatDate, formatAddress, etc.) remain the same...
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
         try {
@@ -442,7 +523,7 @@ function HelperDashboard({ helperData, onLogout }) {
     const completedJobs = assignedWorks.filter(w => w.status === 'completed').length;
     const pendingJobs = assignedWorks.filter(w => w.status === 'assigned' || w.status === 'in-progress').length;
 
-    // Table columns configuration for responsive display
+    // Table columns configuration
     const getTableColumns = () => {
         const baseColumns = [
             {
@@ -533,7 +614,6 @@ function HelperDashboard({ helperData, onLogout }) {
             }
         ];
 
-        // Filter out columns that should be hidden based on responsive settings
         return baseColumns.filter(column => {
             if (!column.responsive) return true;
             return column.responsive.some(breakpoint => screens[breakpoint]);
@@ -547,12 +627,13 @@ function HelperDashboard({ helperData, onLogout }) {
             overflowX: 'hidden'
         }}>
 
+            {/* ✅ Audio Element */}
             <audio ref={audioRef} preload="auto" style={{ display: 'none' }}>
                 <source src="/sounds/booking.mp3" type="audio/mpeg" />
             </audio>
 
-            {/* New Booking Alert Banner */}
-            {newBookingAlert && isPlayingSound && (
+            {/* ✅ New Work Alert Banner */}
+            {newWorkAlert && isPlayingSound && (
                 <div style={{
                     position: 'fixed',
                     top: screens.xs ? '10px' : '20px',
@@ -570,14 +651,14 @@ function HelperDashboard({ helperData, onLogout }) {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
                             <div>
                                 <div style={{ color: 'white', fontSize: '20px', marginBottom: '8px' }}>
-                                    🔔 <strong>New Booking Alert!</strong>
+                                    🔔 <strong>New Work Alert!</strong>
                                 </div>
                                 <div style={{ color: 'white', fontSize: '14px' }}>
-                                    {newBookingAlert.count} new work{newBookingAlert.count > 1 ? 's have' : ' has'} been assigned
+                                    {newWorkAlert.count} new work{newWorkAlert.count > 1 ? 's have' : ' has'} been assigned
                                 </div>
-                                {newBookingAlert.works.length > 0 && (
+                                {newWorkAlert.works.length > 0 && (
                                     <div style={{ color: 'rgba(255,255,255,0.9)', fontSize: '12px', marginTop: '5px' }}>
-                                        {newBookingAlert.works[0].serviceType}
+                                        {newWorkAlert.works[0].serviceType}
                                     </div>
                                 )}
                             </div>
@@ -723,7 +804,7 @@ function HelperDashboard({ helperData, onLogout }) {
                 )}
             </Card>
 
-            {/* Booking Details Modal */}
+            {/* Booking Details Modal - Keep your existing modal code */}
             <Modal
                 title="Complete Booking Details"
                 open={showBookingDetails}

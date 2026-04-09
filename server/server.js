@@ -18,6 +18,9 @@ const vendorRoutes = require("./routes/vendorRoutes"); // Adjust the path as nee
 const helpers = require("./routes/helpers");
 const superadmin =require("./routes/superadmin.js")
 
+
+app.use('/uploads', express.static('uploads'));
+
 // Middleware
 app.use(express.json());
 // In server.js

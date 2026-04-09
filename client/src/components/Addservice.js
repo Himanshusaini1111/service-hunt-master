@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Add useEffect here
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import LocationSearch from './LocationSearch';
@@ -11,9 +11,24 @@ export function Addservice({ userId }) {
     const [companyname, setCompanyName] = useState("");
     const [address, setAddress] = useState("");
     const [facility, setFacility] = useState("");
+
+    // Image states - support both URL and File upload
     const [image1, setImage1] = useState("");
     const [image2, setImage2] = useState("");
     const [image3, setImage3] = useState("");
+
+    // File states for upload
+    const [imageFile1, setImageFile1] = useState(null);
+    const [imageFile2, setImageFile2] = useState(null);
+    const [imageFile3, setImageFile3] = useState(null);
+
+    // Preview states
+    const [imagePreview1, setImagePreview1] = useState("");
+    const [imagePreview2, setImagePreview2] = useState("");
+    const [imagePreview3, setImagePreview3] = useState("");
+
+    const [uploading, setUploading] = useState(false);
+
     const [unit, setUnit] = useState("per day");
     const [customUnit, setCustomUnit] = useState("");
     const [isCountable, setIsCountable] = useState(true);
@@ -27,19 +42,21 @@ export function Addservice({ userId }) {
         isCountable: true
     }]);
 
+    const [optionalInputImages, setOptionalInputImages] = useState({});
+    const [optionalInputPreviews, setOptionalInputPreviews] = useState({});
     const [category, setCategory] = useState("");
     const [subCategory, setSubCategory] = useState("");
     const [bookingType, setBookingType] = useState("Automatic Booking");
     const [descriptionPoints, setDescriptionPoints] = useState("");
     const [facilityPoints, setFacilityPoints] = useState("");
     const [showOptionalInputs, setShowOptionalInputs] = useState(false);
-    
-    // Location type states (Original functionality)
+
+    // Location type states
     const [showLocationOptions, setShowLocationOptions] = useState(false);
     const [selectedLocationType, setSelectedLocationType] = useState("");
     const [locations, setLocations] = useState([]);
-    
-    // Location pricing states (New functionality)
+
+    // Location pricing states
     const [showLocationPricing, setShowLocationPricing] = useState(false);
     const [locationsList, setLocationsList] = useState([]);
     const [currentLocation, setCurrentLocation] = useState({
@@ -50,6 +67,7 @@ export function Addservice({ userId }) {
     });
 
     const categoryOptions = {
+        // ... your category options (keep as is) ...
         "Home Maintenance & Repair Services": [
             "Plumbing Services", "Electrical Repairs", "Carpentry and Woodwork",
             "Painting and Wallpapering", "Appliance Repair", "Pest Control",
@@ -57,66 +75,196 @@ export function Addservice({ userId }) {
             "HVAC Maintenance", "Home Cleaning", "Furniture Assembly",
             "Glass and Mirror Repair", "Smart Home Setup"
         ],
-        "Event & Party Planning Services": [
-            "Wedding Planning", "Birthday Party Planning", "Corporate Event Planning",
-            "Catering Service", "Decor and Theme Setup", "Photography and Videography",
-            "Entertainment", "Venue Booking", "Invitation Design", "Sound and Lighting Setup"
-        ],
-        "Entertainment & Ticket Booking": [
-            "Movie Ticket Booking", "Concert and Show Tickets", "Sports Event Tickets",
-            "Amusement Park Tickets", "Theater and Play Tickets", "Event Passes",
-            "Online Streaming Subscriptions", "Gaming Zone Access"
-        ],
-        "Health & Wellness Services": [
-            "Gym Memberships", "Yoga and Meditation Classes", "Diet and Nutrition Counseling",
-            "Spa and Massage Services", "Physiotherapy", "Mental Health Counseling",
-            "Home Healthcare", "Personal Training", "Wellness Retreats"
-        ],
-        "Transportation & Travel Services": [
-            "Cab and Taxi Services", "Car Rental", "Airport Transfers",
-            "Bus and Train Ticket Bookings", "Flight Ticket Booking",
-            "Tour Packages", "Bike Rentals"
-        ],
-        "Education & Skill Development": [
-            "Online Courses", "Tutoring Services", "Workshops and Webinars",
-            "Certification Programs", "Test Preparation", "Language Classes",
-            "Career Counseling"
-        ],
-        "Property & Space Rental": [
-            "Office Space Rental", "Event Venue Booking", "Vacation Rentals",
-            "Warehouse Rental", "Shop Rental", "Furniture Rental"
-        ],
-        "Auto & Vehicle Services": [
-            "Car Wash and Detailing", "Vehicle Repair", "Towing Services",
-            "Bike Servicing", "Tire Replacement", "Battery Replacement",
-            "Insurance Renewal"
-        ],
-        "Home Shifting & Moving Services": [
-            "Packing and Moving", "Transportation Services", "Packing Material Supply",
-            "Storage Solutions", "Pet Relocation", "International Relocation"
-        ],
-        "Religious & Pooja Services": [
-            "Pooja Arrangements", "Temple Visits", "Religious Event Planning",
-            "Astrology Services", "Religious Item Delivery"
-        ],
-        "Agriculture & Farming Services": [
-            "Farm Equipment Rental", "Crop Consulting", "Organic Farming Supplies",
-            "Irrigation Solutions", "Farm Labor Services"
-        ],
-        "Emergency & On-Demand Services": [
-            "Ambulance Services", "Locksmith Services", "Electrician on Call",
-            "Plumber on Call", "Medical Assistance", "Towing Services"
-        ],
-        "Security & Surveillance Services": [
-            "CCTV Installation", "Security Guards", "Alarm Systems",
-            "Smart Locks", "Cybersecurity Services"
-        ],
-        "Senior Citizen & Special Care Services": [
-            "Home Nursing Care", "Physiotherapy", "Companion Services",
-            "Medical Equipment Rental", "Meal Delivery"
-        ]
+        // ... rest of your categories ...
     };
 
+    // Add this function with your other handlers
+    const handleOptionalImageUpload = async (index, file) => {
+        if (!file) return;
+
+        // Check file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            Swal.fire("Error", "Image size should be less than 5MB", "error");
+            return;
+        }
+
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+            Swal.fire("Error", "Please select an image file", "error");
+            return;
+        }
+
+        // Create preview
+        const previewUrl = URL.createObjectURL(file);
+
+        // Store file for later upload
+        setOptionalInputImages(prev => ({
+            ...prev,
+            [index]: file
+        }));
+
+        setOptionalInputPreviews(prev => ({
+            ...prev,
+            [index]: previewUrl
+        }));
+
+        // Clear the URL input if exists
+        const newInputs = [...inputs];
+        newInputs[index].image = '';
+        setInputs(newInputs);
+    };
+    // Handle file selection
+    const handleImageFileSelect = (imageNumber, file) => {
+        if (!file) return;
+
+        // Check file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            Swal.fire("Error", "Image size should be less than 5MB", "error");
+            return;
+        }
+
+        // Check file type
+        if (!file.type.startsWith('image/')) {
+            Swal.fire("Error", "Please select an image file", "error");
+            return;
+        }
+
+        // Create preview
+        const previewUrl = URL.createObjectURL(file);
+
+        switch (imageNumber) {
+            case 1:
+                setImageFile1(file);
+                setImagePreview1(previewUrl);
+                setImage1(""); // Clear URL input if file is selected
+                break;
+            case 2:
+                setImageFile2(file);
+                setImagePreview2(previewUrl);
+                setImage2("");
+                break;
+            case 3:
+                setImageFile3(file);
+                setImagePreview3(previewUrl);
+                setImage3("");
+                break;
+            default:
+                break;
+        }
+    };
+
+    // Handle URL input change
+    const handleImageUrlChange = (imageNumber, url) => {
+        switch (imageNumber) {
+            case 1:
+                setImage1(url);
+                setImageFile1(null);
+                if (imagePreview1) {
+                    URL.revokeObjectURL(imagePreview1);
+                    setImagePreview1("");
+                }
+                break;
+            case 2:
+                setImage2(url);
+                setImageFile2(null);
+                if (imagePreview2) {
+                    URL.revokeObjectURL(imagePreview2);
+                    setImagePreview2("");
+                }
+                break;
+            case 3:
+                setImage3(url);
+                setImageFile3(null);
+                if (imagePreview3) {
+                    URL.revokeObjectURL(imagePreview3);
+                    setImagePreview3("");
+                }
+                break;
+            default:
+                break;
+        }
+    };
+
+    // Remove image
+    const removeImage = (imageNumber) => {
+        switch (imageNumber) {
+            case 1:
+                setImage1("");
+                setImageFile1(null);
+                if (imagePreview1) {
+                    URL.revokeObjectURL(imagePreview1);
+                    setImagePreview1("");
+                }
+                break;
+            case 2:
+                setImage2("");
+                setImageFile2(null);
+                if (imagePreview2) {
+                    URL.revokeObjectURL(imagePreview2);
+                    setImagePreview2("");
+                }
+                break;
+            case 3:
+                setImage3("");
+                setImageFile3(null);
+                if (imagePreview3) {
+                    URL.revokeObjectURL(imagePreview3);
+                    setImagePreview3("");
+                }
+                break;
+            default:
+                break;
+        }
+    };
+
+
+
+ 
+// Replace your existing uploadImage function with this:
+const uploadImage = async (file) => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+        const response = await axios.post('/api/service/upload', formData);
+        return response.data.imageUrl;
+    } catch (error) {
+        console.error('Upload error:', error);
+        throw new Error('Failed to upload image');
+    }
+};
+
+const getImageUrl = async (imageNumber) => {
+    let file = null;
+    let url = "";
+
+    switch (imageNumber) {
+        case 1:
+            file = imageFile1;
+            url = image1;
+            break;
+        case 2:
+            file = imageFile2;
+            url = image2;
+            break;
+        case 3:
+            file = imageFile3;
+            url = image3;
+            break;
+        default:
+            return null;
+    }
+
+    if (file) {
+        // Use uploadImage (not uploadToBackend)
+        return await uploadImage(file);
+    } else if (url) {
+        return url;
+    }
+    return null;
+};
+
+  
     const handleCategoryChange = (e) => {
         setCategory(e.target.value);
         setSubCategory("");
@@ -126,19 +274,19 @@ export function Addservice({ userId }) {
         setSubCategory(e.target.value);
     };
 
-    const handleAddInput = () => {
-        if (inputs.length < 10) {
-            setInputs([...inputs, {
-                name: '',
-                price: '',
-                image: '',
-                maxcount: '',
-                unit: 'per day',
-                customUnit: '',
-                isCountable: true
-            }]);
-        }
-    };
+   const handleAddInput = () => {
+    if (inputs.length < 10) {
+        setInputs([...inputs, {
+            name: '',
+            price: '',
+            image: '',
+            maxcount: '',
+            unit: 'per day',
+            customUnit: '',
+            isCountable: true
+        }]);
+    }
+};
 
     const handleInputChange = (index, field, value) => {
         const newInputs = [...inputs];
@@ -175,7 +323,6 @@ export function Addservice({ userId }) {
         setAddress(location.display_name);
     };
 
-    // Location Type functions (Original)
     const handleAddLocation = () => {
         if (selectedLocationType) {
             setLocations([...locations, selectedLocationType]);
@@ -183,7 +330,6 @@ export function Addservice({ userId }) {
         }
     };
 
-    // Location Pricing functions (New)
     const handleLocationNameSelect = (location) => {
         setCurrentLocation({
             ...currentLocation,
@@ -203,9 +349,9 @@ export function Addservice({ userId }) {
         const existingIndex = currentLocation.optionalInputsExtra.findIndex(
             item => item.inputName === inputName
         );
-        
+
         let updatedExtras = [...currentLocation.optionalInputsExtra];
-        
+
         if (existingIndex >= 0) {
             if (extraPrice === 0) {
                 updatedExtras = updatedExtras.filter(item => item.inputName !== inputName);
@@ -215,7 +361,7 @@ export function Addservice({ userId }) {
         } else if (extraPrice > 0) {
             updatedExtras.push({ inputName, extraPrice });
         }
-        
+
         setCurrentLocation({
             ...currentLocation,
             optionalInputsExtra: updatedExtras
@@ -227,7 +373,7 @@ export function Addservice({ userId }) {
             Swal.fire("Error", "Please select a location first", "error");
             return;
         }
-        
+
         setLocationsList([...locationsList, { ...currentLocation }]);
         setCurrentLocation({
             locationName: '',
@@ -241,37 +387,61 @@ export function Addservice({ userId }) {
         setLocationsList(locationsList.filter((_, i) => i !== index));
     };
 
-    async function addService() {
-        const formattedDescription = descriptionPoints
-            .split('\n')
-            .filter(point => point.trim() !== '')
-            .map(point => point.startsWith('→') ? point : `→ ${point}`)
-            .join('\n');
+  async function addService() {
+    const formattedDescription = descriptionPoints
+        .split('\n')
+        .filter(point => point.trim() !== '')
+        .map(point => point.startsWith('→') ? point : `→ ${point}`)
+        .join('\n');
 
-        const formattedFacility = facilityPoints
-            .split('\n')
-            .filter(point => point.trim() !== '')
-            .map(point => point.startsWith('→') ? point : `→ ${point}`)
-            .join('\n');
+    const formattedFacility = facilityPoints
+        .split('\n')
+        .filter(point => point.trim() !== '')
+        .map(point => point.startsWith('→') ? point : `→ ${point}`)
+        .join('\n');
 
-        if (!address) {
-            Swal.fire("Error", "Please select a service location", "error");
-            return;
+    if (!address) {
+        Swal.fire("Error", "Please select a service location", "error");
+        return;
+    }
+
+    // Check if at least one image source is provided for each image
+    if (!service || (!image1 && !imageFile1) || (!image2 && !imageFile2) || (!image3 && !imageFile3) || !formattedFacility || !category) {
+        Swal.fire("Error", "Please fill in the required fields: Service name, at least 3 images (upload or URL), facility points, and category.", "error");
+        return;
+    }
+
+    setUploading(true);
+
+    try {
+        // Upload main service images
+        const imageUrl1 = await getImageUrl(1);
+        const imageUrl2 = await getImageUrl(2);
+        const imageUrl3 = await getImageUrl(3);
+        
+        // Define imageURLs here - AFTER getting the URLs
+        const imageURLs = [imageUrl1, imageUrl2, imageUrl3];
+
+        // Upload optional input images
+        const updatedInputs = [...inputs];
+        for (let i = 0; i < updatedInputs.length; i++) {
+            const input = updatedInputs[i];
+            const imageFile = optionalInputImages[i];
+
+            if (imageFile) {
+                // Upload the image file
+                const uploadedUrl = await uploadImage(imageFile);
+                input.image = uploadedUrl;
+            }
+            // If there's a URL, keep it as is
         }
 
-        if (!service || !image1 || !image2 || !image3 || !formattedFacility || !category) {
-            Swal.fire("Error", "Please fill in the required fields: Service name, at least 3 images, facility points, and category.", "error");
-            return;
-        }
-
-        const imageURLs = [image1, image2, image3];
-
-        const validOptionalInputs = inputs.filter(input => 
+        const validOptionalInputs = updatedInputs.filter(input =>
             input.name && input.name.trim() !== '' && input.price
         ).map(input => ({
             name: input.name,
             price: parseFloat(input.price) || 0,
-            image: input.image,
+            image: input.image, // Now contains uploaded URL
             maxcount: input.maxcount || null,
             unit: input.unit,
             customUnit: input.unit === "Other" ? input.customUnit : "",
@@ -289,53 +459,77 @@ export function Addservice({ userId }) {
             companyname,
             address,
             facility: formattedFacility,
-            imageURLs,
+            imageURLs, // Now this is defined
             optionalInputs: validOptionalInputs,
             category,
             subCategory,
             bookingType,
-            locations: locations, // Location Type array (Simple, No, Rental)
-            locationPricing: locationsList // Location Pricing array with extra amounts
+            locations: locations,
+            locationPricing: locationsList
         };
 
-        try {
-            await axios.post(`/api/service/addservice?userid=${userId}`, payload, {
-                headers: { "Content-Type": "application/json" },
-            });
-            Swal.fire("Success", "Service added successfully!", "success");
-            
-            // Reset form
-            setService("");
-            setAddress("");
-            setImage1("");
-            setImage2("");
-            setImage3("");
-            setFacilityPoints("");
-            setDescriptionPoints("");
-            setRentPerDay("");
-            setPhonenumber("");
-            setCompanyName("");
-            setCategory("");
-            setSubCategory("");
-            setLocations([]);
-            setSelectedLocationType("");
-            setLocationsList([]);
-            setInputs([{
-                name: '',
-                price: '',
-                image: '',
-                maxcount: '',
-                unit: 'per day',
-                customUnit: '',
-                isCountable: true
-            }]);
-            
-        } catch (error) {
-            console.error("Error adding service:", error);
-            const errorMessage = error.response?.data?.message || error.message || "Unknown error";
-            Swal.fire("Error", `Failed to add service: ${errorMessage}`, "error");
-        }
+        await axios.post(`/api/service/addservice?userid=${userId}`, payload, {
+            headers: { "Content-Type": "application/json" },
+        });
+
+        Swal.fire("Success", "Service added successfully!", "success");
+
+        // Reset form
+        setService("");
+        setAddress("");
+        setImage1("");
+        setImage2("");
+        setImage3("");
+        setImageFile1(null);
+        setImageFile2(null);
+        setImageFile3(null);
+        setImagePreview1("");
+        setImagePreview2("");
+        setImagePreview3("");
+        setFacilityPoints("");
+        setDescriptionPoints("");
+        setRentPerDay("");
+        setPhonenumber("");
+        setCompanyName("");
+        setCategory("");
+        setSubCategory("");
+        setLocations([]);
+        setSelectedLocationType("");
+        setLocationsList([]);
+        setInputs([{
+            name: '',
+            price: '',
+            image: '',
+            maxcount: '',
+            unit: 'per day',
+            customUnit: '',
+            isCountable: true
+        }]);
+        setOptionalInputImages({});
+        setOptionalInputPreviews({});
+
+    } catch (error) {
+        console.error("Error adding service:", error);
+        const errorMessage = error.response?.data?.message || error.message || "Unknown error";
+        Swal.fire("Error", `Failed to add service: ${errorMessage}`, "error");
+    } finally {
+        setUploading(false);
     }
+}
+   useEffect(() => {
+    // Cleanup function to revoke object URLs
+    return () => {
+        // Clean up main image previews
+        if (imagePreview1) URL.revokeObjectURL(imagePreview1);
+        if (imagePreview2) URL.revokeObjectURL(imagePreview2);
+        if (imagePreview3) URL.revokeObjectURL(imagePreview3);
+        
+        // Clean up optional input previews
+        Object.values(optionalInputPreviews).forEach(preview => {
+            if (preview) URL.revokeObjectURL(preview);
+        });
+    };
+}, [imagePreview1, imagePreview2, imagePreview3, optionalInputPreviews]);
 
     return (
         <div className="container mt-5 service-form-container">
@@ -431,7 +625,7 @@ export function Addservice({ userId }) {
                             onChange={(e) => setDescriptionPoints(e.target.value)}
                             rows={3}
                         />
-                        
+
                         <input
                             type="text"
                             className="form-control mt-2"
@@ -439,7 +633,7 @@ export function Addservice({ userId }) {
                             value={phonenumber}
                             onChange={(e) => setPhonenumber(e.target.value)}
                         />
-                        
+
                         <input
                             type="text"
                             className="form-control mt-2"
@@ -454,7 +648,7 @@ export function Addservice({ userId }) {
                 <div className="col-lg-6">
                     <div className="form-section-card">
                         <h4 className="section-title">Additional Details</h4>
-                        
+
                         <div className="form-group">
                             <label>Main Service Location *</label>
                             <LocationSearch
@@ -475,34 +669,141 @@ export function Addservice({ userId }) {
                             onChange={(e) => setFacilityPoints(e.target.value)}
                             rows={3}
                         />
-                        
+
                         <div className="form-group">
-                            <label>Image URLs</label>
+                            <label>Images (Upload or provide URLs) *</label>
                             <div className="image-input-group">
-                                <input
-                                    type="text"
-                                    className="form-control styled-input"
-                                    placeholder="Image URL 1"
-                                    value={image1}
-                                    onChange={(e) => setImage1(e.target.value)}
-                                />
-                                <input
-                                    type="text"
-                                    className="form-control mt-2"
-                                    placeholder="Image URL 2"
-                                    value={image2}
-                                    onChange={(e) => setImage2(e.target.value)}
-                                />
-                                <input
-                                    type="text"
-                                    className="form-control mt-2"
-                                    placeholder="Image URL 3"
-                                    value={image3}
-                                    onChange={(e) => setImage3(e.target.value)}
-                                />
+                                {/* Image 1 */}
+                                <div className="mb-3 border rounded p-3">
+                                    <div className="row">
+                                        <div className="col-md-6">
+                                            <label className="form-label small">Image URL 1</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="https://example.com/image.jpg"
+                                                value={image1}
+                                                onChange={(e) => handleImageUrlChange(1, e.target.value)}
+                                                disabled={!!imageFile1}
+                                            />
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="form-label small">Or Upload Image 1</label>
+                                            <input
+                                                type="file"
+                                                className="form-control"
+                                                accept="image/*"
+                                                onChange={(e) => handleImageFileSelect(1, e.target.files[0])}
+                                                disabled={!!image1}
+                                            />
+                                        </div>
+                                    </div>
+                                    {(imagePreview1 || image1) && (
+                                        <div className="mt-2 d-flex align-items-center gap-2">
+                                            <img
+                                                src={imagePreview1 || image1}
+                                                alt="Preview 1"
+                                                style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px' }}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-danger"
+                                                onClick={() => removeImage(1)}
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Image 2 */}
+                                <div className="mb-3 border rounded p-3">
+                                    <div className="row">
+                                        <div className="col-md-6">
+                                            <label className="form-label small">Image URL 2</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="https://example.com/image.jpg"
+                                                value={image2}
+                                                onChange={(e) => handleImageUrlChange(2, e.target.value)}
+                                                disabled={!!imageFile2}
+                                            />
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="form-label small">Or Upload Image 2</label>
+                                            <input
+                                                type="file"
+                                                className="form-control"
+                                                accept="image/*"
+                                                onChange={(e) => handleImageFileSelect(2, e.target.files[0])}
+                                                disabled={!!image2}
+                                            />
+                                        </div>
+                                    </div>
+                                    {(imagePreview2 || image2) && (
+                                        <div className="mt-2 d-flex align-items-center gap-2">
+                                            <img
+                                                src={imagePreview2 || image2}
+                                                alt="Preview 2"
+                                                style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px' }}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-danger"
+                                                onClick={() => removeImage(2)}
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Image 3 */}
+                                <div className="mb-3 border rounded p-3">
+                                    <div className="row">
+                                        <div className="col-md-6">
+                                            <label className="form-label small">Image URL 3</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="https://example.com/image.jpg"
+                                                value={image3}
+                                                onChange={(e) => handleImageUrlChange(3, e.target.value)}
+                                                disabled={!!imageFile3}
+                                            />
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="form-label small">Or Upload Image 3</label>
+                                            <input
+                                                type="file"
+                                                className="form-control"
+                                                accept="image/*"
+                                                onChange={(e) => handleImageFileSelect(3, e.target.files[0])}
+                                                disabled={!!image3}
+                                            />
+                                        </div>
+                                    </div>
+                                    {(imagePreview3 || image3) && (
+                                        <div className="mt-2 d-flex align-items-center gap-2">
+                                            <img
+                                                src={imagePreview3 || image3}
+                                                alt="Preview 3"
+                                                style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px' }}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-danger"
+                                                onClick={() => removeImage(3)}
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                        
+
                         <select
                             className="form-control mt-2"
                             value={category}
@@ -527,7 +828,7 @@ export function Addservice({ userId }) {
                             </select>
                         )}
                     </div>
-                    
+
                     <div>
                         <select
                             className="form-control mt-2"
@@ -540,243 +841,242 @@ export function Addservice({ userId }) {
                         </select>
                     </div>
                 </div>
+{/* Combined Location Features Section */}
+<div className="col-md-12">
+    <div className="card p-3 mb-3">
+        <div className="row">
+            {/* Location Type Section - Original Functionality */}
+            <div className="col-12 col-md-6 mb-3">
+                <div className="card h-100 border-0 shadow-sm">
+                    <div className="card-body">
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                            <h5 className="mb-0">Location Type</h5>
+                            <button
+                                className="btn btn-outline-primary btn-sm"
+                                onClick={() => setShowLocationOptions(!showLocationOptions)}
+                            >
+                                {showLocationOptions ? "Hide" : "Configure"}
+                            </button>
+                        </div>
+                        {showLocationOptions && (
+                            <div>
+                                <div className="alert alert-info small mb-3">
+                                    Define how this service handles locations (Simple, No Location, or Rental)
+                                </div>
+                                
+                                <div className="d-flex gap-2 flex-wrap mb-3">
+                                    {["Simple", "No", "Rental"].map((type) => {
+                                        const label =
+                                            type === "Simple"
+                                                ? "Single Location"
+                                                : type === "No"
+                                                    ? "No Location Required"
+                                                    : "Rental Location";
 
-                {/* Combined Location Features Section */}
-                <div className="col-md-12">
-                    <div className="card p-3 mb-3">
-                        <div className="row">
-                            {/* Location Type Section - Original Functionality */}
-                            <div className="col-12 col-md-6 mb-3">
-                                <div className="card h-100 border-0 shadow-sm">
-                                    <div className="card-body">
-                                        <div className="d-flex justify-content-between align-items-center mb-3">
-                                            <h5 className="mb-0">Location Type</h5>
+                                        return (
                                             <button
-                                                className="btn btn-outline-primary btn-sm"
-                                                onClick={() => setShowLocationOptions(!showLocationOptions)}
+                                                key={type}
+                                                type="button"
+                                                className={`btn rounded-pill px-4 fw-semibold ${selectedLocationType === type
+                                                    ? "btn-primary shadow-sm"
+                                                    : "btn-outline-primary"
+                                                    }`}
+                                                onClick={() => setSelectedLocationType(type)}
                                             >
-                                                {showLocationOptions ? "Hide" : "Configure"}
+                                                {label}
                                             </button>
-                                        </div>
-                                        {showLocationOptions && (
-                                            <div>
-                                                <div className="alert alert-info small mb-3">
-                                                    Define how this service handles locations (Simple, No Location, or Rental)
-                                                </div>
-                                                
-                                                <div className="d-flex gap-2 flex-wrap mb-3">
-                                                    {["Simple", "No", "Rental"].map((type) => {
-                                                        const label =
-                                                            type === "Simple"
-                                                                ? "Single Location"
-                                                                : type === "No"
-                                                                    ? "No Location Required"
-                                                                    : "Rental Location";
+                                        );
+                                    })}
+                                </div>
 
-                                                        return (
-                                                            <button
-                                                                key={type}
-                                                                type="button"
-                                                                className={`btn rounded-pill px-4 fw-semibold ${selectedLocationType === type
-                                                                    ? "btn-primary shadow-sm"
-                                                                    : "btn-outline-primary"
-                                                                    }`}
-                                                                onClick={() => setSelectedLocationType(type)}
-                                                            >
-                                                                {label}
-                                                            </button>
-                                                        );
-                                                    })}
-                                                </div>
+                                {selectedLocationType && (
+                                    <div className="alert alert-primary py-2 px-3 small mb-3">
+                                        <strong>Selected Mode:</strong>{" "}
+                                        {selectedLocationType === "Simple" && "Single Location"}
+                                        {selectedLocationType === "No" && "No Location Required"}
+                                        {selectedLocationType === "Rental" && "Rental Location"}
+                                    </div>
+                                )}
 
-                                                {selectedLocationType && (
-                                                    <div className="alert alert-primary py-2 px-3 small mb-3">
-                                                        <strong>Selected Mode:</strong>{" "}
-                                                        {selectedLocationType === "Simple" && "Single Location"}
-                                                        {selectedLocationType === "No" && "No Location Required"}
-                                                        {selectedLocationType === "Rental" && "Rental Location"}
-                                                    </div>
-                                                )}
+                                {selectedLocationType && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-success w-100 fw-semibold mb-3 shadow-sm"
+                                        onClick={handleAddLocation}
+                                    >
+                                        {locations.length > 0 ? "Add Another Location Type" : "Add Location Type"}
+                                    </button>
+                                )}
 
-                                                {selectedLocationType && (
+                                {locations.length > 0 && (
+                                    <div>
+                                        <h6 className="fw-semibold text-dark mb-2">
+                                            Configured Location Types
+                                        </h6>
+                                        <div className="list-group list-group-flush">
+                                            {locations.map((location, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="list-group-item d-flex justify-content-between align-items-center bg-white rounded mb-2 shadow-sm"
+                                                >
+                                                    <span className="fw-medium text-dark">
+                                                        {location === "Simple" ? "Single Location" : 
+                                                         location === "No" ? "No Location Required" : 
+                                                         "Rental Location"}
+                                                    </span>
                                                     <button
                                                         type="button"
-                                                        className="btn btn-success w-100 fw-semibold mb-3 shadow-sm"
-                                                        onClick={handleAddLocation}
+                                                        className="btn btn-outline-danger btn-sm rounded-pill"
+                                                        onClick={() => setLocations(locations.filter((_, i) => i !== index))}
                                                     >
-                                                        {locations.length > 0 ? "Add Another Location Type" : "Add Location Type"}
-                                                    </button>
-                                                )}
-
-                                                {locations.length > 0 && (
-                                                    <div>
-                                                        <h6 className="fw-semibold text-dark mb-2">
-                                                            Configured Location Types
-                                                        </h6>
-                                                        <div className="list-group list-group-flush">
-                                                            {locations.map((location, index) => (
-                                                                <div
-                                                                    key={index}
-                                                                    className="list-group-item d-flex justify-content-between align-items-center bg-white rounded mb-2 shadow-sm"
-                                                                >
-                                                                    <span className="fw-medium text-dark">
-                                                                        {location === "Simple" ? "Single Location" : 
-                                                                         location === "No" ? "No Location Required" : 
-                                                                         "Rental Location"}
-                                                                    </span>
-                                                                    <button
-                                                                        type="button"
-                                                                        className="btn btn-outline-danger btn-sm rounded-pill"
-                                                                        onClick={() => setLocations(locations.filter((_, i) => i !== index))}
-                                                                    >
                                                         Remove
-                                                                    </button>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Location Pricing Section - New Functionality */}
-                            <div className="col-12 col-md-6 mb-3">
-                                <div className="card h-100 border-0 shadow-sm">
-                                    <div className="card-body">
-                                        <div className="d-flex justify-content-between align-items-center mb-3">
-                                            <h5 className="mb-0">Location-Based Pricing</h5>
-                                            <button
-                                                className="btn btn-outline-primary btn-sm"
-                                                onClick={() => setShowLocationPricing(!showLocationPricing)}
-                                            >
-                                                {showLocationPricing ? "Hide" : "Add Locations"}
-                                            </button>
-                                        </div>
-                                        
-                                        {showLocationPricing && (
-                                            <div>
-                                                <div className="alert alert-info small mb-3">
-                                                    Add locations where this service is offered with specific pricing
-                                                </div>
-                                                
-                                                {/* Add New Location */}
-                                                <div className="border rounded-4 p-3 mb-4 bg-light">
-                                                    <h6 className="fw-bold mb-3">Add Service Location</h6>
-                                                    
-                                                    <div className="mb-3">
-                                                        <label className="form-label">Select Location</label>
-                                                        <LocationSearch
-                                                            onLocationSelect={handleLocationNameSelect}
-                                                            placeholder="Search for a city or area..."
-                                                        />
-                                                    </div>
-                                                    
-                                                    <div className="mb-3">
-                                                        <label className="form-label">Extra Price Adjustment</label>
-                                                        <div className="input-group">
-                                                            <span className="input-group-text">₹</span>
-                                                            <input
-                                                                type="number"
-                                                                className="form-control"
-                                                                placeholder="Extra amount (e.g., 200)"
-                                                                value={currentLocation.extraPrice}
-                                                                onChange={handleExtraPriceChange}
-                                                            />
-                                                            <span className="input-group-text">per {unit === "Other" ? customUnit || "unit" : unit.replace("per ", "")}</span>
-                                                        </div>
-                                                        <small className="text-muted">
-                                                            Final price = Base Price (₹{rentPerDay || 0}) + Extra Price
-                                                        </small>
-                                                    </div>
-                                                    
-                                                    {/* Optional Inputs Extra Pricing */}
-                                                    {inputs.filter(inp => inp.name).length > 0 && (
-                                                        <div className="mb-3">
-                                                            <label className="form-label">Optional Services Extra Pricing</label>
-                                                            {inputs.filter(inp => inp.name).map((input, idx) => (
-                                                                <div key={idx} className="input-group mb-2">
-                                                                    <span className="input-group-text">{input.name}</span>
-                                                                    <span className="input-group-text">Base: ₹{input.price}</span>
-                                                                    <span className="input-group-text">+</span>
-                                                                    <input
-                                                                        type="number"
-                                                                        className="form-control"
-                                                                        placeholder="Extra amount"
-                                                                        value={currentLocation.optionalInputsExtra.find(
-                                                                            item => item.inputName === input.name
-                                                                        )?.extraPrice || 0}
-                                                                        onChange={(e) => handleOptionalInputExtraChange(
-                                                                            input.name,
-                                                                            parseFloat(e.target.value) || 0
-                                                                        )}
-                                                                    />
-                                                                    <span className="input-group-text">per {input.unit === "Other" ? input.customUnit || "unit" : input.unit.replace("per ", "")}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                    
-                                                    <button
-                                                        className="btn btn-success w-100"
-                                                        onClick={addLocationToService}
-                                                    >
-                                                        + Add This Location
                                                     </button>
                                                 </div>
-                                                
-                                                {/* Locations List */}
-                                                {locationsList.length > 0 && (
-                                                    <div>
-                                                        <h6 className="fw-bold mb-3">Service Locations ({locationsList.length})</h6>
-                                                        <div className="list-group">
-                                                            {locationsList.map((location, index) => (
-                                                                <div key={index} className="list-group-item">
-                                                                    <div className="d-flex justify-content-between align-items-start">
-                                                                        <div className="flex-grow-1">
-                                                                            <div className="fw-bold">{location.locationName}</div>
-                                                                            <div className="small text-muted">{location.locationAddress}</div>
-                                                                            <div className="mt-2">
-                                                                                <span className="badge bg-primary me-2">
-                                                                                    Extra: ₹{location.extraPrice}
-                                                                                </span>
-                                                                                <span className="badge bg-success">
-                                                                                    Total: ₹{(parseFloat(rentPerDay) || 0) + location.extraPrice}
-                                                                                </span>
-                                                                            </div>
-                                                                            {location.optionalInputsExtra.length > 0 && (
-                                                                                <div className="mt-2">
-                                                                                    <small className="text-muted">Optional extras:</small>
-                                                                                    {location.optionalInputsExtra.map((opt, optIdx) => (
-                                                                                        <span key={optIdx} className="badge bg-info ms-1">
-                                                                                            {opt.inputName}: +₹{opt.extraPrice}
-                                                                                        </span>
-                                                                                    ))}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                        <button
-                                                                            className="btn btn-danger btn-sm"
-                                                                            onClick={() => removeLocation(index)}
-                                                                        >
-                                                                            Remove
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
+            </div>
+
+            {/* Location Pricing Section - New Functionality */}
+            <div className="col-12 col-md-6 mb-3">
+                <div className="card h-100 border-0 shadow-sm">
+                    <div className="card-body">
+                        <div className="d-flex justify-content-between align-items-center mb-3">
+                            <h5 className="mb-0">Location-Based Pricing</h5>
+                            <button
+                                className="btn btn-outline-primary btn-sm"
+                                onClick={() => setShowLocationPricing(!showLocationPricing)}
+                            >
+                                {showLocationPricing ? "Hide" : "Add Locations"}
+                            </button>
+                        </div>
+                        
+                        {showLocationPricing && (
+                            <div>
+                                <div className="alert alert-info small mb-3">
+                                    Add locations where this service is offered with specific pricing
+                                </div>
+                                
+                                {/* Add New Location */}
+                                <div className="border rounded-4 p-3 mb-4 bg-light">
+                                    <h6 className="fw-bold mb-3">Add Service Location</h6>
+                                    
+                                    <div className="mb-3">
+                                        <label className="form-label">Select Location</label>
+                                        <LocationSearch
+                                            onLocationSelect={handleLocationNameSelect}
+                                            placeholder="Search for a city or area..."
+                                        />
+                                    </div>
+                                    
+                                    <div className="mb-3">
+                                        <label className="form-label">Extra Price Adjustment</label>
+                                        <div className="input-group">
+                                            <span className="input-group-text">₹</span>
+                                            <input
+                                                type="number"
+                                                className="form-control"
+                                                placeholder="Extra amount (e.g., 200)"
+                                                value={currentLocation.extraPrice}
+                                                onChange={handleExtraPriceChange}
+                                            />
+                                            <span className="input-group-text">per {unit === "Other" ? customUnit || "unit" : unit.replace("per ", "")}</span>
+                                        </div>
+                                        <small className="text-muted">
+                                            Final price = Base Price (₹{rentPerDay || 0}) + Extra Price
+                                        </small>
+                                    </div>
+                                    
+                                    {/* Optional Inputs Extra Pricing */}
+                                    {inputs.filter(inp => inp.name).length > 0 && (
+                                        <div className="mb-3">
+                                            <label className="form-label">Optional Services Extra Pricing</label>
+                                            {inputs.filter(inp => inp.name).map((input, idx) => (
+                                                <div key={idx} className="input-group mb-2">
+                                                    <span className="input-group-text">{input.name}</span>
+                                                    <span className="input-group-text">Base: ₹{input.price}</span>
+                                                    <span className="input-group-text">+</span>
+                                                    <input
+                                                        type="number"
+                                                        className="form-control"
+                                                        placeholder="Extra amount"
+                                                        value={currentLocation.optionalInputsExtra.find(
+                                                            item => item.inputName === input.name
+                                                        )?.extraPrice || 0}
+                                                        onChange={(e) => handleOptionalInputExtraChange(
+                                                            input.name,
+                                                            parseFloat(e.target.value) || 0
+                                                        )}
+                                                    />
+                                                    <span className="input-group-text">per {input.unit === "Other" ? input.customUnit || "unit" : input.unit.replace("per ", "")}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    
+                                    <button
+                                        className="btn btn-success w-100"
+                                        onClick={addLocationToService}
+                                    >
+                                        + Add This Location
+                                    </button>
+                                </div>
+                                
+                                {/* Locations List */}
+                                {locationsList.length > 0 && (
+                                    <div>
+                                        <h6 className="fw-bold mb-3">Service Locations ({locationsList.length})</h6>
+                                        <div className="list-group">
+                                            {locationsList.map((location, index) => (
+                                                <div key={index} className="list-group-item">
+                                                    <div className="d-flex justify-content-between align-items-start">
+                                                        <div className="flex-grow-1">
+                                                            <div className="fw-bold">{location.locationName}</div>
+                                                            <div className="small text-muted">{location.locationAddress}</div>
+                                                            <div className="mt-2">
+                                                                <span className="badge bg-primary me-2">
+                                                                    Extra: ₹{location.extraPrice}
+                                                                </span>
+                                                                <span className="badge bg-success">
+                                                                    Total: ₹{(parseFloat(rentPerDay) || 0) + location.extraPrice}
+                                                                </span>
+                                                            </div>
+                                                            {location.optionalInputsExtra.length > 0 && (
+                                                                <div className="mt-2">
+                                                                    <small className="text-muted">Optional extras:</small>
+                                                                    {location.optionalInputsExtra.map((opt, optIdx) => (
+                                                                        <span key={optIdx} className="badge bg-info ms-1">
+                                                                            {opt.inputName}: +₹{opt.extraPrice}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <button
+                                                            className="btn btn-danger btn-sm"
+                                                            onClick={() => removeLocation(index)}
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
                 {/* Optional Inputs Section */}
                 <div className="col-md-12">
@@ -790,7 +1090,7 @@ export function Addservice({ userId }) {
                                 {showOptionalInputs ? "Hide" : "Add"}
                             </button>
                         </div>
-                        
+
                         {showOptionalInputs && (
                             <div className="mt-4">
                                 {inputs.map((input, index) => (
@@ -843,17 +1143,90 @@ export function Addservice({ userId }) {
                                                     </div>
                                                 )}
                                             </div>
+
+                                            {/* Image Upload Section - Updated */}
                                             <div className="mt-3">
-                                                <label className="form-label">Image URL</label>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    value={input.image}
-                                                    placeholder="https://..."
-                                                    onChange={(e) => handleInputChange(index, "image", e.target.value)}
-                                                />
+                                                <label className="form-label">Service Image (Upload or URL)</label>
+                                                <div className="row">
+                                                    <div className="col-md-6">
+                                                        <input
+                                                            type="text"
+                                                            className="form-control mb-2"
+                                                            value={input.image}
+                                                            placeholder="Image URL (https://...)"
+                                                            onChange={(e) => {
+                                                                handleInputChange(index, "image", e.target.value);
+                                                                // Clear file if URL is entered
+                                                                if (e.target.value) {
+                                                                    setOptionalInputImages(prev => {
+                                                                        const newState = { ...prev };
+                                                                        delete newState[index];
+                                                                        return newState;
+                                                                    });
+                                                                    setOptionalInputPreviews(prev => {
+                                                                        const newState = { ...prev };
+                                                                        delete newState[index];
+                                                                        return newState;
+                                                                    });
+                                                                }
+                                                            }}
+                                                            disabled={!!optionalInputImages[index]}
+                                                        />
+                                                    </div>
+                                                    <div className="col-md-6">
+                                                        <input
+                                                            type="file"
+                                                            className="form-control"
+                                                            accept="image/*"
+                                                            onChange={(e) => handleOptionalImageUpload(index, e.target.files[0])}
+                                                            disabled={!!input.image && !optionalInputImages[index]}
+                                                        />
+                                                        <small className="text-muted">Or upload an image (max 5MB)</small>
+                                                    </div>
+                                                </div>
+
+                                                {/* Image Preview */}
+                                                {(optionalInputPreviews[index] || (input.image && !optionalInputImages[index])) && (
+                                                    <div className="mt-2 d-flex align-items-center gap-2">
+                                                        <img
+                                                            src={optionalInputPreviews[index] || input.image}
+                                                            alt="Preview"
+                                                            style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px' }}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-danger"
+                                                            onClick={() => {
+                                                                // Remove image
+                                                                const newInputs = [...inputs];
+                                                                newInputs[index].image = '';
+                                                                setInputs(newInputs);
+
+                                                                setOptionalInputImages(prev => {
+                                                                    const newState = { ...prev };
+                                                                    delete newState[index];
+                                                                    return newState;
+                                                                });
+
+                                                                setOptionalInputPreviews(prev => {
+                                                                    const newState = { ...prev };
+                                                                    delete newState[index];
+                                                                    return newState;
+                                                                });
+
+                                                                if (optionalInputPreviews[index]) {
+                                                                    URL.revokeObjectURL(optionalInputPreviews[index]);
+                                                                }
+                                                            }}
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
+
                                             <hr className="my-4" />
+
                                             <div className="d-flex justify-content-between align-items-center">
                                                 <div>
                                                     <h6 className="fw-semibold mb-0">Quantity Control</h6>
@@ -873,6 +1246,7 @@ export function Addservice({ userId }) {
                                                     />
                                                 </div>
                                             </div>
+
                                             {input.isCountable !== false && (
                                                 <div className="col-md-4 mt-3">
                                                     <label className="form-label">Maximum Quantity</label>
@@ -900,10 +1274,13 @@ export function Addservice({ userId }) {
                         )}
                     </div>
                 </div>
-
                 <div className="col-md-12 text-center">
-                    <button className="btn btn-primary btn-lg" onClick={addService}>
-                        ADD SERVICE
+                    <button
+                        className="btn btn-primary btn-lg"
+                        onClick={addService}
+                        disabled={uploading}
+                    >
+                        {uploading ? "Uploading Images..." : "ADD SERVICE"}
                     </button>
                 </div>
             </div>

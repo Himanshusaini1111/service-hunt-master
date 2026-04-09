@@ -833,10 +833,10 @@ router.get("/dashboard", async (req, res) => {
     }
 });
 
-// Check for new bookings since last check (for polling)
+
 router.get("/check-new", async (req, res) => {
     try {
-        const { userid, lastId } = req.query;
+        const { userid, lastCheckedTime } = req.query;
         
         if (!userid) {
             return res.status(400).json({ message: "User ID required" });
@@ -870,16 +870,20 @@ router.get("/check-new", async (req, res) => {
             return res.status(403).json({ message: "Access denied" });
         }
 
-        // Add lastId filter if provided
-        if (lastId && lastId !== '' && lastId !== 'null' && lastId !== 'undefined') {
-            filter._id = { $gt: lastId };
+        // ✅ Use timestamp-based filtering instead of ID-based
+        if (lastCheckedTime && lastCheckedTime !== '' && lastCheckedTime !== 'null' && lastCheckedTime !== 'undefined') {
+            const lastCheckedDate = new Date(parseInt(lastCheckedTime));
+            filter.createdAt = { $gt: lastCheckedDate };
         }
+
+        // Only get bookings with status 'booked' or 'pending' (not confirmed/rejected yet)
+        filter.status = { $in: ['booked', 'pending', 'inquiry'] };
 
         const newBookings = await Booking.find(filter)
             .sort({ createdAt: -1 })
-            .limit(10);
+            .limit(20);
 
-        console.log(`Found ${newBookings.length} new bookings for user ${userid}, lastId: ${lastId}`);
+        console.log(`Found ${newBookings.length} new bookings since ${lastCheckedTime} for user ${userid}`);
 
         res.json(newBookings);
 
@@ -892,4 +896,21 @@ router.get("/check-new", async (req, res) => {
     }
 });
 
+router.get("/check-status", async (req, res) => {
+    try {
+        const { bookingIds } = req.query;
+        if (!bookingIds) return res.json({ activeIds: [] });
+        
+        const ids = bookingIds.split(',');
+        const activeBookings = await Booking.find({
+            _id: { $in: ids },
+            status: { $in: ['booked', 'pending', 'inquiry'] }
+        }).select('_id');
+        
+        const activeIds = activeBookings.map(b => b._id.toString());
+        res.json({ activeIds });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 module.exports = router;

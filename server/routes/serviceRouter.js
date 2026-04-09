@@ -3,6 +3,38 @@ const Service = require("../models/service");
 const Vendor = require("../models/vendor");
 const User = require("../models/user");  // <-- ADD THIS LINE: Import the User model
 const Booking = require("../models/booking");
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Configure multer for file upload
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = 'uploads/services/';
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'service-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const fileFilter = (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+    } else {
+        cb(new Error('Only image files are allowed'), false);
+    }
+};
+
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: fileFilter
+});
 
 const router = express.Router();
 
@@ -39,7 +71,24 @@ router.get("/getvisible", async (req, res) => {
         res.status(400).json({ message: error.message });
     }
 });
-
+router.post('/upload', upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+        
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const imageUrl = `${baseUrl}/uploads/services/${req.file.filename}`;
+        
+        res.json({ 
+            success: true,
+            imageUrl: imageUrl 
+        });
+    } catch (error) {
+        console.error('Upload error:', error);
+        res.status(500).json({ message: error.message });
+    }
+});
 // Get all services (public)
 router.get("/getallservices", async (req, res) => {
     try {

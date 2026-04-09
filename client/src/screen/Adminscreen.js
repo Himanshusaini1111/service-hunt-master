@@ -13,6 +13,7 @@ import { requestNotificationPermission, onMessageListener } from '../firebase';
 
 const { TabPane } = Tabs;
 
+
 function Adminscreen() {
     const user = JSON.parse(localStorage.getItem("currentUser"));
     const isSuperAdmin = user?.email === 'himanshufa875@gmail.com' && (user?.role === 'superadmin' || user?.isAdmin);
@@ -31,61 +32,31 @@ function Adminscreen() {
     });
     const [dashboardLoading, setDashboardLoading] = useState(true);
     
-    // ✅ ADD THESE STATES (same as helper panel)
-    const [lastBookingId, setLastBookingId] = useState(localStorage.getItem('adminLastBookingId') || '');
+    // ✅ Notification states
+    const [lastCheckedTime, setLastCheckedTime] = useState(localStorage.getItem('adminLastCheckedTime') || Date.now().toString());
     const [soundEnabled, setSoundEnabled] = useState(localStorage.getItem('adminSoundEnabled') !== 'false');
     const [isPlayingSound, setIsPlayingSound] = useState(false);
     const [newBookingAlert, setNewBookingAlert] = useState(null);
-    const [mutedBookings, setMutedBookings] = useState(
-        JSON.parse(localStorage.getItem('adminMutedBookings')) || []
+    const [notifiedBookingIds, setNotifiedBookingIds] = useState(
+        new Set(JSON.parse(localStorage.getItem('adminNotifiedBookings') || '[]'))
     );
     const [refreshKey, setRefreshKey] = useState(0);
     
     // Audio ref for sound
     const audioRef = useRef(null);
+    const pollingIntervalRef = useRef(null);
 
-    // Clear muted bookings on load (optional)
-    useEffect(() => {
-        localStorage.removeItem('adminMutedBookings');
-    }, []);
-
-    // Fetch dashboard data (filtered by userid)
-    useEffect(() => {
-        const fetchDashboardData = async () => {
-            try {
-                setDashboardLoading(true);
-                const { data } = await axios.get(`/api/bookings/dashboard?userid=${user._id}`);
-                setDashboardData(data.stats);
-            } catch (error) {
-                message.error("Failed to load dashboard data");
-            } finally {
-                setDashboardLoading(false);
-            }
-        };
-        fetchDashboardData();
-    }, [user._id]);
-
-    // ✅ STOP SOUND FUNCTION (same as helper panel)
+    // Stop sound function
     const stopSound = () => {
         if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current.currentTime = 0;
         }
-        
-        // Save booking ID as muted
-        if (newBookingAlert?.bookings?.length > 0) {
-            const bookingId = newBookingAlert.bookings[0]._id;
-            let updatedMuted = [...mutedBookings, bookingId];
-            if (updatedMuted.length > 50) updatedMuted.shift();
-            setMutedBookings(updatedMuted);
-            localStorage.setItem('adminMutedBookings', JSON.stringify(updatedMuted));
-        }
-        
         setIsPlayingSound(false);
         setNewBookingAlert(null);
     };
 
-    // ✅ PLAY NOTIFICATION SOUND (same as helper panel)
+    // Play notification sound
     const playNotificationSound = (shouldLoop = true) => {
         if (!soundEnabled || !audioRef.current) return;
         
@@ -94,7 +65,6 @@ function Adminscreen() {
             audioRef.current.currentTime = 0;
             audioRef.current.play().catch(e => {
                 console.log('Sound play failed:', e);
-                message.warning('Click "Allow" to enable sound notifications', 3);
             });
             setIsPlayingSound(true);
             
@@ -102,7 +72,6 @@ function Adminscreen() {
             setTimeout(() => {
                 if (isPlayingSound) {
                     stopSound();
-                    message.info('Sound stopped automatically after 30 seconds', 2);
                 }
             }, 30000);
         } catch (error) {
@@ -110,41 +79,55 @@ function Adminscreen() {
         }
     };
 
-    // ✅ CHECK FOR NEW BOOKINGS (POLLING - same as helper panel)
-    const checkNewBookings = async () => {
-        try {
-            const response = await axios.get(`/api/bookings/check-new`, {
-                params: { 
-                    userid: user._id, 
-                    lastId: lastBookingId || '' 
-                }
-            });
+   // Adminscreen mein checkNewBookings function update karo
+const checkNewBookings = async () => {
+    try {
+        const response = await axios.get(`/api/bookings/check-new`, {
+            params: { 
+                userid: user._id, 
+                lastCheckedTime: lastCheckedTime
+            }
+        });
+        
+        const newBookings = response.data || [];
+        
+        if (newBookings.length > 0) {
+            // Filter out bookings that have already been notified
+            const trulyNewBookings = newBookings.filter(booking => 
+                !notifiedBookingIds.has(booking._id)
+            );
             
-            const newBookings = response.data || [];
-            
-            if (newBookings.length > 0) {
-                // Get the latest booking ID
-                const latestId = newBookings[0]._id;
+            if (trulyNewBookings.length > 0) {
+                // Add these booking IDs to notified set
+                const newNotifiedIds = new Set(notifiedBookingIds);
+                trulyNewBookings.forEach(booking => {
+                    newNotifiedIds.add(booking._id);
+                });
+                setNotifiedBookingIds(newNotifiedIds);
                 
-                // If already muted → DO NOTHING
-                if (mutedBookings.includes(latestId)) {
-                    return;
-                }
+                // Save to localStorage
+                localStorage.setItem('adminNotifiedBookings', JSON.stringify([...newNotifiedIds]));
                 
-                // Only trigger if it's truly new
-                if (latestId !== lastBookingId) {
-                    const count = newBookings.length;
-                    
+                const count = trulyNewBookings.length;
+                
+                // ✅ Only show alert if NOT already playing sound for same booking
+                // Check if any of these bookings are already in current alert
+                const currentAlertBookingIds = newBookingAlert?.bookings?.map(b => b._id) || [];
+                const isDuplicateAlert = trulyNewBookings.some(b => 
+                    currentAlertBookingIds.includes(b._id)
+                );
+                
+                if (!isDuplicateAlert) {
                     const newBookingInfo = {
                         count: count,
-                        bookings: newBookings,
+                        bookings: trulyNewBookings,
                         timestamp: new Date()
                     };
                     
                     setNewBookingAlert(newBookingInfo);
                     
                     // Play sound if enabled
-                    if (soundEnabled && audioRef.current) {
+                    if (soundEnabled) {
                         playNotificationSound(true);
                     }
                     
@@ -157,22 +140,65 @@ function Adminscreen() {
                         });
                     }
                     
-                    // Save latest ID
-                    setLastBookingId(latestId);
-                    localStorage.setItem('adminLastBookingId', latestId);
-                    
                     // Refresh bookings
                     setRefreshKey(prev => prev + 1);
                     
                     message.info(`${count} new booking${count > 1 ? 's' : ''} received!`);
                 }
             }
-        } catch (error) {
-            console.log('Error checking new bookings:', error);
+        }
+        
+        // Update last checked time
+        const newCheckedTime = Date.now().toString();
+        setLastCheckedTime(newCheckedTime);
+        localStorage.setItem('adminLastCheckedTime', newCheckedTime);
+        
+    } catch (error) {
+        console.log('Error checking new bookings:', error);
+    }
+};
+
+    // Adminscreen component mein, existing useEffect ke saath add karo
+useEffect(() => {
+    // Listen for booking confirmed events to remove from notified IDs
+    const handleBookingConfirmed = (event) => {
+        const { bookingId } = event.detail || {};
+        if (bookingId) {
+            setNotifiedBookingIds(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(bookingId);
+                localStorage.setItem('adminNotifiedBookings', JSON.stringify([...newSet]));
+                return newSet;
+            });
         }
     };
+    
+    window.addEventListener('bookingConfirmed', handleBookingConfirmed);
+    
+    return () => {
+        window.removeEventListener('bookingConfirmed', handleBookingConfirmed);
+    };
+}, []);
+    // ✅ Listen for booking status changes to stop sound
+    useEffect(() => {
+        // Function to handle booking status updates
+        const handleBookingUpdate = (event) => {
+            const { bookingId, status } = event.detail || {};
+            
+            // If admin confirms or rejects a booking, stop the sound
+            if ((status === 'confirmed' || status === 'rejected' || status === 'assigned') && isPlayingSound) {
+                stopSound();
+            }
+        };
+        
+        window.addEventListener('bookingStatusChanged', handleBookingUpdate);
+        
+        return () => {
+            window.removeEventListener('bookingStatusChanged', handleBookingUpdate);
+        };
+    }, [isPlayingSound]);
 
-    // ✅ TOGGLE SOUND FUNCTION
+    // Toggle sound function
     const toggleSound = () => {
         const newState = !soundEnabled;
         setSoundEnabled(newState);
@@ -184,6 +210,36 @@ function Adminscreen() {
         
         message.info(`Sound notifications ${newState ? 'enabled' : 'disabled'}`);
     };
+
+    // Adminscreen component mein, notifications states ke baad add karo
+useEffect(() => {
+    // Clean up old notified bookings that are already confirmed/rejected
+    const cleanOldNotifications = async () => {
+        try {
+            const storedIds = JSON.parse(localStorage.getItem('adminNotifiedBookings') || '[]');
+            if (storedIds.length === 0) return;
+            
+            // Check which bookings are still in 'booked/pending/inquiry' status
+            const response = await axios.get(`/api/bookings/check-status`, {
+                params: { bookingIds: storedIds.join(',') }
+            });
+            
+            const activeBookingIds = response.data.activeIds || [];
+            const cleanedIds = storedIds.filter(id => activeBookingIds.includes(id));
+            
+            if (cleanedIds.length !== storedIds.length) {
+                localStorage.setItem('adminNotifiedBookings', JSON.stringify(cleanedIds));
+                setNotifiedBookingIds(new Set(cleanedIds));
+                console.log('Cleaned old notifications:', storedIds.length - cleanedIds.length, 'removed');
+            }
+        } catch (error) {
+            console.log('Error cleaning notifications:', error);
+        }
+    };
+    
+    cleanOldNotifications();
+}, []);
+
 
     // Register for notifications and start polling
     useEffect(() => {
@@ -201,17 +257,20 @@ function Adminscreen() {
                 console.log('Foreground notification:', payload);
                 // Immediately check for new bookings
                 checkNewBookings();
-                // Refresh bookings
                 setRefreshKey(prev => prev + 1);
             });
             
-            // Start polling for new bookings (every 10 seconds)
-            const interval = setInterval(checkNewBookings, 10000);
+            // Start polling for new bookings (60 seconds = 60000 ms)
+            pollingIntervalRef.current = setInterval(checkNewBookings, 60000);
             
             // Initial check
             checkNewBookings();
             
-            return () => clearInterval(interval);
+            return () => {
+                if (pollingIntervalRef.current) {
+                    clearInterval(pollingIntervalRef.current);
+                }
+            };
         }
     }, [user?._id]);
 
@@ -229,84 +288,85 @@ function Adminscreen() {
 
     return (
         <div className="admin-container">
-            {/* ✅ AUDIO ELEMENT FOR SOUND */}
+            {/* AUDIO ELEMENT FOR SOUND */}
             <audio ref={audioRef} preload="auto" style={{ display: 'none' }}>
                 <source src="/sounds/booking.mp3" type="audio/mpeg" />
             </audio>
             
-      {/* ✅ NEW BOOKING ALERT BANNER */}
-{newBookingAlert && isPlayingSound && (
-    <div className="booking-alert-container">
-        <Card className="booking-alert-card">
-            <div className="alert-content">
-                <div className="alert-info">
-                    <div className="alert-title">
-                        🔔 <strong>New Booking Alert!</strong>
-                    </div>
-                    <div className="alert-message">
-                        {newBookingAlert.count} new booking
-                        {newBookingAlert.count > 1 ? 's have' : ' has'} been received
-                    </div>
-                    {newBookingAlert.bookings.length > 0 && (
-                        <div className="alert-service">
-                            {newBookingAlert.bookings[0].service}
+            {/* NEW BOOKING ALERT BANNER */}
+            {newBookingAlert && isPlayingSound && (
+                <div className="booking-alert-container">
+                    <Card className="booking-alert-card">
+                        <div className="alert-content">
+                            <div className="alert-info">
+                                <div className="alert-title">
+                                    🔔 <strong>New Booking Alert!</strong>
+                                </div>
+                                <div className="alert-message">
+                                    {newBookingAlert.count} new booking
+                                    {newBookingAlert.count > 1 ? 's have' : ' has'} been received
+                                </div>
+                                {newBookingAlert.bookings.length > 0 && (
+                                    <div className="alert-service">
+                                        {newBookingAlert.bookings[0].service}
+                                    </div>
+                                )}
+                            </div>
+                            <Button
+                                danger
+                                size="middle"
+                                onClick={stopSound}
+                                icon={<span>🔇</span>}
+                                className="stop-sound-btn"
+                            >
+                                Stop Sound
+                            </Button>
                         </div>
-                    )}
+                    </Card>
                 </div>
-                <Button
-                    danger
-                    size="middle"
-                    onClick={stopSound}
-                    icon={<span>🔇</span>}
-                    className="stop-sound-btn"
-                >
-                    Stop Sound
-                </Button>
-            </div>
-        </Card>
-    </div>
-)}
+            )}
 
-{/* Admin Header */}
-<header className="admin-header">
-    <div className="header-container">
-        <h1 className="admin-title">{getDashboardTitle()}</h1>
-        
-        <div className="user-info-section">
-            <div className="user-details">
-                <div className="welcome-text">
-                    <span className="greeting">Welcome,</span>
-                    <span className="user-name">{user.name}</span>
+            {/* Admin Header */}
+            <header className="admin-header">
+                <div className="header-container">
+                    <h1 className="admin-title">{getDashboardTitle()}</h1>
+                    
+                    <div className="user-info-section">
+                        <div className="user-details">
+                            <div className="welcome-text">
+                                <span className="greeting">Welcome,</span>
+                                <span className="user-name">{user.name}</span>
+                            </div>
+                            <span className={`role-badge ${user.role === 'superadmin' ? 'superadmin' : (user.role === 'admin' || user.isAdmin ? 'admin' : 'vendor')}`}>
+                                {user.role === 'superadmin' ? 'Super Admin' : (user.role || (user.isAdmin ? 'Admin' : 'Vendor'))}
+                            </span>
+                        </div>
+                        
+                        <div className="action-buttons">
+                            <button
+                                onClick={toggleSound}
+                                className={`sound-toggle-btn ${soundEnabled ? 'sound-on' : 'sound-off'}`}
+                                title={soundEnabled ? "Sound On" : "Sound Off"}
+                            >
+                                {soundEnabled ? '🔊' : '🔇'}
+                                <span className="btn-label">{soundEnabled ? 'Sound On' : 'Sound Off'}</span>
+                            </button>
+                            
+                            {isPlayingSound && (
+                                <button
+                                    onClick={stopSound}
+                                    className="stop-sound-btn"
+                                    title="Stop Sound"
+                                >
+                                    ⏹️
+                                    <span className="btn-label">Stop</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
-                <span className={`role-badge ${user.role === 'superadmin' ? 'superadmin' : (user.role === 'admin' || user.isAdmin ? 'admin' : 'vendor')}`}>
-                    {user.role === 'superadmin' ? 'Super Admin' : (user.role || (user.isAdmin ? 'Admin' : 'Vendor'))}
-                </span>
-            </div>
+            </header>
             
-            <div className="action-buttons">
-                <button
-                    onClick={toggleSound}
-                    className={`sound-toggle-btn ${soundEnabled ? 'sound-on' : 'sound-off'}`}
-                    title={soundEnabled ? "Sound On" : "Sound Off"}
-                >
-                    {soundEnabled ? '🔊' : '🔇'}
-                    <span className="btn-label">{soundEnabled ? 'Sound On' : 'Sound Off'}</span>
-                </button>
-                
-                {isPlayingSound && (
-                    <button
-                        onClick={stopSound}
-                        className="stop-sound-btn"
-                        title="Stop Sound"
-                    >
-                        ⏹️
-                        <span className="btn-label">Stop</span>
-                    </button>
-                )}
-            </div>
-        </div>
-    </div>
-</header>
             <div className="admin-content">
                 <Tabs activeKey={activeTab} onChange={setActiveTab} className="custom-tabs" tabBarGutter={20}>
                     <TabPane tab="Dashboard" key="0">
@@ -324,6 +384,7 @@ function Adminscreen() {
                             setActiveBookingId={setActiveBookingId}
                             userId={user._id}
                             isSuperAdmin={isSuperAdmin}
+                            stopSound={stopSound}
                         />
                     </TabPane>
                     <TabPane tab="Services" key="2">
@@ -451,42 +512,61 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
         confirmed: bookings.filter(b => b.status === 'confirmed').length
     };
 
-    // Update booking status
-    const handleStatusUpdate = async (bookingId, newStatus) => {
-        try {
-            console.log('Updating booking:', bookingId, 'to status:', newStatus);
+  // Bookings component ke andar handleStatusUpdate function ko replace karo
+const handleStatusUpdate = async (bookingId, newStatus) => {
+    try {
+        console.log('Updating booking:', bookingId, 'to status:', newStatus);
+        
+        const response = await axios.post('/api/bookings/updatestatus', {
+            bookingId,
+            status: newStatus,
+            userId: userId
+        }, {
+            params: { userid: userId }
+        });
+
+        console.log('Update response:', response);
+
+        if (response.status === 200) {
+            setBookings(prevBookings =>
+                prevBookings.map(booking => 
+                    booking._id === bookingId 
+                        ? { ...booking, status: newStatus } 
+                        : booking
+                )
+            );
+            message.success(`Booking ${newStatus} successfully`);
             
-            const response = await axios.post('/api/bookings/updatestatus', {
-                bookingId,
-                status: newStatus,
-                userId: userId
-            }, {
-                params: { userid: userId }
-            });
-
-            console.log('Update response:', response);
-
-            if (response.status === 200) {
-                setBookings(prevBookings =>
-                    prevBookings.map(booking => 
-                        booking._id === bookingId 
-                            ? { ...booking, status: newStatus } 
-                            : booking
-                    )
-                );
-                message.success(`Booking ${newStatus} successfully`);
+            // ✅ IMPORTANT: Stop sound when status changes
+            if (newStatus === 'confirmed' || newStatus === 'rejected' || newStatus === 'assigned') {
+                // Dispatch event to stop sound in parent
+                window.dispatchEvent(new CustomEvent('bookingStatusChanged', { 
+                    detail: { bookingId, status: newStatus } 
+                }));
+                
+                // ✅ Also remove from localStorage notified IDs
+                const storedIds = JSON.parse(localStorage.getItem('adminNotifiedBookings') || '[]');
+                const updatedIds = storedIds.filter(id => id !== bookingId);
+                localStorage.setItem('adminNotifiedBookings', JSON.stringify(updatedIds));
+                
+                // ✅ Also update the parent's state (Adminscreen)
+                // We'll trigger a custom event for that too
+                window.dispatchEvent(new CustomEvent('bookingConfirmed', { 
+                    detail: { bookingId } 
+                }));
             }
-        } catch (err) {
-            console.error("Detailed error:", {
-                message: err.message,
-                response: err.response?.data,
-                status: err.response?.status
-            });
-            
-            const errorMessage = err.response?.data?.message || "Failed to update booking status";
-            message.error(errorMessage);
         }
-    };                                                                                                                                                                    
+    } catch (err) {
+        console.error("Detailed error:", {
+            message: err.message,
+            response: err.response?.data,
+            status: err.response?.status
+        });
+        
+        const errorMessage = err.response?.data?.message || "Failed to update booking status";
+        message.error(errorMessage);
+    }
+};                                                                                                                                                                   
     
     // Assign job and switch tab
     const handleJobAssign = (bookingId) => {

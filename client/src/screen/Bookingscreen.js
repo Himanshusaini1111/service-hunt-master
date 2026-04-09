@@ -1268,7 +1268,7 @@ function Bookingscreen() {
 
           <div style={{
             display: "flex",
-            flexWrap: "nowrap",   // ❌ remove wrap
+            flexWrap: "nowrap",  
             gap: "15px",
             marginTop: "15px",
             overflowX: "auto" // Add this
