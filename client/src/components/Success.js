@@ -5,6 +5,7 @@ export default function Success({ message }) {
         <div>
             <div className="alert alert-success" role="alert">
                 {message}
+                Successfully completed
             </div>
         </div>
     );

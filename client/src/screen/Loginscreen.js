@@ -141,7 +141,7 @@ export default function LoginScreen() {
                                     </div>
                                 )}
                                 {success && (
-                                    <div className="mb-3">
+                                    <div className="mb-3" style={{color:"white"}}>
                                         <Success success="Login successful! Redirecting..." />
                                     </div>
                                 )}

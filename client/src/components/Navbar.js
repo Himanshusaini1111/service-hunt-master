@@ -353,7 +353,7 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                             }}
                             style={{ padding: 0, margin: 0 }}
                         >
-                            <h5 style={styles.brand}>Smart Seva</h5>
+                            <h5 style={styles.brand}>Service Hunt</h5>
                         </a>
 
                         {/* Right Section - Location and User */}
@@ -506,7 +506,7 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                             }}
                             style={{ padding: 0 }}
                         >
-                            <h5 style={styles.brand}>Smart Seva</h5>
+                            <h5 style={styles.brand}>Service Hunt</h5>
                         </a>
 
                         {/* Desktop Navigation Links */}
@@ -581,7 +581,7 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                                             </button>
 
                                             {isDropdownOpen && (
-                                                <div style={styles.dropdownMenu}>
+                                                <div style={styles.dropdownMenu}  >
                                                     <div style={{ padding: '8px 16px', borderBottom: '1px solid #e0e0e0' }}>
                                                         <strong>{user.name}</strong>
                                                         <div style={{ fontSize: '12px', color: '#666' }}>{user.email}</div>

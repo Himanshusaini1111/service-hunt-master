@@ -757,7 +757,7 @@ router.put('/update-status', async (req, res) => {
     }
 });
 
-// Add to bookingRoute.js for backward compatibility
+// bookingRoute.js - Fix the dashboard endpoint
 router.get("/dashboard", async (req, res) => {
     try {
         const { userid } = req.query;
@@ -796,9 +796,15 @@ router.get("/dashboard", async (req, res) => {
         const totalServices = await Service.countDocuments(serviceFilter);
         
         // For regular admins, these should be 0 or based on their scope
-        const totalUsers = isSuperAdmin ? await User.countDocuments({}) : 0;
-        const totalVendors = isSuperAdmin ? 
-            await User.countDocuments({ $or: [{ role: 'admin' }, { role: 'vendor' }, { isAdmin: true }] }) : 0;
+        let totalUsers = 0;
+        let totalVendors = 0;
+        
+        if (isSuperAdmin) {
+            totalUsers = await User.countDocuments({});
+            totalVendors = await User.countDocuments({ 
+                $or: [{ role: 'admin' }, { role: 'vendor' }, { isAdmin: true }] 
+            });
+        }
         
         // Calculate revenue from their own bookings
         const revenueResult = await Booking.aggregate([
@@ -813,16 +819,17 @@ router.get("/dashboard", async (req, res) => {
             .limit(5)
             .select('_id service totalAmount status createdAt');
 
-        const stats = {
-            totalBookings,
-            totalServices,
-            totalUsers,
-            totalVendors,
-            revenue,
-            recentBookings
-        };
-
-        res.json({ stats });
+        // Return in the expected format
+        res.json({ 
+            stats: {
+                totalBookings,
+                totalServices,
+                totalUsers,
+                totalVendors,
+                revenue,
+                recentBookings
+            }
+        });
 
     } catch (error) {
         console.error("Dashboard error:", error);
@@ -832,7 +839,6 @@ router.get("/dashboard", async (req, res) => {
         });
     }
 });
-
 
 router.get("/check-new", async (req, res) => {
     try {

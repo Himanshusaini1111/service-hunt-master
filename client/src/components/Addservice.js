@@ -75,6 +75,10 @@ export function Addservice({ userId }) {
             "HVAC Maintenance", "Home Cleaning", "Furniture Assembly",
             "Glass and Mirror Repair", "Smart Home Setup"
         ],
+                "Event & Party Planning Services":[
+                    "Wedding Planner"
+                ]
+
         // ... rest of your categories ...
     };
 

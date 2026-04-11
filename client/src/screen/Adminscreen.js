@@ -158,7 +158,6 @@ const checkNewBookings = async () => {
     }
 };
 
-    // Adminscreen component mein, existing useEffect ke saath add karo
 useEffect(() => {
     // Listen for booking confirmed events to remove from notified IDs
     const handleBookingConfirmed = (event) => {
@@ -179,9 +178,7 @@ useEffect(() => {
         window.removeEventListener('bookingConfirmed', handleBookingConfirmed);
     };
 }, []);
-    // ✅ Listen for booking status changes to stop sound
     useEffect(() => {
-        // Function to handle booking status updates
         const handleBookingUpdate = (event) => {
             const { bookingId, status } = event.detail || {};
             
@@ -211,9 +208,7 @@ useEffect(() => {
         message.info(`Sound notifications ${newState ? 'enabled' : 'disabled'}`);
     };
 
-    // Adminscreen component mein, notifications states ke baad add karo
 useEffect(() => {
-    // Clean up old notified bookings that are already confirmed/rejected
     const cleanOldNotifications = async () => {
         try {
             const storedIds = JSON.parse(localStorage.getItem('adminNotifiedBookings') || '[]');
@@ -240,8 +235,6 @@ useEffect(() => {
     cleanOldNotifications();
 }, []);
 
-
-    // Register for notifications and start polling
     useEffect(() => {
         if (user?._id) {
             // Determine user type
@@ -273,6 +266,89 @@ useEffect(() => {
             };
         }
     }, [user?._id]);
+
+    // Add this useEffect in your Adminscreen component (after the existing useEffect hooks)
+
+// Fetch dashboard data
+useEffect(() => {
+    const fetchDashboardData = async () => {
+        if (!user?._id) return;
+        
+        setDashboardLoading(true);
+        try {
+            const response = await axios.get(`/api/bookings/dashboard`, {
+                params: { userid: user._id }
+            });
+            
+            if (response.data && response.data.stats) {
+                setDashboardData(response.data.stats);
+            } else {
+                // Fallback: calculate data manually if endpoint doesn't work
+                await fetchDashboardDataManually();
+            }
+        } catch (error) {
+            console.error("Error fetching dashboard data:", error);
+            // Fallback to manual fetch
+            await fetchDashboardDataManually();
+        } finally {
+            setDashboardLoading(false);
+        }
+    };
+    
+    const fetchDashboardDataManually = async () => {
+        try {
+            // Fetch bookings
+            const bookingsRes = await axios.get(`/api/bookings/getallbookings?userid=${user._id}`);
+            const bookings = bookingsRes.data || [];
+            
+            // Fetch services
+            const servicesRes = await axios.get(`/api/service/getvisible?userid=${user._id}`);
+            const services = servicesRes.data || [];
+            
+            // Calculate stats
+            const totalBookings = bookings.length;
+            const totalServices = services.length;
+            const revenue = bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+            const recentBookings = bookings.slice(0, 5);
+            
+            let totalUsers = 0;
+            let totalVendors = 0;
+            
+            // Only fetch users if super admin
+            if (isSuperAdmin) {
+                try {
+                    const usersRes = await axios.get('/api/users/getallusers');
+                    const users = usersRes.data || [];
+                    totalUsers = users.length;
+                    totalVendors = users.filter(u => u.isAdmin || u.role === 'admin' || u.role === 'vendor').length;
+                } catch (e) {
+                    console.error("Error fetching users:", e);
+                }
+            }
+            
+            setDashboardData({
+                totalBookings,
+                totalServices,
+                totalUsers,
+                totalVendors,
+                revenue,
+                recentBookings
+            });
+        } catch (error) {
+            console.error("Manual fetch error:", error);
+            setDashboardData({
+                totalBookings: 0,
+                totalServices: 0,
+                totalUsers: 0,
+                totalVendors: 0,
+                revenue: 0,
+                recentBookings: []
+            });
+        }
+    };
+    
+    fetchDashboardData();
+}, [user?._id, isSuperAdmin]);
 
     // Get display name based on role
     const getDashboardTitle = () => {
@@ -406,32 +482,28 @@ useEffect(() => {
 }
 // At the end of Adminscreen.js
 export default Adminscreen;
-
 export function Dashboard({ dashboardData, dashboardLoading, isSuperAdmin, userId }) {
-
-    // Different stats for super admin vs regular admin/vendor
+    // Make sure dashboardData has the expected structure
     const stats = [
-        { title: 'My Bookings', value: dashboardData.totalBookings, color: '#1890ff' },
-        { title: 'My Services', value: dashboardData.totalServices, color: '#52c41a' },
+        { title: 'My Bookings', value: dashboardData?.totalBookings || 0, color: '#1890ff' },
+        { title: 'My Services', value: dashboardData?.totalServices || 0, color: '#52c41a' },
     ];
 
-    // Add these stats only for super admin
     if (isSuperAdmin) {
         stats.push(
-            { title: 'Total Users', value: dashboardData.totalUsers, color: '#722ed1' },
-            { title: 'Total Vendors', value: dashboardData.totalVendors, color: '#fa8c16' }
+            { title: 'Total Users', value: dashboardData?.totalUsers || 0, color: '#722ed1' },
+            { title: 'Total Vendors', value: dashboardData?.totalVendors || 0, color: '#fa8c16' }
         );
     }
 
-    // Revenue is always shown
-    stats.push({ title: 'My Revenue', value: `₹${dashboardData.revenue || 0}`, color: '#f5222d' });
+    stats.push({ title: 'My Revenue', value: `₹${dashboardData?.revenue || 0}`, color: '#f5222d' });
 
     const columns = [
-        { title: 'Booking ID', dataIndex: '_id', key: '_id', render: (text) => text.slice(-6) },
-        { title: 'Service', dataIndex: 'service', key: 'service' },
-        { title: 'Amount', dataIndex: 'totalAmount', key: 'amount', render: (text) => `₹${text}` },
-        { title: 'Status', dataIndex: 'status', key: 'status' },
-        { title: 'Date', dataIndex: 'createdAt', key: 'date', render: (text) => new Date(text).toLocaleDateString() },
+        { title: 'Booking ID', dataIndex: '_id', key: '_id', render: (text) => text?.slice(-6) || 'N/A' },
+        { title: 'Service', dataIndex: 'service', key: 'service', render: (text) => text || 'N/A' },
+        { title: 'Amount', dataIndex: 'totalAmount', key: 'amount', render: (text) => `₹${text || 0}` },
+        { title: 'Status', dataIndex: 'status', key: 'status', render: (text) => text || 'N/A' },
+        { title: 'Date', dataIndex: 'createdAt', key: 'date', render: (text) => text ? new Date(text).toLocaleDateString() : 'N/A' },
     ];
 
     return (
@@ -454,14 +526,18 @@ export function Dashboard({ dashboardData, dashboardLoading, isSuperAdmin, userI
             <Card
                 title="My Recent Bookings"
                 loading={dashboardLoading}
-                extra={<Link to="#" onClick={() => document.querySelector('[data-node-key="1"]')?.click()}>View All</Link>}
+                extra={<Link to="#" onClick={() => {
+                    const tabElement = document.querySelector('[data-node-key="1"]');
+                    if (tabElement) tabElement.click();
+                }}>View All</Link>}
             >
                 <Table
                     columns={columns}
-                    dataSource={dashboardData.recentBookings}
+                    dataSource={dashboardData?.recentBookings || []}
                     rowKey="_id"
                     pagination={{ pageSize: 5 }}
                     scroll={{ x: true }}
+                    locale={{ emptyText: 'No recent bookings found' }}
                 />
             </Card>
         </div>
@@ -729,7 +805,6 @@ const handleStatusUpdate = async (bookingId, newStatus) => {
   gap: "8px",
   padding: "4px 0 8px 0",
   marginBottom: "16px",
-  // Hide scrollbar for Chrome/Safari but keep functionality
   "&::-webkit-scrollbar": {
     height: "4px"
   },
@@ -752,7 +827,6 @@ const handleStatusUpdate = async (bookingId, newStatus) => {
         whiteSpace: "nowrap",
         padding: "8px 16px",
         fontSize: "clamp(13px, 4vw, 14px)",
-        // Rest of your button styles
       }}
     >
       {type === 'all' ? 'All Bookings' : type.replace(' Booking', '')}
@@ -766,8 +840,6 @@ const handleStatusUpdate = async (bookingId, newStatus) => {
                 <table className="bookings-table">
                     <thead>
                         <tr>
-                            <th>Booking ID</th>
-                            <th>User ID</th>
                             <th>Service</th>
                             <th>Location Info</th>
                             <th>Bill</th>
@@ -783,8 +855,6 @@ const handleStatusUpdate = async (bookingId, newStatus) => {
                     <tbody>
                         {filteredBookings.map(booking => (
                             <tr key={booking._id}>
-                                <td className="monospace-id">{booking._id.slice(-6)}</td>
-                                <td>{booking.userid}</td>
                                 <td>
                                     <ServiceLink serviceId={booking.serviceid} serviceName={booking.service} />
                                 </td>
