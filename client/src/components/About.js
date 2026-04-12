@@ -22,7 +22,7 @@ const About = () => {
                 </div>
             </nav>
 
-            <style jsx>{`
+            <style>{`
     .navbar {
         padding: 0.5rem 1rem;
     }

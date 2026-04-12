@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import LocationSearch from "./LocationSearch";
 
@@ -11,6 +11,10 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
     const [showLocationSearch, setShowLocationSearch] = useState(false);
     const [currentLocation, setCurrentLocation] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    
+    // Add a ref to track if we're currently processing a location update
+    const isProcessingLocation = useRef(false);
+    const lastSelectedLocation = useRef(null);
 
     const menuRef = useRef(null);
     const dropdownRef = useRef(null);
@@ -29,12 +33,15 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
     useEffect(() => {
         if (user) {
             const savedLocation = localStorage.getItem("selectedLocation");
-            if (savedLocation) {
+            if (savedLocation && !isProcessingLocation.current) {
                 try {
                     const location = JSON.parse(savedLocation);
-                    setCurrentLocation(location);
-                    if (onLocationSelect) {
-                        onLocationSelect(location);
+                    // Prevent setting same location multiple times
+                    if (JSON.stringify(currentLocation) !== JSON.stringify(location)) {
+                        setCurrentLocation(location);
+                        if (onLocationSelect) {
+                            onLocationSelect(location);
+                        }
                     }
                 } catch (error) {
                     console.error("Error parsing saved location:", error);
@@ -48,19 +55,22 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
                 onLocationSelect(null);
             }
         }
-    }, [user, onLocationSelect]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user]); // Remove onLocationSelect from dependencies to prevent re-runs
 
     // Listen for location selection from other components (only if user is logged in)
     useEffect(() => {
         const handleStorageChange = () => {
-            if (user) {
+            if (user && !isProcessingLocation.current) {
                 const savedLocation = localStorage.getItem("selectedLocation");
                 if (savedLocation) {
                     try {
                         const location = JSON.parse(savedLocation);
-                        setCurrentLocation(location);
-                        if (onLocationSelect) {
-                            onLocationSelect(location);
+                        if (JSON.stringify(currentLocation) !== JSON.stringify(location)) {
+                            setCurrentLocation(location);
+                            if (onLocationSelect) {
+                                onLocationSelect(location);
+                            }
                         }
                     } catch (error) {
                         console.error("Error parsing saved location:", error);
@@ -71,7 +81,7 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
 
         window.addEventListener('storage', handleStorageChange);
         return () => window.removeEventListener('storage', handleStorageChange);
-    }, [user, onLocationSelect]);
+    }, [user, currentLocation, onLocationSelect]);
 
     function logout() {
         localStorage.removeItem("currentUser");
@@ -87,7 +97,20 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
         }
     };
 
-    const handleLocationSelect = (location) => {
+    // Memoize the location selection handler to prevent recreation
+    const handleLocationSelect = useCallback((location) => {
+        // Prevent multiple rapid selections
+        if (isProcessingLocation.current) {
+            console.log("Already processing a location selection, skipping...");
+            return;
+        }
+        
+        // Check if this is the same location as last time
+        if (lastSelectedLocation.current && JSON.stringify(lastSelectedLocation.current) === JSON.stringify(location)) {
+            console.log("Same location already selected, skipping...");
+            return;
+        }
+
         // Only allow location selection if user is logged in
         if (!user) {
             console.log("User not logged in, cannot select location");
@@ -97,25 +120,36 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
 
         console.log("Location selected in Navbar:", location);
 
-        if (location) {
-            localStorage.setItem("selectedLocation", JSON.stringify(location));
-            setCurrentLocation(location);
-            if (onLocationSelect) {
-                onLocationSelect(location);
-            }
-        } else {
-            localStorage.removeItem("selectedLocation");
-            setCurrentLocation(null);
-            if (onLocationSelect) {
-                onLocationSelect(null);
-            }
-        }
-        setShowLocationSearch(false);
+        // Set processing flag
+        isProcessingLocation.current = true;
+        lastSelectedLocation.current = location;
 
-        if (isMobile && isMenuOpen) {
-            setIsMenuOpen(false);
+        try {
+            if (location) {
+                localStorage.setItem("selectedLocation", JSON.stringify(location));
+                setCurrentLocation(location);
+                if (onLocationSelect) {
+                    onLocationSelect(location);
+                }
+            } else {
+                localStorage.removeItem("selectedLocation");
+                setCurrentLocation(null);
+                if (onLocationSelect) {
+                    onLocationSelect(null);
+                }
+            }
+            setShowLocationSearch(false);
+
+            if (isMobile && isMenuOpen) {
+                setIsMenuOpen(false);
+            }
+        } finally {
+            // Reset processing flag after a short delay
+            setTimeout(() => {
+                isProcessingLocation.current = false;
+            }, 300);
         }
-    };
+    }, [user, onLocationSelect, isMobile, isMenuOpen]);
 
     const toggleMenu = () => {
         setIsMenuOpen(!isMenuOpen);
@@ -184,7 +218,7 @@ function Navbar({ filterByLocation, searchService, onLocationSelect, selectedLoc
             "Location";
     };
 
-    // Styles
+    // Styles (keep your existing styles)
     const styles = {
         navbar: {
             backgroundColor: '#fff',
