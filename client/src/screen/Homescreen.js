@@ -273,8 +273,8 @@ function Homescreen() {
                     borderBottom: "2px solid #4a54e1"
                 }}>
                     <h3 style={{ margin: 0, fontSize: "20px", color: "#333" }}>
-                        {category}
-                        {subCategory && ` - ${subCategory}`}
+                       <b>    {category}
+                        {subCategory && ` - ${subCategory}`} </b> 
                     </h3>
                 </div>
             )}

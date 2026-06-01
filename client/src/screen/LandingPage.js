@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import About from '../components/About';
 import Service from '../components/Service';
 import LocationSearch from '../components/LocationSearch';
+import SearchResults from '../components/SearchResults'; // Import the new component
 
 const App = () => {
     const images = [
@@ -28,15 +29,18 @@ const App = () => {
 
     const navigate = useNavigate();
 
+    const location = useLocation();
+
+    const isNavigatingFromSearch = useRef(false);
     // ✅ CORRECT - Check if service is available at a location using locationPricing
     const isServiceInLocation = useCallback((service, location) => {
         if (!location) return true;
-        
+
         // If service has no location pricing configured, don't show (or show based on your business rule)
         if (!service.locationPricing || service.locationPricing.length === 0) {
             return false;
         }
-        
+
         // Get user location string
         let userLocationLower = '';
         if (typeof location === 'string') {
@@ -50,24 +54,24 @@ const App = () => {
         } else {
             userLocationLower = String(location).toLowerCase();
         }
-        
+
         // Extract city name (first part before comma)
         const userCity = userLocationLower.split(',')[0].trim();
-        
+
         // Check if service's locationPricing includes this location
         const isAvailable = service.locationPricing.some(locationPrice => {
             const locationName = (locationPrice.locationName || "").toLowerCase();
             const locationAddress = (locationPrice.locationAddress || "").toLowerCase();
-            
-            return locationName.includes(userCity) || 
-                   userCity.includes(locationName) ||
-                   locationAddress.includes(userCity) ||
-                   userCity.includes(locationAddress);
+
+            return locationName.includes(userCity) ||
+                userCity.includes(locationName) ||
+                locationAddress.includes(userCity) ||
+                userCity.includes(locationAddress);
         });
-        
+
         return isAvailable;
     }, []);
-    
+
     // Get location-based services
     const getLocationBasedServices = useCallback((location, services) => {
         if (!location) return [];
@@ -113,7 +117,7 @@ const App = () => {
     // Update rotating services interval
     useEffect(() => {
         if (locationBasedServices.length === 0) return;
-        
+
         const interval = setInterval(() => {
             setCurrentServiceIndex(prev => (prev + 4) % locationBasedServices.length);
         }, 10000);
@@ -123,7 +127,7 @@ const App = () => {
     // Update suggested services interval
     useEffect(() => {
         if (locationBasedServices.length === 0) return;
-        
+
         const interval = setInterval(() => {
             setSuggestedServiceIndex(prev => (prev + 4) % locationBasedServices.length);
         }, 8000);
@@ -143,7 +147,7 @@ const App = () => {
                 }));
                 setAllServices(validatedData);
                 console.log(`Loaded ${validatedData.length} services`);
-                
+
                 // Check localStorage for saved location
                 const savedLocation = localStorage.getItem("selectedLocation");
                 if (savedLocation) {
@@ -170,7 +174,7 @@ const App = () => {
     const handleLocationSelect = useCallback((location) => {
         console.log("Location selected in App:", location);
         setSelectedLocation(location);
-        
+
         if (location) {
             localStorage.setItem("selectedLocation", JSON.stringify(location));
             setHasLocation(true);
@@ -187,86 +191,105 @@ const App = () => {
     }, []);
 
     // Handle search from hero section
-    const handleSearch = () => {
-        console.log("Search triggered, hasLocation:", hasLocation);
-        
-        if (!hasLocation) {
-            alert("Please select a location first");
-            return;
-        }
-        
-        if (!searchTerm.trim() && !locationSearch.trim()) {
-            alert("Please enter service name or location to search");
-            return;
-        }
-        
-        let results = [...locationBasedServices];
-        
-        if (searchTerm.trim()) {
-            const searchTermLower = searchTerm.trim().toLowerCase();
-            results = results.filter(service =>
-                (service.name && service.name.toLowerCase().includes(searchTermLower)) ||
-                (service.category && service.category.toLowerCase().includes(searchTermLower)) ||
-                (service.subCategory && service.subCategory.toLowerCase().includes(searchTermLower)) ||
-                (service.description && service.description.toLowerCase().includes(searchTermLower))
-            );
-        }
-        
-        if (locationSearch.trim()) {
-            results = results.filter(service => isServiceInLocation(service, locationSearch.trim()));
-        }
-        
-        console.log(`Search results: ${results.length} services found`);
-        setFilteredServices(results);
-        setShowSearchResults(true);
-    };
-
-    // Filter by search term only (for navbar search)
-    const filterBySearch = (term) => {
-        console.log("Navbar search triggered, hasLocation:", hasLocation);
-        
-        if (!hasLocation) {
-            alert("Please select a location first");
-            return;
-        }
-        
-        if (!term || term.trim() === "") {
-            setFilteredServices(locationBasedServices);
-            setShowSearchResults(false);
-            return;
-        }
-        
-        const searchTermLower = term.toLowerCase();
-        const filtered = locationBasedServices.filter(service =>
+  // Update handleSearch function
+const handleSearch = () => {
+    console.log("Search triggered, hasLocation:", hasLocation);
+    
+    if (!hasLocation) {
+        alert("Please select a location first");
+        return;
+    }
+    
+    if (!searchTerm.trim() && !locationSearch.trim()) {
+        alert("Please enter service name or location to search");
+        return;
+    }
+    
+    let results = [...locationBasedServices];
+    
+    if (searchTerm.trim()) {
+        const searchTermLower = searchTerm.trim().toLowerCase();
+        results = results.filter(service =>
             (service.name && service.name.toLowerCase().includes(searchTermLower)) ||
             (service.category && service.category.toLowerCase().includes(searchTermLower)) ||
             (service.subCategory && service.subCategory.toLowerCase().includes(searchTermLower)) ||
             (service.description && service.description.toLowerCase().includes(searchTermLower))
         );
-        
-        console.log(`Search results: ${filtered.length} services found for term: ${term}`);
-        setFilteredServices(filtered);
-        setShowSearchResults(true);
-    };
+    }
+    
+    if (locationSearch.trim()) {
+        results = results.filter(service => isServiceInLocation(service, locationSearch.trim()));
+    }
+    
+    console.log(`Search results: ${results.length} services found`);
+    setFilteredServices(results);
+    setShowSearchResults(true);
+    
+    // Push state to history for back button handling
+    if (!showSearchResults) {
+        window.history.pushState({ searchActive: true }, '', window.location.href);
+    }
+};
 
-    const handleClearSearch = () => {
-        setSearchTerm('');
-        setLocationSearch('');
+
+    // Filter by search term only (for navbar search)
+  const filterBySearch = (term) => {
+    console.log("Navbar search triggered, hasLocation:", hasLocation);
+    
+    if (!hasLocation) {
+        alert("Please select a location first");
+        return;
+    }
+    
+    if (!term || term.trim() === "") {
         setFilteredServices(locationBasedServices);
         setShowSearchResults(false);
-    };
+        return;
+    }
+    
+    const searchTermLower = term.toLowerCase();
+    const filtered = locationBasedServices.filter(service =>
+        (service.name && service.name.toLowerCase().includes(searchTermLower)) ||
+        (service.category && service.category.toLowerCase().includes(searchTermLower)) ||
+        (service.subCategory && service.subCategory.toLowerCase().includes(searchTermLower)) ||
+        (service.description && service.description.toLowerCase().includes(searchTermLower))
+    );
+    
+    console.log(`Search results: ${filtered.length} services found for term: ${term}`);
+    setFilteredServices(filtered);
+    setShowSearchResults(true);
+    
+    // Push state to history for back button handling
+    if (!showSearchResults) {
+        window.history.pushState({ searchActive: true }, '', window.location.href);
+    }
+};
+
+
+   // Update handleClearSearch function
+const handleClearSearch = () => {
+    setSearchTerm('');
+    setLocationSearch('');
+    setFilteredServices(locationBasedServices);
+    setShowSearchResults(false);
+    
+    // Remove the search state from history
+    if (window.history.state?.searchActive) {
+        window.history.back();
+    }
+};
 
     const handleCategoryClick = (category) => {
         if (!hasLocation) {
             alert("Please select a location first");
             return;
         }
-        
-        navigate('/home', { 
-            state: { 
+
+        navigate('/home', {
+            state: {
                 category: category,
                 location: selectedLocation
-            } 
+            }
         });
     };
 
@@ -275,14 +298,48 @@ const App = () => {
             alert("Please select a location first");
             return;
         }
-        
-        navigate('/home', { 
-            state: { 
+
+        navigate('/home', {
+            state: {
                 subCategory: subCategory,
                 location: selectedLocation
-            } 
+            }
         });
     };
+
+    // Add useEffect to handle browser back/forward buttons
+useEffect(() => {
+    const handlePopState = (event) => {
+        // If we're going back from search results
+        if (showSearchResults) {
+            setShowSearchResults(false);
+            setFilteredServices(locationBasedServices);
+            setSearchTerm('');
+            setLocationSearch('');
+        }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    
+    return () => {
+        window.removeEventListener('popstate', handlePopState);
+    };
+}, [showSearchResults, locationBasedServices]);
+
+// Add useEffect to handle initial load and navigation
+useEffect(() => {
+    // Check if we need to clear search on route change
+    const unlisten = () => {
+        if (showSearchResults) {
+            setShowSearchResults(false);
+            setFilteredServices(locationBasedServices);
+        }
+    };
+    
+    // Cleanup function
+    return unlisten;
+}, [location.pathname]);
+
 
     // Image slider for banners
     useEffect(() => {
@@ -330,7 +387,7 @@ const App = () => {
     if (loading && allServices.length === 0) {
         return (
             <div>
-                <Navbar 
+                <Navbar
                     onLocationSelect={handleLocationSelect}
                     selectedLocation={selectedLocation}
                     searchService={filterBySearch}
@@ -364,76 +421,22 @@ const App = () => {
 
     return (
         <div style={{ padding: '0px', fontFamily: 'Arial, sans-serif', backgroundColor: '#F9FAFB' }}>
-            <Navbar 
+            <Navbar
                 onLocationSelect={handleLocationSelect}
                 selectedLocation={selectedLocation}
                 searchService={filterBySearch}
             />
             <br />
 
-            {/* Search Results Section */}
+            {/* Search Results Section - Using the new component */}
             {showSearchResults && (
-                <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
-                    <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        marginBottom: '20px',
-                        paddingBottom: '15px',
-                        borderBottom: '2px solid #f0f0f0'
-                    }}>
-                        <button
-                            onClick={handleClearSearch}
-                            style={{
-                                padding: "8px 16px",
-                                backgroundColor: "#6c757d",
-                                color: "white",
-                                border: "none",
-                                borderRadius: "8px",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "5px",
-                                fontSize: "14px",
-                                fontWeight: "500"
-                            }}
-                            onMouseEnter={(e) => e.target.style.backgroundColor = "#5a6268"}
-                            onMouseLeave={(e) => e.target.style.backgroundColor = "#6c757d"}
-                        >
-                            ← Back
-                        </button>
-                    </div>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {filteredServices.length > 0 ? (
-                            filteredServices.map((service) => (
-                                <div key={service._id}>
-                                    <Service service={service} bookingArea={selectedLocation} />
-                                </div>
-                            ))
-                        ) : (
-                            <div style={{ textAlign: "center", padding: "40px" }}>
-                                <p>No services found matching your criteria in this location.</p>
-                                <button
-                                    onClick={handleClearSearch}
-                                    style={{
-                                        marginTop: "10px",
-                                        padding: "8px 16px",
-                                        backgroundColor: "#4a54e1",
-                                        color: "white",
-                                        border: "none",
-                                        borderRadius: "6px",
-                                        cursor: "pointer"
-                                    }}
-                                >
-                                    Clear Search
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                <SearchResults
+                    filteredServices={filteredServices}
+                    onClearSearch={handleClearSearch}
+                    selectedLocation={selectedLocation}
+                />
             )}
-            
+
             {/* Rest of the Content */}
             {!showSearchResults && (
                 <>
@@ -704,15 +707,15 @@ const App = () => {
                                     {locationBasedServices.length > 0 && (
                                         <div style={{ marginTop: '40px', padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
                                             <h2 style={{ fontSize: "26px", fontWeight: "700", color: "#333", marginBottom: "25px", letterSpacing: "0.5px" }}>
-                                                Suggested Services 
+                                                Suggested Services
                                             </h2>
-                                            <div style={{ 
-                                                display: 'flex', 
-                                                gap: '20px', 
-                                                whiteSpace: "nowrap", 
-                                                scrollbarWidth: "none", 
-                                                msOverflowStyle: "none", 
-                                                overflowX: 'auto', 
+                                            <div style={{
+                                                display: 'flex',
+                                                gap: '20px',
+                                                whiteSpace: "nowrap",
+                                                scrollbarWidth: "none",
+                                                msOverflowStyle: "none",
+                                                overflowX: 'auto',
                                                 padding: '10px',
                                                 WebkitOverflowScrolling: 'touch'
                                             }}>
@@ -724,7 +727,7 @@ const App = () => {
                                             </div>
                                         </div>
                                     )}
-                                    
+
                                     {/* Categories Section */}
                                     <div
                                         style={{
@@ -834,7 +837,7 @@ const App = () => {
                                             ))}
                                         </div>
                                     )}
-                                    
+
                                     {/* Event & Ticket Services Section */}
                                     <div
                                         style={{
@@ -1064,7 +1067,7 @@ const App = () => {
                                                                 }
                                                                 onMouseLeave={(e) =>
                                                                     (e.currentTarget.style.transform = "scale(1)")
-                                                                 }
+                                                                }
                                                             />
                                                         </div>
                                                         <div

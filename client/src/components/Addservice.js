@@ -622,13 +622,7 @@ const getImageUrl = async (imageNumber) => {
                             </div>
                         </div>
 
-                        <textarea
-                            className="form-control mt-2"
-                            placeholder="Description (Enter each point on a new line)"
-                            value={descriptionPoints}
-                            onChange={(e) => setDescriptionPoints(e.target.value)}
-                            rows={3}
-                        />
+                     
 
                         <input
                             type="text"
@@ -666,14 +660,79 @@ const getImageUrl = async (imageNumber) => {
                             )}
                         </div>
 
-                        <textarea
-                            className="form-control mt-2"
-                            placeholder="Facilities (Enter each facility on a new line)"
-                            value={facilityPoints}
-                            onChange={(e) => setFacilityPoints(e.target.value)}
-                            rows={3}
-                        />
+                  {/* Description Section with Better UX */}
+<div className="form-group">
+  <label style={{ fontWeight: "600", marginBottom: "8px", display: "block" }}>
+    📝 Description
+    <small style={{ fontSize: "12px", color: "#6c757d", marginLeft: "8px" }}>
+      (One point per line)
+    </small>
+  </label>
+  <textarea
+    className="form-control"
+    placeholder="• Professional plumbing service&#10;• 24/7 emergency support&#10;• Free inspection"
+    value={descriptionPoints}
+    onChange={(e) => setDescriptionPoints(e.target.value)}
+    rows={5}
+    style={{
+      borderRadius: "8px",
+      border: "1px solid #ddd",
+      padding: "12px",
+      fontSize: "14px",
+      lineHeight: "1.6",
+      resize: "vertical"
+    }}
+  />
+  <div style={{ 
+    fontSize: "12px", 
+    color: "#6c757d", 
+    marginTop: "5px",
+    display: "flex",
+    alignItems: "center",
+    gap: "15px",
+    flexWrap: "wrap"
+  }}>
+    <span>💡 Tip: Start each line with • or → for better formatting</span>
+    <span>📊 {descriptionPoints.split('\n').filter(l => l.trim()).length} points added</span>
+  </div>
+</div>
 
+{/* Facilities Section with Better UX */}
+<div className="form-group">
+  <label style={{ fontWeight: "600", marginBottom: "8px", display: "block" }}>
+    ✨ Facilities & Amenities
+    <small style={{ fontSize: "12px", color: "#6c757d", marginLeft: "8px" }}>
+      (One per line)
+    </small>
+  </label>
+  <textarea
+    className="form-control"
+    placeholder="• Free WiFi&#10;• Air Conditioning&#10;• Parking Available&#10;• Professional Equipment"
+    value={facilityPoints}
+    onChange={(e) => setFacilityPoints(e.target.value)}
+    rows={5}
+    style={{
+      borderRadius: "8px",
+      border: "1px solid #ddd",
+      padding: "12px",
+      fontSize: "14px",
+      lineHeight: "1.6",
+      resize: "vertical"
+    }}
+  />
+  <div style={{ 
+    fontSize: "12px", 
+    color: "#6c757d", 
+    marginTop: "5px",
+    display: "flex",
+    alignItems: "center",
+    gap: "15px",
+    flexWrap: "wrap"
+  }}>
+    <span>💡 Tip: List all facilities one per line</span>
+    <span>🏷️ {facilityPoints.split('\n').filter(l => l.trim()).length} facilities added</span>
+  </div>
+</div>
                         <div className="form-group">
                             <label>Images (Upload or provide URLs) *</label>
                             <div className="image-input-group">

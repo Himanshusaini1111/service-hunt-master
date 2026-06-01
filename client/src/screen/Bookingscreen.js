@@ -236,110 +236,115 @@ function Bookingscreen() {
   // Find the total amount calculation useEffect and update it:
   // Calculate total amount - FIXED for your schema
   // Calculate total amount - FIXED for your schema
-  useEffect(() => {
-    if (!service) return;
+// Calculate total amount - FIXED quantity logic
+useEffect(() => {
+  if (!service) return;
 
-    let baseTotal = 0;
-    const unit = service.unit || 'per day';
-    const currentBookingType = bookingType || service.bookingType || 'Automatic Booking';
-    const unitRent = effectiveBaseRent(service, selectedServiceArea);
+  let baseTotal = 0;
+  const unit = service.unit || 'per day';
+  const currentBookingType = bookingType || service.bookingType || 'Automatic Booking';
+  const unitRent = effectiveBaseRent(service, selectedServiceArea);
 
-    // For Inquari Booking, show base price as reference but don't calculate total
-    if (currentBookingType === 'Inquari Booking') {
-      baseTotal = 0;
+  // For Inquari Booking, show base price as reference but don't calculate total
+  if (currentBookingType === 'Inquari Booking') {
+    baseTotal = 0;
+  } else {
+    // Calculate base price based on unit type
+    if (unit.includes('day') || unit.includes('week') || unit.includes('month')) {
+      // Quantity multiplies the total (rent × days × quantity)
+      baseTotal = unitRent * daysCount * quantity;
+    } else if (unit.includes('hour')) {
+      // Quantity multiplies the total (rent × slots × quantity)
+      baseTotal = unitRent * (selectedSlots.length || 1) * quantity;
     } else {
-      // Calculate base price based on unit type
-      if (unit.includes('day') || unit.includes('week') || unit.includes('month')) {
-        baseTotal = unitRent * daysCount * quantity;
-      } else if (unit.includes('hour')) {
-        baseTotal = unitRent * (selectedSlots.length || 1) * quantity;
-      } else {
-        // Quantity-based units (per person, per item, etc.)
-        baseTotal = unitRent * quantity;
-      }
+      // Quantity-based units (per person, per item, etc.)
+      // Quantity directly multiplies the unit rent
+      baseTotal = unitRent * quantity;
     }
+  }
 
-    // Calculate countable optional inputs total
-    const countableOptionalsTotal = (service.optionalInputs || []).reduce((acc, input, i) => {
+  // Calculate countable optional inputs total
+  // IMPORTANT: quantity does NOT affect optional input prices
+  const countableOptionalsTotal = (service.optionalInputs || []).reduce((acc, input, i) => {
+    const inputPrice = effectiveOptionalUnitPrice(input, selectedServiceArea);
+
+    if (input.isCountable) {
+      const count = optionalInputCounts[i] || 0;
+
+      // Calculate multiplier for optional inputs (without quantity)
+      let multiplier = 1; // Default multiplier (no quantity effect)
+
+      const inputUnit = input.unit || '';
+      const mainUnit = service.unit || 'per day';
+
+      // If input uses day-based unit and main service uses days
+      if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
+          (mainUnit.includes('day') || mainUnit === 'per-day')) {
+        multiplier = daysCount; // Only days count, NOT quantity
+      }
+      // If input uses hour-based unit and main service uses hours/slots
+      else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
+               (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
+        multiplier = (selectedSlots.length || 1); // Only slots count, NOT quantity
+      }
+
+      return acc + (count * inputPrice * multiplier);
+    }
+    return acc;
+  }, 0);
+
+  // Calculate non-countable optional inputs total
+  // IMPORTANT: quantity does NOT affect optional input prices
+  const nonCountableOptionalsTotal = (service.optionalInputs || []).reduce((acc, input, i) => {
+    if (!input.isCountable && addedOptionalInputs[i]) {
       const inputPrice = effectiveOptionalUnitPrice(input, selectedServiceArea);
 
-      if (input.isCountable) {
-        const count = optionalInputCounts[i] || 0;
+      // Calculate multiplier for non-countable items (without quantity)
+      let multiplier = 1;
+      const inputUnit = input.unit || '';
+      const mainUnit = service.unit || 'per day';
 
-        // Calculate multiplier based on input's unit and main service unit
-        let multiplier = quantity; // Default multiplier
-
-        const inputUnit = input.unit || '';
-        const mainUnit = service.unit || 'per day';
-
-        // If input uses day-based unit and main service uses days
-        if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
+      if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
           (mainUnit.includes('day') || mainUnit === 'per-day')) {
-          multiplier = daysCount * quantity;
-        }
-        // If input uses hour-based unit and main service uses hours/slots
-        else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
-          (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
-          multiplier = (selectedSlots.length || 1) * quantity;
-        }
-
-        return acc + (count * inputPrice * multiplier);
+        multiplier = daysCount; // Only days count, NOT quantity
+      } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
+                 (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
+        multiplier = (selectedSlots.length || 1); // Only slots count, NOT quantity
       }
-      return acc;
-    }, 0);
 
-    // Calculate non-countable optional inputs total - FIXED: using addedOptionalInputs
-    const nonCountableOptionalsTotal = (service.optionalInputs || []).reduce((acc, input, i) => {
-      if (!input.isCountable && addedOptionalInputs[i]) {
-        const inputPrice = effectiveOptionalUnitPrice(input, selectedServiceArea);
+      return acc + (inputPrice * multiplier);
+    }
+    return acc;
+  }, 0);
 
-        // Calculate multiplier for non-countable items too if they have day/hour dependencies
-        let multiplier = 1;
-        const inputUnit = input.unit || '';
-        const mainUnit = service.unit || 'per day';
+  // Calculate extra inputs total
+  // IMPORTANT: quantity does NOT affect extra input prices
+  const extrasTotal = (service.extraInputs || []).reduce((acc, input, i) => {
+    if (addedExtraInputs[i]) {
+      const inputPrice = input.price || 0;
 
-        if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
+      // Calculate multiplier for extra inputs (without quantity)
+      let multiplier = 1;
+      const inputUnit = input.unit || '';
+      const mainUnit = service.unit || 'per day';
+
+      if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
           (mainUnit.includes('day') || mainUnit === 'per-day')) {
-          multiplier = daysCount * quantity;
-        } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
-          (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
-          multiplier = (selectedSlots.length || 1) * quantity;
-        }
-
-        return acc + (inputPrice * multiplier);
+        multiplier = daysCount; // Only days count, NOT quantity
+      } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
+                 (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
+        multiplier = (selectedSlots.length || 1); // Only slots count, NOT quantity
       }
-      return acc;
-    }, 0);
 
-    // Calculate extra inputs total
-    const extrasTotal = (service.extraInputs || []).reduce((acc, input, i) => {
-      if (addedExtraInputs[i]) {
-        const inputPrice = input.price || 0;
+      return acc + (inputPrice * multiplier);
+    }
+    return acc;
+  }, 0);
 
-        // Calculate multiplier for extra inputs
-        let multiplier = 1;
-        const inputUnit = input.unit || '';
-        const mainUnit = service.unit || 'per day';
+  // Set final total including all components
+  setTotalAmount(baseTotal + countableOptionalsTotal + nonCountableOptionalsTotal + extrasTotal);
 
-        if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
-          (mainUnit.includes('day') || mainUnit === 'per-day')) {
-          multiplier = daysCount * quantity;
-        } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
-          (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
-          multiplier = (selectedSlots.length || 1) * quantity;
-        }
-
-        return acc + (inputPrice * multiplier);
-      }
-      return acc;
-    }, 0);
-
-    // Set final total including all components
-    setTotalAmount(baseTotal + countableOptionalsTotal + nonCountableOptionalsTotal + extrasTotal);
-
-  }, [quantity, daysCount, selectedSlots, optionalInputCounts, addedOptionalInputs, addedExtraInputs, service, bookingType, selectedServiceArea]);
-  // Handle optional input quantity change
-
+}, [quantity, daysCount, selectedSlots, optionalInputCounts, addedOptionalInputs, addedExtraInputs, service, bookingType, selectedServiceArea]);
 
   const handleChange = (index, increment) => {
     setOptionalInputCounts((prevCounts) => {
@@ -1487,46 +1492,197 @@ function Bookingscreen() {
 
           </div>
           {/* Description Section */}
-          <div style={{
-            backgroundColor: "white",
-            borderRadius: "8px",
-            padding: "20px",
-            marginTop: "30px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-          }}>
-            <h3>Description</h3>
-            <p style={{ lineHeight: "1.6", color: "#555", marginTop: "10px" }}>
-              {service.description}
-            </p>
+          {/* Description Section - Professional & Responsive */}
+<div style={{
+  backgroundColor: "white",
+  borderRadius: "12px",
+  padding: "clamp(16px, 4vw, 28px)",
+  marginTop: "20px",
+  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+  border: "1px solid #f0f0f0"
+}}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    marginBottom: "20px",
+    borderBottom: "2px solid #28a745",
+    paddingBottom: "12px"
+  }}>
+    <span style={{ fontSize: "24px" }}>📋</span>
+    <h3 style={{ 
+      margin: 0, 
+      fontSize: "clamp(18px, 4vw, 24px)",
+      fontWeight: "600",
+      color: "#1a1a1a"
+    }}>
+      Service Details
+    </h3>
+  </div>
+  
+  <div style={{
+    lineHeight: "1.7",
+    color: "#444",
+    fontSize: "clamp(14px, 3vw, 16px)"
+  }}>
+    {typeof service.description === 'string' ? (
+      service.description.split('\n').map((point, idx) => {
+        const trimmedPoint = point.trim();
+        if (!trimmedPoint) return null;
+        
+        // Check if point starts with arrow or bullet
+        const hasBullet = trimmedPoint.startsWith('→') || 
+                         trimmedPoint.startsWith('•') || 
+                         trimmedPoint.startsWith('-');
+        
+        return (
+          <div 
+            key={idx} 
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "12px",
+              marginBottom: "12px",
+              padding: "8px 12px",
+              backgroundColor: idx % 2 === 0 ? "#fff" : "#fafafa",
+              borderRadius: "8px",
+              transition: "all 0.2s ease"
+            }}
+          >
+            <span style={{
+              fontSize: "18px",
+              color: "#28a745",
+              minWidth: "24px",
+              marginTop: "2px"
+            }}>
+              {hasBullet ? "▹" : "•"}
+            </span>
+            <span style={{
+              flex: 1,
+              wordBreak: "break-word"
+            }}>
+              {hasBullet ? trimmedPoint.slice(1).trim() : trimmedPoint}
+            </span>
           </div>
-
+        );
+      })
+    ) : (
+      <p>{service.description}</p>
+    )}
+  </div>
+</div>
           {/* Facilities Section */}
-          <div style={{
-            backgroundColor: "white",
-            borderRadius: "8px",
-            padding: "20px",
-            marginTop: "20px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-          }}>
-            <h3>Facilities</h3>
-            <div style={{ marginTop: "10px" }}>
-              {Array.isArray(service.facility) ? (
-                service.facility.map((item, index) => (
-                  <div key={index} style={{
-                    padding: "8px 0",
-                    borderBottom: "1px solid #eee"
-                  }}>
-                    • {item}
-                  </div>
-                ))
-              ) : (
-                <p style={{ lineHeight: "1.6", color: "#555" }}>
-                  {service.facility}
-                </p>
-              )}
-            </div>
+  {/* Facilities Section - Professional & Responsive */}
+<div style={{
+  backgroundColor: "white",
+  borderRadius: "12px",
+  padding: "clamp(16px, 4vw, 28px)",
+  marginTop: "20px",
+  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+  border: "1px solid #f0f0f0"
+}}>
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    marginBottom: "20px",
+    borderBottom: "2px solid #007bff",
+    paddingBottom: "12px"
+  }}>
+    <span style={{ fontSize: "24px" }}>✨</span>
+    <h3 style={{ 
+      margin: 0, 
+      fontSize: "clamp(18px, 4vw, 24px)",
+      fontWeight: "600",
+      color: "#1a1a1a"
+    }}>
+      What We Offer
+    </h3>
+  </div>
+  
+  <div style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+    gap: "12px",
+    marginTop: "8px"
+  }}>
+    {(() => {
+      // Convert facility to array if it's a string
+      let facilityArray = service.facility;
+      
+      if (typeof service.facility === 'string') {
+        // Split by newline and filter out empty lines
+        facilityArray = service.facility
+          .split('\n')
+          .filter(line => line.trim() !== '')
+          .map(line => {
+            // Remove leading arrows or bullets if present
+            return line.replace(/^[→•\-]\s*/, '').trim();
+          });
+      }
+      
+      // If it's already an array, use it directly
+      if (Array.isArray(facilityArray)) {
+        return facilityArray.map((item, index) => (
+          <div 
+            key={index} 
+            style={{
+              display: "flex",
+              alignItems: "center",
+              padding: "10px 12px",
+              backgroundColor: "#f8f9fa",
+              borderRadius: "8px",
+              transition: "all 0.2s ease",
+              cursor: "pointer",
+              gap: "12px"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#e9ecef";
+              e.currentTarget.style.transform = "translateX(4px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "#f8f9fa";
+              e.currentTarget.style.transform = "translateX(0)";
+            }}
+          >
+            <span style={{
+              fontSize: "18px",
+              color: "#007bff",
+              minWidth: "24px"
+            }}>
+              ✓
+            </span>
+            <span style={{
+              fontSize: "clamp(13px, 3vw, 15px)",
+              color: "#333",
+              lineHeight: "1.5",
+              flex: 1
+            }}>
+              {item}
+            </span>
           </div>
-
+        ));
+      }
+      
+      // Fallback for single facility
+      return (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "12px",
+          backgroundColor: "#f8f9fa",
+          borderRadius: "8px",
+          gap: "12px"
+        }}>
+          <span style={{ fontSize: "18px", color: "#007bff" }}>✓</span>
+          <span style={{ lineHeight: "1.6", color: "#555" }}>
+            {service.facility}
+          </span>
+        </div>
+      );
+    })()}
+  </div>
+</div>
           {/* Reviews Section */}
           <div style={{
             backgroundColor: "white",
@@ -1556,567 +1712,1094 @@ function Bookingscreen() {
       </div>
 
       {/* Booking Modal */}
-      {showBookingModal && (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.5)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: "white",
-            borderRadius: "8px",
-            padding: "30px",
-            width: "90%",
-            maxWidth: "600px",
-            maxHeight: "80vh",
-            overflowY: "auto"
-          }}>
-            <h2 style={{ marginBottom: "20px" }}>Booking Details</h2>
+     {showBookingModal && (
+  <div style={{
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+    backdropFilter: "blur(4px)",
+    animation: "fadeIn 0.3s ease"
+  }}>
+    <div style={{
+      background: "white",
+      borderRadius: "20px",
+      width: "90%",
+      maxWidth: "650px",
+      maxHeight: "85vh",
+      overflowY: "auto",
+      boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+      animation: "slideUp 0.3s ease"
+    }}>
+      
+      {/* Modal Header */}
+      <div style={{
+        padding: "24px 28px",
+        borderBottom: "1px solid #e8e8e8",
+        backgroundColor: "#fafafa",
+        borderRadius: "20px 20px 0 0",
+        position: "sticky",
+        top: 0,
+        zIndex: 10
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <span style={{ fontSize: "28px" }}>📝</span>
+          <div>
+            <h2 style={{ margin: 0, fontSize: "22px", fontWeight: "600", color: "#1a1a1a" }}>
+              {showBill ? "Confirm Your Booking" : "Booking Details"}
+            </h2>
+            <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#666" }}>
+              {showBill ? "Please review and confirm your booking" : "Please fill in your details to continue"}
+            </p>
+          </div>
+        </div>
+      </div>
 
-            <form onSubmit={handleBooking}>
-              {/* Personal Information */}
-              <div style={{ marginBottom: "20px" }}>
-                <h4 style={{ marginBottom: "10px" }}>Personal Information</h4>
+      <form onSubmit={handleBooking}>
+        <div style={{ padding: "24px 28px" }}>
+          
+          {/* Personal Information Section */}
+          <div style={{ marginBottom: "28px" }}>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "16px",
+              paddingBottom: "8px",
+              borderBottom: "2px solid #007bff"
+            }}>
+              <span style={{ fontSize: "18px" }}>👤</span>
+              <h4 style={{ margin: 0, fontSize: "16px", fontWeight: "600", color: "#333" }}>
+                Personal Information
+              </h4>
+            </div>
+            
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "6px", 
+                fontSize: "13px", 
+                fontWeight: "500", 
+                color: "#555" 
+              }}>
+                Full Name <span style={{ color: "#e74c3c" }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                placeholder="Enter your full name"
+                style={{
+                  width: "100%",
+                  padding: "12px 14px",
+                  border: "1px solid #ddd",
+                  borderRadius: "10px",
+                  fontSize: "14px",
+                  transition: "all 0.2s ease"
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#007bff";
+                  e.target.style.boxShadow = "0 0 0 3px rgba(0,123,255,0.1)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#ddd";
+                  e.target.style.boxShadow = "none";
+                }}
+              />
+            </div>
 
-                <div style={{ marginBottom: "15px" }}>
-                  <label style={{ display: "block", marginBottom: "5px" }}>
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      borderRadius: "5px"
-                    }}
-                  />
-                </div>
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "6px", 
+                fontSize: "13px", 
+                fontWeight: "500", 
+                color: "#555" 
+              }}>
+                Phone Number <span style={{ color: "#e74c3c" }}>*</span>
+              </label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                placeholder="Enter your phone number"
+                style={{
+                  width: "100%",
+                  padding: "12px 14px",
+                  border: "1px solid #ddd",
+                  borderRadius: "10px",
+                  fontSize: "14px",
+                  transition: "all 0.2s ease"
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#007bff";
+                  e.target.style.boxShadow = "0 0 0 3px rgba(0,123,255,0.1)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#ddd";
+                  e.target.style.boxShadow = "none";
+                }}
+              />
+            </div>
 
-                <div style={{ marginBottom: "15px" }}>
-                  <label style={{ display: "block", marginBottom: "5px" }}>
-                    Phone Number *
-                  </label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    required
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      borderRadius: "5px"
-                    }}
-                  />
-                </div>
+            <div style={{ marginBottom: "16px" }}>
+              <label style={{ 
+                display: "block", 
+                marginBottom: "6px", 
+                fontSize: "13px", 
+                fontWeight: "500", 
+                color: "#555" 
+              }}>
+                Description / Special Requests
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows="3"
+                placeholder="Any special requests or additional information..."
+                style={{
+                  width: "100%",
+                  padding: "12px 14px",
+                  border: "1px solid #ddd",
+                  borderRadius: "10px",
+                  fontSize: "14px",
+                  resize: "vertical",
+                  fontFamily: "inherit",
+                  transition: "all 0.2s ease"
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#007bff";
+                  e.target.style.boxShadow = "0 0 0 3px rgba(0,123,255,0.1)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#ddd";
+                  e.target.style.boxShadow = "none";
+                }}
+              />
+            </div>
+          </div>
 
-                <div style={{ marginBottom: "15px" }}>
-                  <label style={{ display: "block", marginBottom: "5px" }}>
-                    Description *
-                  </label>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    required
-                    rows="3"
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      borderRadius: "5px",
-                      resize: "vertical"
-                    }}
-                  />
-                </div>
+          {/* Location Information Section - Professional Design */}
+          {locationType !== 'No' && (
+            <div style={{ marginBottom: "28px" }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "16px",
+                paddingBottom: "8px",
+                borderBottom: "2px solid #28a745"
+              }}>
+                <span style={{ fontSize: "18px" }}>📍</span>
+                <h4 style={{ margin: 0, fontSize: "16px", fontWeight: "600", color: "#333" }}>
+                  Location Details
+                </h4>
               </div>
 
-              {/* Location Information */}
-              <div style={{ marginBottom: "20px" }}>
-
-                {locationType === 'Simple' && (
-                  <div style={{ marginBottom: "15px" }}>
-                    <h4 style={{ marginBottom: "10px" }}>Location Details</h4>
-
-                    <label style={{ display: "block", marginBottom: "5px" }}>
-                      Service Address *
-                    </label>
+              {locationType === 'Simple' && (
+                <div style={{ marginBottom: "15px" }}>
+                  <label style={{ 
+                    display: "block", 
+                    marginBottom: "6px", 
+                    fontSize: "13px", 
+                    fontWeight: "500", 
+                    color: "#555" 
+                  }}>
+                    Service Address <span style={{ color: "#e74c3c" }}>*</span>
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <span style={{
+                      position: "absolute",
+                      left: "12px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      color: "#999",
+                      fontSize: "16px"
+                    }}>🏠</span>
                     <input
                       type="text"
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
                       required={locationType === 'Simple'}
+                      placeholder="Enter your service address"
                       style={{
                         width: "100%",
-                        padding: "10px",
+                        padding: "12px 14px 12px 40px",
                         border: "1px solid #ddd",
-                        borderRadius: "5px"
+                        borderRadius: "10px",
+                        fontSize: "14px",
+                        transition: "all 0.2s ease"
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = "#28a745";
+                        e.target.style.boxShadow = "0 0 0 3px rgba(40,167,69,0.1)";
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = "#ddd";
+                        e.target.style.boxShadow = "none";
                       }}
                     />
                   </div>
-                )}
+                  <p style={{ fontSize: "11px", color: "#999", marginTop: "5px" }}>
+                    We'll send service professionals to this address
+                  </p>
+                </div>
+              )}
 
-                {locationType === 'Rental' && (
-                  <>
-                    <div style={{ marginBottom: "15px" }}>
-                      <h4 style={{ marginBottom: "10px" }}>Location Details</h4>
-
-                      <label style={{ display: "block", marginBottom: "5px" }}>
-                        Pickup Address *
-                      </label>
+              {locationType === 'Rental' && (
+                <>
+                  <div style={{ marginBottom: "15px" }}>
+                    <label style={{ 
+                      display: "block", 
+                      marginBottom: "6px", 
+                      fontSize: "13px", 
+                      fontWeight: "500", 
+                      color: "#555" 
+                    }}>
+                      Pickup Address <span style={{ color: "#e74c3c" }}>*</span>
+                    </label>
+                    <div style={{ position: "relative" }}>
+                      <span style={{
+                        position: "absolute",
+                        left: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#999",
+                        fontSize: "16px"
+                      }}>🚗</span>
                       <input
                         type="text"
                         value={pickupAddress}
                         onChange={(e) => setPickupAddress(e.target.value)}
                         required
+                        placeholder="Enter pickup location"
                         style={{
                           width: "100%",
-                          padding: "10px",
+                          padding: "12px 14px 12px 40px",
                           border: "1px solid #ddd",
-                          borderRadius: "5px"
+                          borderRadius: "10px",
+                          fontSize: "14px",
+                          transition: "all 0.2s ease"
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = "#28a745";
+                          e.target.style.boxShadow = "0 0 0 3px rgba(40,167,69,0.1)";
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = "#ddd";
+                          e.target.style.boxShadow = "none";
                         }}
                       />
                     </div>
+                  </div>
 
-                    <div style={{ marginBottom: "15px" }}>
-                      <label style={{ display: "block", marginBottom: "5px" }}>
-                        Drop-off Address *
-                      </label>
+                  <div style={{ marginBottom: "15px" }}>
+                    <label style={{ 
+                      display: "block", 
+                      marginBottom: "6px", 
+                      fontSize: "13px", 
+                      fontWeight: "500", 
+                      color: "#555" 
+                    }}>
+                      Drop-off Address <span style={{ color: "#e74c3c" }}>*</span>
+                    </label>
+                    <div style={{ position: "relative" }}>
+                      <span style={{
+                        position: "absolute",
+                        left: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#999",
+                        fontSize: "16px"
+                      }}>🏁</span>
                       <input
                         type="text"
                         value={dropAddress}
                         onChange={(e) => setDropAddress(e.target.value)}
                         required
+                        placeholder="Enter drop-off location"
                         style={{
                           width: "100%",
-                          padding: "10px",
+                          padding: "12px 14px 12px 40px",
                           border: "1px solid #ddd",
-                          borderRadius: "5px"
+                          borderRadius: "10px",
+                          fontSize: "14px",
+                          transition: "all 0.2s ease"
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = "#28a745";
+                          e.target.style.boxShadow = "0 0 0 3px rgba(40,167,69,0.1)";
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = "#ddd";
+                          e.target.style.boxShadow = "none";
                         }}
                       />
                     </div>
+                  </div>
 
-                    <div style={{ marginBottom: "15px" }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <input
-                          type="checkbox"
-                          checked={returnTrip}
-                          onChange={(e) => setReturnTrip(e.target.checked)}
-                        />
-                        Return Trip Required
-                      </label>
-                    </div>
-                  </>
-                )}
+                  <div style={{ 
+                    marginBottom: "15px", 
+                    padding: "12px",
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: "10px",
+                    border: "1px solid #e8e8e8"
+                  }}>
+                    <label style={{ 
+                      display: "flex", 
+                      alignItems: "center", 
+                      gap: "10px",
+                      cursor: "pointer"
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={returnTrip}
+                        onChange={(e) => setReturnTrip(e.target.checked)}
+                        style={{
+                          width: "18px",
+                          height: "18px",
+                          cursor: "pointer"
+                        }}
+                      />
+                      <span style={{ fontSize: "14px", color: "#333" }}>
+                        🔄 Return Trip Required
+                      </span>
+                    </label>
+                    <p style={{ fontSize: "11px", color: "#999", marginTop: "8px", marginLeft: "28px" }}>
+                      Additional charges may apply for return trip
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Booking Summary Preview (when not showing bill) */}
+          {!showBill && (
+            <div style={{
+              backgroundColor: "#f8f9fa",
+              borderRadius: "12px",
+              padding: "16px",
+              marginTop: "8px",
+              border: "1px solid #e8e8e8"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+                <span style={{ fontSize: "16px" }}>📋</span>
+                <span style={{ fontSize: "13px", fontWeight: "600", color: "#333" }}>Booking Summary Preview</span>
               </div>
-
-              {/* Action Buttons */}
-              <div style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: "10px",
-                marginTop: "20px"
-              }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowBookingModal(false);
-                    setShowBill(false);
-                  }}
-                  style={{
-                    padding: "10px 20px",
-                    background: "#6c757d",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "5px",
-                    cursor: "pointer"
-                  }}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  style={{
-                    padding: "10px 20px",
-                    background: "#007bff",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "5px",
-                    cursor: "pointer"
-                  }}
-                >
-                  {showBill ? "Confirm Booking" : "Generate Bill"}
-                </button>
+              <div style={{ fontSize: "13px", color: "#666" }}>
+                <p style={{ margin: "4px 0" }}><strong>Service:</strong> {service?.name}</p>
+                <p style={{ margin: "4px 0" }}><strong>Price:</strong> ₹{effectiveRate} / {displayUnit}</p>
+                {quantity > 1 && <p style={{ margin: "4px 0" }}><strong>Quantity:</strong> {quantity}</p>}
+                {daysCount > 1 && <p style={{ margin: "4px 0" }}><strong>Duration:</strong> {daysCount} days</p>}
               </div>
-            </form>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Buttons */}
+        <div style={{
+          padding: "16px 28px",
+          borderTop: "1px solid #e8e8e8",
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: "12px",
+          backgroundColor: "#fafafa",
+          borderRadius: "0 0 20px 20px",
+          position: "sticky",
+          bottom: 0
+        }}>
+          <button
+            type="button"
+            onClick={() => {
+              setShowBookingModal(false);
+              setShowBill(false);
+            }}
+            style={{
+              padding: "10px 24px",
+              background: "white",
+              color: "#666",
+              border: "1px solid #d9d9d9",
+              borderRadius: "10px",
+              cursor: "pointer",
+              fontSize: "14px",
+              fontWeight: "500",
+              transition: "all 0.2s ease"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "#999";
+              e.currentTarget.style.color = "#333";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "#d9d9d9";
+              e.currentTarget.style.color = "#666";
+            }}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            style={{
+              padding: "10px 28px",
+              background: showBill ? "#28a745" : "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: "10px",
+              cursor: "pointer",
+              fontSize: "14px",
+              fontWeight: "600",
+              transition: "all 0.2s ease",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.15)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+            }}
+          >
+            {showBill ? "Confirm Booking" : "Generate Bill"}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
+      {/* Bill Summary Modal */}
+      {/* Bill Summary Modal */}
+      {/* Bill Summary Modal */}
+     {showBill && (
+  <div style={{
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1001,
+    backdropFilter: "blur(4px)",
+    animation: "fadeIn 0.3s ease"
+  }}>
+    <div style={{
+      background: "white",
+      borderRadius: "16px",
+      padding: "0",
+      width: "90%",
+      maxWidth: "550px",
+      maxHeight: "85vh",
+      overflowY: "auto",
+      boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+      animation: "slideUp 0.3s ease"
+    }}>
+      
+      {/* Header */}
+      <div style={{
+        padding: "24px 28px",
+        borderBottom: "1px solid #e8e8e8",
+        backgroundColor: "#fafafa",
+        borderRadius: "16px 16px 0 0",
+        position: "sticky",
+        top: 0,
+        zIndex: 10
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <span style={{ fontSize: "28px" }}>📋</span>
+          <div>
+            <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "600", color: "#1a1a1a" }}>
+              {bookingType === 'Inquari Booking' ? 'Inquiry Summary' : 'Booking Summary'}
+            </h3>
+            <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#666" }}>
+              {bookingType === 'Inquari Booking' 
+                ? 'Please review your inquiry details' 
+                : 'Please review your booking details before confirming'}
+            </p>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Bill Summary Modal */}
-      {/* Bill Summary Modal */}
-      {/* Bill Summary Modal */}
-      {showBill && (
+      {/* Content */}
+      <div style={{ padding: "24px 28px" }}>
+        
+        {/* Service Info Card */}
         <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.5)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 1001
+          backgroundColor: "#f8f9fa",
+          borderRadius: "12px",
+          padding: "16px",
+          marginBottom: "20px",
+          border: "1px solid #e8e8e8"
         }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+            <div>
+              <span style={{ fontSize: "12px", color: "#666", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Service
+              </span>
+              <h4 style={{ margin: "4px 0 0", fontSize: "18px", fontWeight: "600", color: "#1a1a1a" }}>
+                {service.name}
+              </h4>
+            </div>
+            {service.companyname && (
+              <span style={{
+                backgroundColor: "#e8f4f8",
+                padding: "4px 10px",
+                borderRadius: "20px",
+                fontSize: "12px",
+                color: "#007185"
+              }}>
+                {service.companyname}
+              </span>
+            )}
+          </div>
+          
+          {selectedServiceArea && (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "#555", marginTop: "8px" }}>
+              <span>📍</span>
+              <span>Serving: <strong>{selectedServiceArea.locationName}</strong></span>
+            </div>
+          )}
+        </div>
+
+        {/* Inquiry Notice for Inquari Booking */}
+        {bookingType === 'Inquari Booking' && (
           <div style={{
-            background: "white",
+            backgroundColor: "#fff8e1",
+            borderLeft: "4px solid #ff9800",
+            padding: "16px",
             borderRadius: "8px",
-            padding: "30px",
-            width: "90%",
-            maxWidth: "500px"
+            marginBottom: "20px"
           }}>
-            <h3 style={{ marginBottom: "20px" }}>Booking Summary</h3>
+            <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+              <span style={{ fontSize: "20px" }}>📌</span>
+              <div>
+                <strong style={{ color: "#e65100", fontSize: "14px" }}>Inquiry Required</strong>
+                <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#666" }}>
+                  This is an inquiry-based booking. Our team will contact you within 24 hours to confirm pricing and availability.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
-            <div style={{ marginBottom: "20px" }}>
-              <p><strong>Service:</strong> {service.name}</p>
+        {/* Booking Details Grid */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, 1fr)",
+          gap: "16px",
+          marginBottom: "20px",
+          padding: "16px",
+          backgroundColor: "#fff",
+          border: "1px solid #e8e8e8",
+          borderRadius: "12px"
+        }}>
+          {quantity > 1 && bookingType !== 'Inquari Booking' && (
+            <div>
+              <span style={{ fontSize: "11px", color: "#999", textTransform: "uppercase" }}>Quantity</span>
+              <p style={{ margin: "4px 0 0", fontSize: "16px", fontWeight: "500" }}>× {quantity}</p>
+            </div>
+          )}
+          
+          <div>
+            <span style={{ fontSize: "11px", color: "#999", textTransform: "uppercase" }}>Unit</span>
+            <p style={{ margin: "4px 0 0", fontSize: "16px", fontWeight: "500" }}>{displayUnit}</p>
+          </div>
+          
+          {daysCount > 1 && bookingType !== 'Inquari Booking' && (
+            <div>
+              <span style={{ fontSize: "11px", color: "#999", textTransform: "uppercase" }}>Duration</span>
+              <p style={{ margin: "4px 0 0", fontSize: "16px", fontWeight: "500" }}>{daysCount} days</p>
+            </div>
+          )}
+          
+          {selectedDates.length > 0 && (
+            <div>
+              <span style={{ fontSize: "11px", color: "#999", textTransform: "uppercase" }}>
+                {selectedSlots.length > 0 ? 'Date' : 'Dates'}
+              </span>
+              <p style={{ margin: "4px 0 0", fontSize: "14px", fontWeight: "500" }}>
+                {selectedDates.length === 1 
+                  ? new Date(selectedDates[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  : `${selectedDates.length} days selected`
+                }
+              </p>
+            </div>
+          )}
+          
+          {selectedSlots.length > 0 && (
+            <div>
+              <span style={{ fontSize: "11px", color: "#999", textTransform: "uppercase" }}>Time Slots</span>
+              <p style={{ margin: "4px 0 0", fontSize: "14px", fontWeight: "500" }}>
+                {selectedSlots.map(s => s.slot).join(', ')}
+              </p>
+            </div>
+          )}
+        </div>
 
-              {/* Show booking type indicator for Inquari Booking */}
-              {bookingType === 'Inquari Booking' && (
-                <div style={{
-                  backgroundColor: "#fff3cd",
-                  color: "#856404",
-                  padding: "10px",
-                  borderRadius: "5px",
-                  marginBottom: "15px",
-                  border: "1px solid #ffeeba"
-                }}>
-                  <strong>📋 Inquiry Required</strong>
-                  <p style={{ marginTop: "5px", fontSize: "0.9em" }}>
-                    This is an inquiry-based booking. The final price will be discussed and confirmed after your inquiry.
-                  </p>
-                </div>
-              )}
+        {/* Optional Services Section */}
+        {bookingType !== 'Inquari Booking' && (
+          <div style={{ marginBottom: "20px" }}>
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "12px"
+            }}>
+              <span style={{ fontSize: "14px", fontWeight: "600", color: "#333" }}>Optional Services</span>
+              <span style={{ fontSize: "12px", color: "#999" }}>Added items</span>
+            </div>
+            
+            <div style={{ 
+              backgroundColor: "#fafafa", 
+              borderRadius: "12px", 
+              padding: "12px",
+              border: "1px solid #e8e8e8"
+            }}>
+              {(() => {
+                const hasOptionalServices = (service.optionalInputs || []).some((input, index) => {
+                  const count = optionalInputCounts[index] || 0;
+                  return count > 0 || (!input.isCountable && addedOptionalInputs[index]);
+                });
 
-              {quantity > 1 && bookingType !== 'Inquari Booking' && (
-                <p><strong>Quantity:</strong> {quantity}</p>
-              )}
-              <p><strong>Unit:</strong> {displayUnit}</p>
-              {selectedServiceArea && (
-                <p><strong>Area:</strong> {selectedServiceArea.locationName}</p>
-              )}
-              {daysCount > 1 && bookingType !== 'Inquari Booking' && (
-                <p><strong>Days:</strong> {daysCount}</p>
-              )}
+                if (!hasOptionalServices) {
+                  return (
+                    <p style={{ color: '#999', fontStyle: 'italic', margin: '8px 0', textAlign: 'center', fontSize: '13px' }}>
+                      No optional services selected
+                    </p>
+                  );
+                }
 
-              {/* Show optional inputs if any - only show for non-inquiry bookings */}
-              {/* In the bill summary modal, update the optional services display */}
-              {/* Show optional inputs if any - only show for non-inquiry bookings */}
-              {bookingType !== 'Inquari Booking' && (
-                <div style={{ marginTop: '15px', padding: '10px', background: '#f5f5f5', borderRadius: '5px' }}>
-                  <strong style={{ display: 'block', marginBottom: '8px' }}>Optional Services:</strong>
-
-                  {/* Countable optional inputs */}
-                  {(service.optionalInputs || []).map((input, index) => {
-                    const count = optionalInputCounts[index] || 0;
-                    if (count > 0) {
-                      // Get display unit for this optional input
+                return (
+                  <div>
+                    {/* Countable optional inputs */}
+                    {(service.optionalInputs || []).map((input, index) => {
+                      const count = optionalInputCounts[index] || 0;
+                      if (count === 0) return null;
+                      
                       const getDisplayUnit = (input) => {
                         if (input.customUnit) return input.customUnit;
                         const unit = input.unit || 'per item';
-                        if (unit.startsWith('per-')) {
-                          return unit.replace('per-', '').replace(/-/g, ' ');
-                        }
+                        if (unit.startsWith('per-')) return unit.replace('per-', '').replace(/-/g, ' ');
                         return unit;
                       };
 
                       const displayUnit = getDisplayUnit(input);
                       const optUnitRate = effectiveOptionalUnitPrice(input, selectedServiceArea);
-
-                      // Calculate based on optional input's own unit logic
+                      
                       let itemTotal = 0;
                       let calculationBreakdown = '';
-
                       const inputUnit = input.unit || '';
 
-                      // If the optional input is day-based, multiply by daysCount
                       if (inputUnit.includes('day') || inputUnit === 'per-day') {
                         itemTotal = count * optUnitRate * daysCount;
-                        calculationBreakdown = `${count} × ₹${optUnitRate} × ${daysCount} days`;
-                      }
-                      // If the optional input is hour-based, multiply by selected slots
-                      else if (inputUnit.includes('hour') || inputUnit === 'per-hour') {
+                        calculationBreakdown = `${count} × ₹${optUnitRate} × ${daysCount} day${daysCount > 1 ? 's' : ''}`;
+                      } else if (inputUnit.includes('hour') || inputUnit === 'per-hour') {
                         const slotCount = selectedSlots.length || 1;
                         itemTotal = count * optUnitRate * slotCount;
-                        calculationBreakdown = `${count} × ₹${optUnitRate} × ${slotCount} slots`;
-                      }
-                      // For other units, just multiply by count
-                      else {
+                        calculationBreakdown = `${count} × ₹${optUnitRate} × ${slotCount} slot${slotCount > 1 ? 's' : ''}`;
+                      } else {
                         itemTotal = count * optUnitRate;
                         calculationBreakdown = `${count} × ₹${optUnitRate}`;
                       }
 
                       return (
                         <div key={`countable-${index}`} style={{
-                          marginTop: '5px',
-                          fontSize: '0.9em',
+                          marginBottom: '12px',
+                          paddingBottom: '12px',
+                          borderBottom: '1px solid #e8e8e8',
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center'
                         }}>
-                          <span>
-                            <strong>{input.name || `Option ${index + 1}`}:</strong> {calculationBreakdown}
-                            {displayUnit && ` /${displayUnit}`}
-                          </span>
-                          <span style={{ fontWeight: 'bold', color: '#007bff' }}>₹{itemTotal}</span>
+                          <div>
+                            <div style={{ fontWeight: '500', fontSize: '13px', color: '#333' }}>{input.name}</div>
+                            <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>{calculationBreakdown}</div>
+                          </div>
+                          <span style={{ fontWeight: '600', color: '#007bff', fontSize: '15px' }}>₹{itemTotal}</span>
                         </div>
                       );
-                    }
-                    return null;
-                  })}
+                    })}
 
-                  {/* Non-countable optional inputs */}
-                  {(service.optionalInputs || []).map((input, index) => {
-                    if (!input.isCountable && addedOptionalInputs[index]) {
-                      // Get display unit for this optional input
+                    {/* Non-countable optional inputs */}
+                    {(service.optionalInputs || []).map((input, index) => {
+                      if (input.isCountable || !addedOptionalInputs[index]) return null;
+                      
                       const getDisplayUnit = (input) => {
                         if (input.customUnit) return input.customUnit;
                         const unit = input.unit || 'per item';
-                        if (unit.startsWith('per-')) {
-                          return unit.replace('per-', '').replace(/-/g, ' ');
-                        }
+                        if (unit.startsWith('per-')) return unit.replace('per-', '').replace(/-/g, ' ');
                         return unit;
                       };
 
                       const displayUnit = getDisplayUnit(input);
                       const optUnitRate = effectiveOptionalUnitPrice(input, selectedServiceArea);
-
-                      // Calculate based on optional input's own unit logic
+                      
                       let itemTotal = 0;
                       let calculationBreakdown = '';
-
                       const inputUnit = input.unit || '';
 
-                      // If the optional input is day-based, multiply by daysCount
                       if (inputUnit.includes('day') || inputUnit === 'per-day') {
                         itemTotal = optUnitRate * daysCount;
-                        calculationBreakdown = `₹${optUnitRate} × ${daysCount} days`;
-                      }
-                      // If the optional input is hour-based, multiply by selected slots
-                      else if (inputUnit.includes('hour') || inputUnit === 'per-hour') {
+                        calculationBreakdown = `₹${optUnitRate} × ${daysCount} day${daysCount > 1 ? 's' : ''}`;
+                      } else if (inputUnit.includes('hour') || inputUnit === 'per-hour') {
                         const slotCount = selectedSlots.length || 1;
                         itemTotal = optUnitRate * slotCount;
-                        calculationBreakdown = `₹${optUnitRate} × ${slotCount} slots`;
-                      }
-                      // For other units, just use the price once
-                      else {
+                        calculationBreakdown = `₹${optUnitRate} × ${slotCount} slot${slotCount > 1 ? 's' : ''}`;
+                      } else {
                         itemTotal = optUnitRate;
                         calculationBreakdown = `₹${optUnitRate}`;
                       }
 
                       return (
                         <div key={`noncountable-${index}`} style={{
-                          marginTop: '5px',
-                          fontSize: '0.9em',
+                          marginBottom: '12px',
+                          paddingBottom: '12px',
+                          borderBottom: '1px solid #e8e8e8',
                           display: 'flex',
                           justifyContent: 'space-between',
                           alignItems: 'center'
                         }}>
-                          <span>
-                            <strong>{input.name || `Option ${index + 1}`}:</strong> {calculationBreakdown}
-                            {displayUnit && ` /${displayUnit}`}
-                          </span>
-                          <span style={{ fontWeight: 'bold', color: '#007bff' }}>₹{itemTotal}</span>
+                          <div>
+                            <div style={{ fontWeight: '500', fontSize: '13px', color: '#333' }}>{input.name}</div>
+                            <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>{calculationBreakdown}</div>
+                          </div>
+                          <span style={{ fontWeight: '600', color: '#007bff', fontSize: '15px' }}>₹{itemTotal}</span>
                         </div>
                       );
-                    }
-                    return null;
-                  })}
-
-                  {/* If no optional services selected */}
-                  {(!(service.optionalInputs || []).some((input, index) =>
-                    optionalInputCounts[index] > 0 ||
-                    (!input.isCountable && addedOptionalInputs[index])
-                  )) && (
-                      <p style={{ color: '#999', fontStyle: 'italic', margin: '5px 0' }}>
-                        No optional services selected
-                      </p>
-                    )}
-                </div>
-              )}
-
-
-              {/* Show dates */}
-              {selectedDates.length > 0 && (
-                <p><strong>Dates:</strong> {selectedDates.join(', ')}</p>
-              )}
-
-              {/* Show time slots if applicable */}
-              {selectedSlots.length > 0 && (
-                <p><strong>Time Slots:</strong> {selectedSlots.map(s => s.slot).join(', ')}</p>
-              )}
-
-              {/* Base Price Breakdown - Only show for non-inquiry bookings */}
-              {bookingType !== 'Inquari Booking' && (
-                <div style={{
-                  marginTop: '15px',
-                  padding: '10px',
-                  borderTop: '1px solid #ddd',
-                  borderBottom: '1px solid #ddd'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span><strong>Base Price:</strong></span>
-                    <span>
-                      ₹{effectiveRate}
-                      {service.unit?.includes('day') && daysCount > 1 && ` × ${daysCount}`}
-                      {service.isCountable && quantity > 1 && ` × ${quantity}`}
-                    </span>
+                    })}
                   </div>
-                </div>
-              )}
-
-              {/* Total Amount - Different display for inquiry vs regular */}
-              {bookingType !== 'Inquari Booking' ? (
-                <p style={{
-                  fontSize: "1.3em",
-                  fontWeight: "bold",
-                  color: "#007bff",
-                  marginTop: "15px",
-                  display: 'flex',
-                  justifyContent: 'space-between'
-                }}>
-                  <span>Total Amount:</span>
-                  <span>₹{totalAmount}</span>
-                </p>
-              ) : (
-                <div style={{
-                  fontSize: "1.2em",
-                  fontWeight: "bold",
-                  color: "#ff9800",
-                  marginTop: "20px",
-                  padding: "15px",
-                  backgroundColor: "#fff3e0",
-                  borderRadius: "5px",
-                  textAlign: "center"
-                }}>
-                  <p style={{ margin: 0 }}>
-                    <span style={{ display: 'block', fontSize: '0.9em', fontWeight: 'normal', marginBottom: '5px' }}>
-                      Price will be confirmed after inquiry
-                    </span>
-                    <span style={{ fontSize: '1.1em' }}>
-                      📞 Our team will contact you shortly
-                    </span>
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "10px"
-            }}>
-              <button
-                onClick={() => setShowBill(false)}
-                style={{
-                  padding: "10px 20px",
-                  background: "#6c757d",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "5px",
-                  cursor: "pointer"
-                }}
-              >
-                Back
-              </button>
-
-              <button
-                onClick={handleBooking}
-                style={{
-                  padding: "10px 20px",
-                  background: bookingType === 'Inquari Booking' ? "#ff9800" : "#28a745",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "5px",
-                  cursor: "pointer"
-                }}
-              >
-                {bookingType === 'Inquari Booking' ? "Submit Inquiry" : "Confirm Booking"}
-              </button>
+                );
+              })()}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
+        {/* Price Breakdown */}
+        {bookingType !== 'Inquari Booking' && (
+          <div style={{
+            backgroundColor: "#fff",
+            borderRadius: "12px",
+            padding: "16px",
+            border: "1px solid #e8e8e8",
+            marginBottom: "20px"
+          }}>
+            <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #e8e8e8" }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                <span style={{ color: "#666" }}>Base Price</span>
+                <span>₹{effectiveRate}</span>
+              </div>
+              {service.unit?.includes('day') && daysCount > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px', marginLeft: '20px' }}>
+                  <span style={{ color: "#999", fontSize: "12px" }}>× {daysCount} days</span>
+                  <span style={{ fontSize: "12px" }}>₹{effectiveRate * daysCount}</span>
+                </div>
+              )}
+              {service.isCountable && quantity > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginLeft: '20px' }}>
+                  <span style={{ color: "#999", fontSize: "12px" }}>× {quantity} quantity</span>
+                  <span style={{ fontSize: "12px" }}>₹{effectiveRate * daysCount * quantity}</span>
+                </div>
+              )}
+            </div>
 
-      <Modal
-        open={isCalendarOpen}
-        onCancel={() => setIsCalendarOpen(false)}
-        footer={null}
-        width={800}
-        title="Select Date(s)"
-      >
-        <Calendar
-          onChange={handleDateSelect}
-          value={selectedDates.length > 1 ? null : (selectedDates[0] ? new Date(selectedDates[0]) : null)}
-          selectRange={false} // Important: set to false for multiple individual selections
-          tileClassName={({ date }) => {
-            const dateStr = moment(date).format('YYYY-MM-DD');
-            const unavailableDate = service?.unavailableDates?.find(d =>
-              d.date === dateStr
-            );
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a1a' }}>Total Amount</span>
+              <span style={{ fontSize: '24px', fontWeight: '700', color: '#007bff' }}>₹{totalAmount}</span>
+            </div>
+          </div>
+        )}
 
-            if (unavailableDate?.fullDay) {
-              return 'unavailable-date';
-            }
-            if (selectedDates.includes(dateStr)) {
-              return 'selected-date';
-            }
-            return '';
+        {/* Inquiry Message */}
+        {bookingType === 'Inquari Booking' && (
+          <div style={{
+            backgroundColor: "#e8f4f8",
+            borderRadius: "12px",
+            padding: "16px",
+            textAlign: "center",
+            marginBottom: "20px"
+          }}>
+            <span style={{ fontSize: "32px", display: "block", marginBottom: "8px" }}>📞</span>
+            <p style={{ margin: 0, fontSize: "14px", color: "#007185" }}>
+              Our team will contact you shortly to confirm pricing and availability
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Footer Buttons */}
+      <div style={{
+        padding: "16px 28px",
+        borderTop: "1px solid #e8e8e8",
+        display: "flex",
+        justifyContent: "flex-end",
+        gap: "12px",
+        backgroundColor: "#fafafa",
+        borderRadius: "0 0 16px 16px"
+      }}>
+        <button
+          onClick={() => setShowBill(false)}
+          style={{
+            padding: "10px 24px",
+            background: "white",
+            color: "#666",
+            border: "1px solid #d9d9d9",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontSize: "14px",
+            fontWeight: "500",
+            transition: "all 0.2s ease"
           }}
-          tileDisabled={({ date }) => {
-            const dateStr = moment(date).format('YYYY-MM-DD');
-            const unavailableDate = service?.unavailableDates?.find(d =>
-              d.date === dateStr && d.fullDay
-            );
-            return unavailableDate?.fullDay || false;
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "#999";
+            e.currentTarget.style.color = "#333";
           }}
-        />
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "#d9d9d9";
+            e.currentTarget.style.color = "#666";
+          }}
+        >
+          Back to Edit
+        </button>
+        
+        <button
+          onClick={handleBooking}
+          style={{
+            padding: "10px 28px",
+            background: bookingType === 'Inquari Booking' ? "#ff9800" : "#28a745",
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontSize: "14px",
+            fontWeight: "600",
+            transition: "all 0.2s ease",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-1px)";
+            e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.15)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+          }}
+        >
+          {bookingType === 'Inquari Booking' ? "Submit Inquiry" : "Confirm Booking"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
-        {/* Add a clear selection button */}
-        <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          <button
-            onClick={() => {
-              setSelectedDates([]);
-              setFromDate('');
-              setToDate('');
-              setSelectedSlots([]);
-            }}
-            style={{
-              padding: '8px 16px',
-              background: '#dc3545',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer'
-            }}
-          >
-            Clear Selection
-          </button>
-        </div>
-      </Modal>
+{/* Add animations to your CSS file */}
+<style>{`
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+`}</style>
+<Modal
+  open={isCalendarOpen}
+  onCancel={() => setIsCalendarOpen(false)}
+  footer={null}
+  width={800}
+  title="Select Date(s)"
+>
+  <Calendar
+    onChange={handleDateSelect}
+    value={selectedDates.length > 1 ? null : (selectedDates[0] ? new Date(selectedDates[0]) : null)}
+    selectRange={false}
+    formatMonthYear={(locale, date) => moment(date).format('MMMM YYYY')}
+    formatMonth={(locale, date) => moment(date).format('MMMM')}
+    formatYear={(locale, date) => moment(date).format('YYYY')}
+    nextLabel={<span style={{ fontSize: '20px', color: '#1890ff' }}>›</span>}
+    next2Label={null}
+    prevLabel={<span style={{ fontSize: '20px', color: '#1890ff' }}>‹</span>}
+    prev2Label={null}
+    navigationLabel={({ date, label, locale, view }) => (
+      <div style={{
+        fontSize: '16px',
+        fontWeight: '600',
+        color: '#1f2d3d',
+        padding: '0 10px'
+      }}>
+        {moment(date).format('MMMM YYYY')}
+      </div>
+    )}
+    tileClassName={({ date }) => {
+      const dateStr = moment(date).format('YYYY-MM-DD');
+      const unavailableDate = service?.unavailableDates?.find(d =>
+        d.date === dateStr
+      );
 
+      if (unavailableDate?.fullDay) {
+        return 'unavailable-date';
+      }
+      if (selectedDates.includes(dateStr)) {
+        return 'selected-date';
+      }
+      return '';
+    }}
+    tileDisabled={({ date }) => {
+      const dateStr = moment(date).format('YYYY-MM-DD');
+      const unavailableDate = service?.unavailableDates?.find(d =>
+        d.date === dateStr && d.fullDay
+      );
+      return unavailableDate?.fullDay || false;
+    }}
+  />
+
+  <div style={{ marginTop: '20px', textAlign: 'center' }}>
+    <button
+      onClick={() => {
+        setSelectedDates([]);
+        setFromDate('');
+        setToDate('');
+        setSelectedSlots([]);
+      }}
+      style={{
+        padding: '8px 16px',
+        background: '#dc3545',
+        color: 'white',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer'
+      }}
+    >
+      Clear Selection
+    </button>
+  </div>
+</Modal>
+
+<style>{`
+  /* Calendar Navigation Styling */
+  .react-calendar__navigation {
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 15px;
+  }
+  
+  .react-calendar__navigation button {
+    color: #1890ff;
+    font-weight: 500;
+    font-size: 14px;
+  }
+  
+  .react-calendar__navigation button:enabled:hover,
+  .react-calendar__navigation button:enabled:focus {
+    background-color: #e6f7ff;
+    border-radius: 6px;
+  }
+  
+  /* Month/Year Text Styling */
+  .react-calendar__navigation__label {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: #1f2d3d !important;
+    text-transform: capitalize;
+  }
+  
+  /* Weekday Headers */
+  .react-calendar__month-view__weekdays {
+    background: #f0f2f5;
+    padding: 8px 0;
+    border-radius: 6px;
+    margin-bottom: 5px;
+  }
+  
+  .react-calendar__month-view__weekdays abbr {
+    text-decoration: none;
+    font-weight: 600;
+    color: #4a5568;
+  }
+  
+  /* Date Tiles */
+  .react-calendar__tile {
+    padding: 12px 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+  
+  .react-calendar__tile:enabled:hover {
+    background-color: #e6f7ff;
+    transform: scale(0.98);
+  }
+  
+  /* Selected Date Styling */
+  .selected-date {
+    background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%) !important;
+    color: white !important;
+    font-weight: 600;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+  }
+  
+  .selected-date:hover {
+    background: linear-gradient(135deg, #40a9ff 0%, #1890ff 100%) !important;
+    transform: scale(0.98);
+  }
+  
+  /* Unavailable Date Styling */
+  .unavailable-date {
+    background-color: #f5f5f5 !important;
+    color: #d9d9d9 !important;
+    text-decoration: line-through;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  .unavailable-date:hover {
+    background-color: #f5f5f5 !important;
+    transform: none;
+  }
+  
+  /* Today's Date Styling */
+  .react-calendar__tile--now {
+    background: #fff7e6;
+    border: 1px solid #ffc53d;
+    font-weight: 600;
+  }
+  
+  .react-calendar__tile--now:enabled:hover,
+  .react-calendar__tile--now:enabled:focus {
+    background: #fff1b8;
+  }
+  
+  /* Active Date Range */
+  .react-calendar__tile--active {
+    background: #1890ff;
+    color: white;
+  }
+  
+  /* Navigation Arrows */
+  .react-calendar__navigation__arrow {
+    font-size: 20px;
+    font-weight: bold;
+  }
+`}</style>
 
     </div>
   );

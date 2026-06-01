@@ -2908,3 +2908,48 @@ img:hover {
 }
 
 
+/* Calendar custom styling for better date selection */
+.react-calendar {
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  width: 100%;
+  background: white;
+}
+
+.react-calendar__tile {
+  padding: 12px 6px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.react-calendar__tile--active {
+  background: #007bff !important;
+  color: white !important;
+}
+
+.react-calendar__tile--hover {
+  background: #f0f0f0 !important;
+}
+
+.selected-date {
+  background: #007bff !important;
+  color: white !important;
+  border-radius: 8px;
+}
+
+.unavailable-date {
+  background: #f8d7da !important;
+  color: #721c24 !important;
+  text-decoration: line-through;
+  cursor: not-allowed !important;
+  opacity: 0.6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .react-calendar__tile {
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+}
