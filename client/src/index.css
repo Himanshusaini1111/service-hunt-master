@@ -2953,3 +2953,111 @@ img:hover {
     font-size: 12px;
   }
 }
+
+
+
+
+
+/* Tabs Container - One Line Always */
+.tabs-container {
+    width: 100%;
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.tabs-scroll-wrapper {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    gap: 0.5rem;
+    padding: 0.25rem 0 0.75rem 0;
+    scroll-behavior: smooth;
+}
+
+/* Hide scrollbar for cleaner look on Chrome/Safari */
+.tabs-scroll-wrapper::-webkit-scrollbar {
+    height: 3px;
+}
+
+.tabs-scroll-wrapper::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.tabs-scroll-wrapper::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+}
+
+.tabs-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Tab Buttons */
+.tab-btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #64748b;
+    background: transparent;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    letter-spacing: 0.3px;
+}
+
+.tab-btn:hover {
+    color: #3b82f6;
+    background: #f1f5f9;
+}
+
+.tab-btn.active {
+    color: #3b82f6;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05));
+}
+
+.tab-underline {
+    position: absolute;
+    bottom: -0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    border-radius: 2px;
+    transition: width 0.2s ease;
+}
+
+.tab-btn.active .tab-underline {
+    width: 60%;
+}
+
+/* Responsive - Ensure one line on all screens */
+@media (max-width: 768px) {
+    .tab-btn {
+        padding: 0.375rem 1rem;
+        font-size: 0.8125rem;
+    }
+    
+    .tabs-scroll-wrapper {
+        gap: 0.375rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .tab-btn {
+        padding: 0.3125rem 0.875rem;
+        font-size: 0.75rem;
+    }
+    
+    .tabs-scroll-wrapper {
+        gap: 0.25rem;
+    }
+}

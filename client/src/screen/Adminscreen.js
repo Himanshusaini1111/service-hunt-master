@@ -544,7 +544,6 @@ export function Dashboard({ dashboardData, dashboardLoading, isSuperAdmin, userI
     );
 }
 
-
 export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -553,6 +552,11 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [selectedLocation, setSelectedLocation] = useState(null);
     const [showBillModal, setShowBillModal] = useState(false);
+    const [readBookings, setReadBookings] = useState(() => {
+        // Load read bookings from localStorage
+        const saved = localStorage.getItem(`readBookings_${userId}`);
+        return saved ? new Set(JSON.parse(saved)) : new Set();
+    });
 
     // Fetch all bookings on mount
     useEffect(() => {
@@ -572,6 +576,11 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
         fetchBookings();
     }, [userId]);
 
+    // Save read bookings to localStorage whenever it changes
+    useEffect(() => {
+        localStorage.setItem(`readBookings_${userId}`, JSON.stringify([...readBookings]));
+    }, [readBookings, userId]);
+
     // Filter and sort bookings
     const filteredBookings = bookings
         .filter(booking => {
@@ -588,64 +597,108 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
         confirmed: bookings.filter(b => b.status === 'confirmed').length
     };
 
-  // Bookings component ke andar handleStatusUpdate function ko replace karo
-const handleStatusUpdate = async (bookingId, newStatus) => {
-    try {
-        console.log('Updating booking:', bookingId, 'to status:', newStatus);
-        
-        const response = await axios.post('/api/bookings/updatestatus', {
-            bookingId,
-            status: newStatus,
-            userId: userId
-        }, {
-            params: { userid: userId }
-        });
-
-        console.log('Update response:', response);
-
-        if (response.status === 200) {
-            setBookings(prevBookings =>
-                prevBookings.map(booking => 
-                    booking._id === bookingId 
-                        ? { ...booking, status: newStatus } 
-                        : booking
-                )
-            );
-            message.success(`Booking ${newStatus} successfully`);
-            
-            // ✅ IMPORTANT: Stop sound when status changes
-            if (newStatus === 'confirmed' || newStatus === 'rejected' || newStatus === 'assigned') {
-                // Dispatch event to stop sound in parent
-                window.dispatchEvent(new CustomEvent('bookingStatusChanged', { 
-                    detail: { bookingId, status: newStatus } 
-                }));
-                
-                // ✅ Also remove from localStorage notified IDs
-                const storedIds = JSON.parse(localStorage.getItem('adminNotifiedBookings') || '[]');
-                const updatedIds = storedIds.filter(id => id !== bookingId);
-                localStorage.setItem('adminNotifiedBookings', JSON.stringify(updatedIds));
-                
-                // ✅ Also update the parent's state (Adminscreen)
-                // We'll trigger a custom event for that too
-                window.dispatchEvent(new CustomEvent('bookingConfirmed', { 
-                    detail: { bookingId } 
-                }));
-            }
+    // Calculate unread counts - ONLY for Manual and Inquari Bookings
+    const getUnreadCount = (bookingType) => {
+        if (bookingType === 'all') {
+            // Count unread bookings only from Manual and Inquari
+            return bookings.filter(b => 
+                (b.bookingType === 'Manual Booking' || b.bookingType === 'Inquari Booking') && 
+                !readBookings.has(b._id)
+            ).length;
         }
-    } catch (err) {
-        console.error("Detailed error:", {
-            message: err.message,
-            response: err.response?.data,
-            status: err.response?.status
-        });
-        
-        const errorMessage = err.response?.data?.message || "Failed to update booking status";
-        message.error(errorMessage);
-    }
-};                                                                                                                                                                   
+        // For specific tabs, only show count if it's Manual or Inquari
+        if (bookingType === 'Manual Booking' || bookingType === 'Inquari Booking') {
+            return bookings.filter(b => b.bookingType === bookingType && !readBookings.has(b._id)).length;
+        }
+        // Automatic booking returns 0 (no badge)
+        return 0;
+    };
+
+    // Mark a booking as read when viewed or action taken
+    const markBookingAsRead = (bookingId) => {
+        if (!readBookings.has(bookingId)) {
+            setReadBookings(prev => new Set([...prev, bookingId]));
+        }
+    };
+
+    // Handle row click to mark as read
+    const handleRowClick = (booking) => {
+        // Only mark as read for Manual and Inquari bookings
+        if (booking.bookingType === 'Manual Booking' || booking.bookingType === 'Inquari Booking') {
+            markBookingAsRead(booking._id);
+        }
+    };
+
+    // Check if a booking is new (unread) - only for Manual and Inquari
+    const isNewBooking = (bookingId, bookingType) => {
+        if (bookingType === 'Manual Booking' || bookingType === 'Inquari Booking') {
+            return !readBookings.has(bookingId);
+        }
+        return false; // Automatic bookings never show NEW badge
+    };
+
+    // Handle status update function - MODIFIED to mark as read when action taken
+    const handleStatusUpdate = async (bookingId, newStatus) => {
+        try {
+            console.log('Updating booking:', bookingId, 'to status:', newStatus);
+            
+            const response = await axios.post('/api/bookings/updatestatus', {
+                bookingId,
+                status: newStatus,
+                userId: userId
+            }, {
+                params: { userid: userId }
+            });
+
+            console.log('Update response:', response);
+
+            if (response.status === 200) {
+                setBookings(prevBookings =>
+                    prevBookings.map(booking => 
+                        booking._id === bookingId 
+                            ? { ...booking, status: newStatus } 
+                            : booking
+                    )
+                );
+                message.success(`Booking ${newStatus} successfully`);
+                
+                // ✅ Mark booking as read when action is taken (Confirm/Reject/Assign)
+                markBookingAsRead(bookingId);
+                
+                // IMPORTANT: Stop sound when status changes
+                if (newStatus === 'confirmed' || newStatus === 'rejected' || newStatus === 'assigned') {
+                    window.dispatchEvent(new CustomEvent('bookingStatusChanged', { 
+                        detail: { bookingId, status: newStatus } 
+                    }));
+                    
+                    const storedIds = JSON.parse(localStorage.getItem('adminNotifiedBookings') || '[]');
+                    const updatedIds = storedIds.filter(id => id !== bookingId);
+                    localStorage.setItem('adminNotifiedBookings', JSON.stringify(updatedIds));
+                    
+                    window.dispatchEvent(new CustomEvent('bookingConfirmed', { 
+                        detail: { bookingId } 
+                    }));
+                }
+            }
+        } catch (err) {
+            console.error("Detailed error:", {
+                message: err.message,
+                response: err.response?.data,
+                status: err.response?.status
+            });
+            
+            const errorMessage = err.response?.data?.message || "Failed to update booking status";
+            message.error(errorMessage);
+        }
+    };                                                                                                                                                                   
     
-    // Assign job and switch tab
+    // Assign job and switch tab - MODIFIED to mark as read
     const handleJobAssign = (bookingId) => {
+        // First find the booking to check its type
+        const booking = bookings.find(b => b._id === bookingId);
+        if (booking && (booking.bookingType === 'Manual Booking' || booking.bookingType === 'Inquari Booking')) {
+            markBookingAsRead(bookingId);
+        }
         handleStatusUpdate(bookingId, 'assigned');
         setActiveBookingId(bookingId);
         setActiveTab('7');
@@ -683,83 +736,99 @@ const handleStatusUpdate = async (bookingId, newStatus) => {
         </span>
     );
 
-    const AssignedHelpers = ({ helpers }) => {
-        if (!helpers || helpers.length === 0) {
-            return <span className="text-muted">Not assigned</span>;
-        }
-
-        return (
-            <div className="assigned-helpers-list">
-                {helpers.map((helper, index) => (
-                    <div key={helper._id || index} className="helper-chip mb-1">
-                        <span className="helper-name">{helper.name}</span>
-                        {helper.phone && (
-                            <span className="helper-phone text-muted"> ({helper.phone})</span>
-                        )}
-                    </div>
-                ))}
-            </div>
-        );
-    };
-
-  const ActionButtons = ({ booking, onStatusUpdate, onJobAssign }) => (
-    <td onClick={(e) => e.stopPropagation()}>
-        <div className="d-flex flex-wrap gap-2">
-            {/* Show Job Assign button only for confirmed or assigned status */}
-            {(booking.status === "confirmed" || booking.status === "assigned") && (
-                <button
-                    className="btn btn-info btn-sm px-3 py-1 rounded-pill"
-                    onClick={() => onJobAssign(booking._id)}
-                >
-                    Job Assign
-                </button>
-            )}
-            
-            {/* Show Confirm/Reject buttons only for pending/booked status */}
-            {(booking.status === "booked" || booking.status === "pending" || booking.status === "inquiry") && (
-                <>
+    const ActionButtons = ({ booking, onStatusUpdate, onJobAssign }) => (
+        <td onClick={(e) => e.stopPropagation()}>
+            <div className="d-flex flex-wrap gap-2">
+                {/* Show Job Assign button only for confirmed or assigned status */}
+                {(booking.status === "confirmed" || booking.status === "assigned") && (
                     <button
-                        className="btn btn-success btn-sm px-3 py-1 rounded-pill"
-                        onClick={() => onStatusUpdate(booking._id, "confirmed")}
+                        className="btn btn-info btn-sm px-3 py-1 rounded-pill"
+                        onClick={() => {
+                            onJobAssign(booking._id);
+                            // Mark as read when Job Assign is clicked
+                            if (booking.bookingType === 'Manual Booking' || booking.bookingType === 'Inquari Booking') {
+                                markBookingAsRead(booking._id);
+                            }
+                        }}
                     >
-                        Confirm
+                        Job Assign
                     </button>
+                )}
+                
+                {/* Show Confirm/Reject buttons only for pending/booked status */}
+                {(booking.status === "booked" || booking.status === "pending" || booking.status === "inquiry") && (
+                    <>
+                        <button
+                            className="btn btn-success btn-sm px-3 py-1 rounded-pill"
+                            onClick={() => {
+                                onStatusUpdate(booking._id, "confirmed");
+                                // Mark as read when Confirm is clicked
+                                if (booking.bookingType === 'Manual Booking' || booking.bookingType === 'Inquari Booking') {
+                                    markBookingAsRead(booking._id);
+                                }
+                            }}
+                        >
+                            Confirm
+                        </button>
+                        <button
+                            className="btn btn-danger btn-sm px-3 py-1 rounded-pill"
+                            onClick={() => {
+                                onStatusUpdate(booking._id, "rejected");
+                                // Mark as read when Reject is clicked
+                                if (booking.bookingType === 'Manual Booking' || booking.bookingType === 'Inquari Booking') {
+                                    markBookingAsRead(booking._id);
+                                }
+                            }}
+                        >
+                            Reject
+                        </button>
+                    </>
+                )}
+                
+                {/* Show message for rejected bookings */}
+                {booking.status === "rejected" && (
                     <button
                         className="btn btn-danger btn-sm px-3 py-1 rounded-pill"
-                        onClick={() => onStatusUpdate(booking._id, "rejected")}
+                        disabled
                     >
-                        Reject
+                        Rejected
                     </button>
-                </>
-            )}
-            
-            {/* Show message for rejected bookings */}
-            {booking.status === "rejected" && (
-                <button
-                    className="btn btn-danger btn-sm px-3 py-1 rounded-pill"
-                    disabled
-                >
-                    Rejected
-                </button>
-            )}
-            
-            {/* Show message for completed bookings */}
-            {booking.status === "completed" && (
-                <button
-                    className="btn btn-secondary btn-sm px-3 py-1 rounded-pill"
-                    disabled
-                >
-                    Completed
-                </button>
-            )}
-        </div>
-    </td>
-);
+                )}
+                
+                {/* Show message for completed bookings */}
+                {booking.status === "completed" && (
+                    <button
+                        className="btn btn-secondary btn-sm px-3 py-1 rounded-pill"
+                        disabled
+                    >
+                        Completed
+                    </button>
+                )}
+            </div>
+        </td>
+    );
 
     const bookingTabs = ['all', 'Automatic Booking', 'Manual Booking', 'Inquari Booking'];
 
+    // Function to get tab display name with badge (only for Manual and Inquari)
+    const getTabDisplay = (type) => {
+        let displayName = type === 'all' ? 'All Bookings' : type.replace(' Booking', '');
+        const unreadCount = getUnreadCount(type);
+        
+        // Show badge only for Manual Booking, Inquari Booking, and All tab (which shows combined count)
+        if (unreadCount > 0 && (type === 'all' || type === 'Manual Booking' || type === 'Inquari Booking')) {
+            return (
+                <span className="tab-label-with-badge">
+                    {displayName}
+                    <span className="notification-badge">{unreadCount}</span>
+                </span>
+            );
+        }
+        return displayName;
+    };
+
     return (
-        <div className="bookings-container">
+        <div className="bookings-container" style={{paddingLeft:"10px", paddingRight:"4px"}}>
             {/* Statistics Section */}
             <div className="stats-header">
                 <h1 className="page-title">Bookings Management</h1>
@@ -794,46 +863,21 @@ const handleStatusUpdate = async (bookingId, newStatus) => {
                 </div>
             </div>
 
-            {/* Tabs Section */}
-         <div className="tabs-container" style={{
-  display: "flex",
-  overflowX: "auto",
-  overflowY: "hidden",
-  whiteSpace: "nowrap",
-  WebkitOverflowScrolling: "touch",
-  scrollbarWidth: "thin",
-  gap: "8px",
-  padding: "4px 0 8px 0",
-  marginBottom: "16px",
-  "&::-webkit-scrollbar": {
-    height: "4px"
-  },
-  "&::-webkit-scrollbar-track": {
-    background: "#f1f1f1",
-    borderRadius: "10px"
-  },
-  "&::-webkit-scrollbar-thumb": {
-    background: "#888",
-    borderRadius: "10px"
-  }
-}}>
-  {bookingTabs.map(type => (
-    <button
-      key={type}
-      className={`tab-btn ${filterTab === type ? 'active' : ''}`}
-      onClick={() => setFilterTab(type)}
-      style={{
-        flex: "0 0 auto",
-        whiteSpace: "nowrap",
-        padding: "8px 16px",
-        fontSize: "clamp(13px, 4vw, 14px)",
-      }}
-    >
-      {type === 'all' ? 'All Bookings' : type.replace(' Booking', '')}
-      <span className="tab-underline"></span>
-    </button>
-  ))}
-</div>
+            {/* Tabs Section with Notification Badges */}
+            <div className="tabs-container">
+                <div className="tabs-scroll-wrapper">
+                    {bookingTabs.map(type => (
+                        <button
+                            key={type}
+                            className={`tab-btn ${filterTab === type ? 'active' : ''}`}
+                            onClick={() => setFilterTab(type)}
+                        >
+                            {getTabDisplay(type)}
+                            <span className="tab-underline"></span>
+                        </button>
+                    ))}
+                </div>
+            </div>
 
             {/* Table */}
             <div className="table-wrapper">
@@ -854,9 +898,19 @@ const handleStatusUpdate = async (bookingId, newStatus) => {
                     </thead>
                     <tbody>
                         {filteredBookings.map(booking => (
-                            <tr key={booking._id}>
+                            <tr 
+                                key={booking._id} 
+                                onClick={() => handleRowClick(booking)}
+                                className={isNewBooking(booking._id, booking.bookingType) ? 'new-booking-row' : ''}
+                                style={{ cursor: 'pointer' }}
+                            >
                                 <td>
-                                    <ServiceLink serviceId={booking.serviceid} serviceName={booking.service} />
+                                    <div className="service-cell">
+                                        <ServiceLink serviceId={booking.serviceid} serviceName={booking.service} />
+                                        {isNewBooking(booking._id, booking.bookingType) && (
+                                            <span className="new-badge">NEW</span>
+                                        )}
+                                    </div>
                                 </td>
                                 <td onClick={(e) => { e.stopPropagation(); setSelectedLocation(booking); }} style={{ textDecoration: 'underline', color: '#0d6efd', cursor: 'pointer' }}>
                                     {booking.locationType}
@@ -918,7 +972,7 @@ const handleStatusUpdate = async (bookingId, newStatus) => {
                 </table>
             </div>
 
-            {/* Bill Modal - SIMPLIFIED VERSION */}
+            {/* Bill Modal */}
             {showBillModal && selectedBooking && (
                 <BookingBillModal 
                     booking={selectedBooking} 
