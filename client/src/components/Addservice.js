@@ -664,7 +664,7 @@ const validOptionalInputs = updatedInputs.filter(input =>
     <div className="container mt-5 service-form-container">
         <div className="row g-4">
             {/* Basic Information Column */}
-            <div className="col-lg-6">
+            <div className="col-lg-6" style={{padding:"0px"}}>
                 <div className="form-section-card">
                     <h4 className="section-title">Basic Information</h4>
                     <div className="form-group">
@@ -836,7 +836,7 @@ const validOptionalInputs = updatedInputs.filter(input =>
             </div>
 
             {/* Additional Information Column */}
-            <div className="col-lg-6">
+            <div className="col-lg-6" style={{padding:"0px"}}>
                 <div className="form-section-card">
                     <h4 className="section-title">Additional Details</h4>
 
@@ -1043,7 +1043,7 @@ const validOptionalInputs = updatedInputs.filter(input =>
             </div>
 
             {/* Combined Location Features Section */}
-            <div className="col-md-12">
+            <div className="col-md-12" style={{padding:"0px"}}>
                 <div className="card p-3 mb-3">
                     <div className="row">
                         {/* Location Type Section - Single Selection Only */}
@@ -1338,8 +1338,8 @@ const validOptionalInputs = updatedInputs.filter(input =>
                 </div>
             </div>
 
-        <div className="col-md-12">
-    <div className="card p-3 mb-3">
+        <div className="col-md-12"style={{padding:"0px"}}>
+    <div className="card p-3 mb-3" >
         <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="mb-0">Optional Inputs</h5>
             <button
