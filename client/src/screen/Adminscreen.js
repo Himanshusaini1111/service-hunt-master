@@ -42,6 +42,10 @@ function Adminscreen() {
     );
     const [refreshKey, setRefreshKey] = useState(0);
     
+    // Global service visibility control state
+    const [allServices, setAllServices] = useState([]);
+    const [isTogglingAllServices, setIsTogglingAllServices] = useState(false);
+    
     // Audio ref for sound
     const audioRef = useRef(null);
     const pollingIntervalRef = useRef(null);
@@ -79,110 +83,163 @@ function Adminscreen() {
         }
     };
 
-   // Adminscreen mein checkNewBookings function update karo
-const checkNewBookings = async () => {
-    try {
-        const response = await axios.get(`/api/bookings/check-new`, {
-            params: { 
-                userid: user._id, 
-                lastCheckedTime: lastCheckedTime
-            }
-        });
-        
-        const newBookings = response.data || [];
-        
-        if (newBookings.length > 0) {
-            // Filter out bookings that have already been notified
-            const trulyNewBookings = newBookings.filter(booking => 
-                !notifiedBookingIds.has(booking._id)
-            );
+    // Check new bookings function
+    const checkNewBookings = async () => {
+        try {
+            const response = await axios.get(`/api/bookings/check-new`, {
+                params: { 
+                    userid: user._id, 
+                    lastCheckedTime: lastCheckedTime
+                }
+            });
             
-            if (trulyNewBookings.length > 0) {
-                // Add these booking IDs to notified set
-                const newNotifiedIds = new Set(notifiedBookingIds);
-                trulyNewBookings.forEach(booking => {
-                    newNotifiedIds.add(booking._id);
-                });
-                setNotifiedBookingIds(newNotifiedIds);
-                
-                // Save to localStorage
-                localStorage.setItem('adminNotifiedBookings', JSON.stringify([...newNotifiedIds]));
-                
-                const count = trulyNewBookings.length;
-                
-                // ✅ Only show alert if NOT already playing sound for same booking
-                // Check if any of these bookings are already in current alert
-                const currentAlertBookingIds = newBookingAlert?.bookings?.map(b => b._id) || [];
-                const isDuplicateAlert = trulyNewBookings.some(b => 
-                    currentAlertBookingIds.includes(b._id)
+            const newBookings = response.data || [];
+            
+            if (newBookings.length > 0) {
+                const trulyNewBookings = newBookings.filter(booking => 
+                    !notifiedBookingIds.has(booking._id)
                 );
                 
-                if (!isDuplicateAlert) {
-                    const newBookingInfo = {
-                        count: count,
-                        bookings: trulyNewBookings,
-                        timestamp: new Date()
-                    };
+                if (trulyNewBookings.length > 0) {
+                    const newNotifiedIds = new Set(notifiedBookingIds);
+                    trulyNewBookings.forEach(booking => {
+                        newNotifiedIds.add(booking._id);
+                    });
+                    setNotifiedBookingIds(newNotifiedIds);
                     
-                    setNewBookingAlert(newBookingInfo);
+                    localStorage.setItem('adminNotifiedBookings', JSON.stringify([...newNotifiedIds]));
                     
-                    // Play sound if enabled
-                    if (soundEnabled) {
-                        playNotificationSound(true);
+                    const count = trulyNewBookings.length;
+                    
+                    const currentAlertBookingIds = newBookingAlert?.bookings?.map(b => b._id) || [];
+                    const isDuplicateAlert = trulyNewBookings.some(b => 
+                        currentAlertBookingIds.includes(b._id)
+                    );
+                    
+                    if (!isDuplicateAlert) {
+                        const newBookingInfo = {
+                            count: count,
+                            bookings: trulyNewBookings,
+                            timestamp: new Date()
+                        };
+                        
+                        setNewBookingAlert(newBookingInfo);
+                        
+                        if (soundEnabled) {
+                            playNotificationSound(true);
+                        }
+                        
+                        if (Notification.permission === 'granted') {
+                            new Notification(`📢 New Booking${count > 1 ? 's' : ''}!`, {
+                                body: `${count} new booking${count > 1 ? 's have' : ' has'} been received`,
+                                icon: '/icon-192.png',
+                                vibrate: [200, 100, 200]
+                            });
+                        }
+                        
+                        setRefreshKey(prev => prev + 1);
+                        
+                        message.info(`${count} new booking${count > 1 ? 's' : ''} received!`);
                     }
-                    
-                    // Browser notification
-                    if (Notification.permission === 'granted') {
-                        new Notification(`📢 New Booking${count > 1 ? 's' : ''}!`, {
-                            body: `${count} new booking${count > 1 ? 's have' : ' has'} been received`,
-                            icon: '/icon-192.png',
-                            vibrate: [200, 100, 200]
-                        });
-                    }
-                    
-                    // Refresh bookings
-                    setRefreshKey(prev => prev + 1);
-                    
-                    message.info(`${count} new booking${count > 1 ? 's' : ''} received!`);
                 }
             }
+            
+            const newCheckedTime = Date.now().toString();
+            setLastCheckedTime(newCheckedTime);
+            localStorage.setItem('adminLastCheckedTime', newCheckedTime);
+            
+        } catch (error) {
+            console.log('Error checking new bookings:', error);
         }
-        
-        // Update last checked time
-        const newCheckedTime = Date.now().toString();
-        setLastCheckedTime(newCheckedTime);
-        localStorage.setItem('adminLastCheckedTime', newCheckedTime);
-        
-    } catch (error) {
-        console.log('Error checking new bookings:', error);
-    }
-};
+    };
 
-useEffect(() => {
-    // Listen for booking confirmed events to remove from notified IDs
-    const handleBookingConfirmed = (event) => {
-        const { bookingId } = event.detail || {};
-        if (bookingId) {
-            setNotifiedBookingIds(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(bookingId);
-                localStorage.setItem('adminNotifiedBookings', JSON.stringify([...newSet]));
-                return newSet;
-            });
+    // Function to toggle all services visibility
+    const toggleAllServicesVisibility = async () => {
+        if (allServices.length === 0) {
+            message.warning("No services available to toggle");
+            return;
+        }
+
+        const confirm = window.confirm("Are you sure you want to change live Availability");
+        if (!confirm) return;
+
+        try {
+            setIsTogglingAllServices(true);
+            
+            // Determine new state based on current services
+            const allVisible = allServices.every(service => service.isVisible);
+            const newVisibility = !allVisible;
+            
+            // Create array of update promises
+            const promises = allServices.map(service =>
+                axios.put(`/api/service/togglevisibility/${service._id}`, {
+                    isVisible: newVisibility
+                })
+            );
+            
+            // Wait for all updates to complete
+            await Promise.all(promises);
+            
+            // Update local state
+            setAllServices(prevServices =>
+                prevServices.map(service => ({
+                    ...service,
+                    isVisible: newVisibility
+                }))
+            );
+            
+            message.success(`All services ${newVisibility ? 'activated' : 'hidden'} successfully`);
+            
+            // Refresh the services in the Services tab
+            setRefreshKey(prev => prev + 1);
+            
+        } catch (error) {
+            console.error("Toggle all error:", error);
+            message.error("Error toggling all services");
+        } finally {
+            setIsTogglingAllServices(false);
         }
     };
-    
-    window.addEventListener('bookingConfirmed', handleBookingConfirmed);
-    
-    return () => {
-        window.removeEventListener('bookingConfirmed', handleBookingConfirmed);
-    };
-}, []);
+
+    useEffect(() => {
+        // Fetch all services for visibility control
+        const fetchAllServices = async () => {
+            if (user?._id) {
+                try {
+                    const response = await axios.get(`/api/service/getvisible?userid=${user._id}`);
+                    setAllServices(response.data);
+                } catch (error) {
+                    console.error("Error fetching services for visibility control:", error);
+                }
+            }
+        };
+        fetchAllServices();
+    }, [user?._id]);
+
+    useEffect(() => {
+        const handleBookingConfirmed = (event) => {
+            const { bookingId } = event.detail || {};
+            if (bookingId) {
+                setNotifiedBookingIds(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(bookingId);
+                    localStorage.setItem('adminNotifiedBookings', JSON.stringify([...newSet]));
+                    return newSet;
+                });
+            }
+        };
+        
+        window.addEventListener('bookingConfirmed', handleBookingConfirmed);
+        
+        return () => {
+            window.removeEventListener('bookingConfirmed', handleBookingConfirmed);
+        };
+    }, []);
+
     useEffect(() => {
         const handleBookingUpdate = (event) => {
             const { bookingId, status } = event.detail || {};
             
-            // If admin confirms or rejects a booking, stop the sound
             if ((status === 'confirmed' || status === 'rejected' || status === 'assigned') && isPlayingSound) {
                 stopSound();
             }
@@ -208,55 +265,48 @@ useEffect(() => {
         message.info(`Sound notifications ${newState ? 'enabled' : 'disabled'}`);
     };
 
-useEffect(() => {
-    const cleanOldNotifications = async () => {
-        try {
-            const storedIds = JSON.parse(localStorage.getItem('adminNotifiedBookings') || '[]');
-            if (storedIds.length === 0) return;
-            
-            // Check which bookings are still in 'booked/pending/inquiry' status
-            const response = await axios.get(`/api/bookings/check-status`, {
-                params: { bookingIds: storedIds.join(',') }
-            });
-            
-            const activeBookingIds = response.data.activeIds || [];
-            const cleanedIds = storedIds.filter(id => activeBookingIds.includes(id));
-            
-            if (cleanedIds.length !== storedIds.length) {
-                localStorage.setItem('adminNotifiedBookings', JSON.stringify(cleanedIds));
-                setNotifiedBookingIds(new Set(cleanedIds));
-                console.log('Cleaned old notifications:', storedIds.length - cleanedIds.length, 'removed');
+    useEffect(() => {
+        const cleanOldNotifications = async () => {
+            try {
+                const storedIds = JSON.parse(localStorage.getItem('adminNotifiedBookings') || '[]');
+                if (storedIds.length === 0) return;
+                
+                const response = await axios.get(`/api/bookings/check-status`, {
+                    params: { bookingIds: storedIds.join(',') }
+                });
+                
+                const activeBookingIds = response.data.activeIds || [];
+                const cleanedIds = storedIds.filter(id => activeBookingIds.includes(id));
+                
+                if (cleanedIds.length !== storedIds.length) {
+                    localStorage.setItem('adminNotifiedBookings', JSON.stringify(cleanedIds));
+                    setNotifiedBookingIds(new Set(cleanedIds));
+                    console.log('Cleaned old notifications:', storedIds.length - cleanedIds.length, 'removed');
+                }
+            } catch (error) {
+                console.log('Error cleaning notifications:', error);
             }
-        } catch (error) {
-            console.log('Error cleaning notifications:', error);
-        }
-    };
-    
-    cleanOldNotifications();
-}, []);
+        };
+        
+        cleanOldNotifications();
+    }, []);
 
     useEffect(() => {
         if (user?._id) {
-            // Determine user type
             let userType = 'vendor';
             if (isSuperAdmin) userType = 'superadmin';
             else if (isAdmin) userType = 'admin';
             
-            // Register for push notifications
             requestNotificationPermission(user._id, userType);
             
-            // Listen for foreground notifications
             onMessageListener().then(payload => {
                 console.log('Foreground notification:', payload);
-                // Immediately check for new bookings
                 checkNewBookings();
                 setRefreshKey(prev => prev + 1);
             });
             
-            // Start polling for new bookings (60 seconds = 60000 ms)
             pollingIntervalRef.current = setInterval(checkNewBookings, 60000);
             
-            // Initial check
             checkNewBookings();
             
             return () => {
@@ -267,88 +317,80 @@ useEffect(() => {
         }
     }, [user?._id]);
 
-    // Add this useEffect in your Adminscreen component (after the existing useEffect hooks)
-
-// Fetch dashboard data
-useEffect(() => {
-    const fetchDashboardData = async () => {
-        if (!user?._id) return;
-        
-        setDashboardLoading(true);
-        try {
-            const response = await axios.get(`/api/bookings/dashboard`, {
-                params: { userid: user._id }
-            });
+    // Fetch dashboard data
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            if (!user?._id) return;
             
-            if (response.data && response.data.stats) {
-                setDashboardData(response.data.stats);
-            } else {
-                // Fallback: calculate data manually if endpoint doesn't work
-                await fetchDashboardDataManually();
-            }
-        } catch (error) {
-            console.error("Error fetching dashboard data:", error);
-            // Fallback to manual fetch
-            await fetchDashboardDataManually();
-        } finally {
-            setDashboardLoading(false);
-        }
-    };
-    
-    const fetchDashboardDataManually = async () => {
-        try {
-            // Fetch bookings
-            const bookingsRes = await axios.get(`/api/bookings/getallbookings?userid=${user._id}`);
-            const bookings = bookingsRes.data || [];
-            
-            // Fetch services
-            const servicesRes = await axios.get(`/api/service/getvisible?userid=${user._id}`);
-            const services = servicesRes.data || [];
-            
-            // Calculate stats
-            const totalBookings = bookings.length;
-            const totalServices = services.length;
-            const revenue = bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
-            const recentBookings = bookings.slice(0, 5);
-            
-            let totalUsers = 0;
-            let totalVendors = 0;
-            
-            // Only fetch users if super admin
-            if (isSuperAdmin) {
-                try {
-                    const usersRes = await axios.get('/api/users/getallusers');
-                    const users = usersRes.data || [];
-                    totalUsers = users.length;
-                    totalVendors = users.filter(u => u.isAdmin || u.role === 'admin' || u.role === 'vendor').length;
-                } catch (e) {
-                    console.error("Error fetching users:", e);
+            setDashboardLoading(true);
+            try {
+                const response = await axios.get(`/api/bookings/dashboard`, {
+                    params: { userid: user._id }
+                });
+                
+                if (response.data && response.data.stats) {
+                    setDashboardData(response.data.stats);
+                } else {
+                    await fetchDashboardDataManually();
                 }
+            } catch (error) {
+                console.error("Error fetching dashboard data:", error);
+                await fetchDashboardDataManually();
+            } finally {
+                setDashboardLoading(false);
             }
-            
-            setDashboardData({
-                totalBookings,
-                totalServices,
-                totalUsers,
-                totalVendors,
-                revenue,
-                recentBookings
-            });
-        } catch (error) {
-            console.error("Manual fetch error:", error);
-            setDashboardData({
-                totalBookings: 0,
-                totalServices: 0,
-                totalUsers: 0,
-                totalVendors: 0,
-                revenue: 0,
-                recentBookings: []
-            });
-        }
-    };
-    
-    fetchDashboardData();
-}, [user?._id, isSuperAdmin]);
+        };
+        
+        const fetchDashboardDataManually = async () => {
+            try {
+                const bookingsRes = await axios.get(`/api/bookings/getallbookings?userid=${user._id}`);
+                const bookings = bookingsRes.data || [];
+                
+                const servicesRes = await axios.get(`/api/service/getvisible?userid=${user._id}`);
+                const services = servicesRes.data || [];
+                
+                const totalBookings = bookings.length;
+                const totalServices = services.length;
+                const revenue = bookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+                const recentBookings = bookings.slice(0, 5);
+                
+                let totalUsers = 0;
+                let totalVendors = 0;
+                
+                if (isSuperAdmin) {
+                    try {
+                        const usersRes = await axios.get('/api/users/getallusers');
+                        const users = usersRes.data || [];
+                        totalUsers = users.length;
+                        totalVendors = users.filter(u => u.isAdmin || u.role === 'admin' || u.role === 'vendor').length;
+                    } catch (e) {
+                        console.error("Error fetching users:", e);
+                    }
+                }
+                
+                setDashboardData({
+                    totalBookings,
+                    totalServices,
+                    totalUsers,
+                    totalVendors,
+                    revenue,
+                    recentBookings
+                });
+            } catch (error) {
+                console.error("Manual fetch error:", error);
+                setDashboardData({
+                    totalBookings: 0,
+                    totalServices: 0,
+                    totalUsers: 0,
+                    totalVendors: 0,
+                    revenue: 0,
+                    recentBookings: []
+                });
+            }
+        };
+        
+        fetchDashboardData();
+    }, [user?._id, isSuperAdmin]);
 
     // Get display name based on role
     const getDashboardTitle = () => {
@@ -357,6 +399,40 @@ useEffect(() => {
         if (isVendor) return "Vendor Dashboard";
         return "Dashboard";
     };
+
+    // Get button text and style based on services visibility
+    const getVisibilityButtonConfig = () => {
+        if (allServices.length === 0) {
+            return {
+                text: "No Services",
+                icon: "bi-ban",
+                variant: "btn-secondary",
+                disabled: true
+            };
+        }
+        
+        const allVisible = allServices.every(s => s.isVisible);
+        
+     if (allVisible) {
+    return {
+        text: "Disable Live Availability",
+        icon: "bi-eye-slash",
+        variant: "btn-danger",
+        disabled: false,
+        tooltip: "Services are currently live. Click to take offline"
+    };
+} else {
+    return {
+        text: "Enable Live Availability",
+        icon: "bi-eye",
+        variant: "btn-success",
+        disabled: false,
+        tooltip: "Services are currently offline. Click to make live"
+    };
+}
+    };
+
+    const visibilityConfig = getVisibilityButtonConfig();
 
     if (!isSuperAdmin && !isAdmin && !isVendor) {
         return <div className="access-denied">Access Denied: This panel is for admins/vendors only.</div>;
@@ -402,11 +478,12 @@ useEffect(() => {
                 </div>
             )}
 
-            {/* Admin Header */}
+            {/* Admin Header with Visibility Toggle Button */}
             <header className="admin-header">
                 <div className="header-container">
-                    <h1 className="admin-title">{getDashboardTitle()}</h1>
                     
+                                            <h1 className="admin-title">{getDashboardTitle()}</h1>
+
                     <div className="user-info-section">
                         <div className="user-details">
                             <div className="welcome-text">
@@ -417,28 +494,62 @@ useEffect(() => {
                                 {user.role === 'superadmin' ? 'Super Admin' : (user.role || (user.isAdmin ? 'Admin' : 'Vendor'))}
                             </span>
                         </div>
-                        
-                        <div className="action-buttons">
-                            <button
-                                onClick={toggleSound}
-                                className={`sound-toggle-btn ${soundEnabled ? 'sound-on' : 'sound-off'}`}
-                                title={soundEnabled ? "Sound On" : "Sound Off"}
-                            >
-                                {soundEnabled ? '🔊' : '🔇'}
-                                <span className="btn-label">{soundEnabled ? 'Sound On' : 'Sound Off'}</span>
-                            </button>
-                            
-                            {isPlayingSound && (
-                                <button
-                                    onClick={stopSound}
-                                    className="stop-sound-btn"
-                                    title="Stop Sound"
-                                >
-                                    ⏹️
-                                    <span className="btn-label">Stop</span>
-                                </button>
-                            )}
-                        </div>
+<div className="header-actions">
+    {/* Left Section - Visibility Controls */}
+    {(isAdmin || isSuperAdmin || isVendor) && (
+     <button
+    className={`visibility-toggle-btn ${visibilityConfig.variant}`}
+    onClick={toggleAllServicesVisibility}
+    disabled={isTogglingAllServices || visibilityConfig.disabled}
+    aria-label={visibilityConfig.text}
+    aria-busy={isTogglingAllServices}
+>
+    <span className="btn-content">
+        {isTogglingAllServices ? (
+            <>
+                <span className="spinner-border spinner-border-sm" />
+                <span>Processing...</span>
+            </>
+        ) : (
+            <>
+                <i className={visibilityConfig.icon}></i>
+                <span>{visibilityConfig.text}</span>
+            </>
+        )}
+    </span>
+</button>
+    )}
+
+    {/* Right Section - Audio Controls */}
+    <div className="audio-controls-group">
+        <button
+            onClick={toggleSound}
+            className={`audio-btn sound-toggle-btn ${soundEnabled ? 'active' : ''}`}
+            aria-label={soundEnabled ? "Disable sound" : "Enable sound"}
+            aria-pressed={soundEnabled}
+            title={soundEnabled ? "Sound On" : "Sound Off"}
+        >
+            <span className="audio-icon" aria-hidden="true">
+                {soundEnabled ? '🔊' : '🔇'}
+            </span>
+            <span className="btn-label">
+                {soundEnabled ? 'Sound On' : 'Sound Off'}
+            </span>
+        </button>
+        
+        {isPlayingSound && (
+            <button
+                onClick={stopSound}
+                className="audio-btn stop-sound-btn"
+                aria-label="Stop playback"
+                title="Stop Sound"
+            >
+                <span className="audio-icon" aria-hidden="true">⏹️</span>
+                <span className="btn-label">Stop</span>
+            </button>
+        )}
+    </div>
+</div>
                     </div>
                 </div>
             </header>
@@ -464,7 +575,12 @@ useEffect(() => {
                         />
                     </TabPane>
                     <TabPane tab="Services" key="2">
-                        <Services userId={user._id} isSuperAdmin={isSuperAdmin} />
+                        <Services 
+                            key={refreshKey}
+                            userId={user._id} 
+                            isSuperAdmin={isSuperAdmin}
+                            onServicesUpdate={setAllServices}
+                        />
                     </TabPane>
                     <TabPane tab="Add Services" key="3">
                         <Addservice userId={user._id} />
@@ -477,6 +593,51 @@ useEffect(() => {
                     </TabPane>
                 </Tabs>
             </div>
+
+            {/* Add CSS for header styling */}
+            <style jsx>{`
+                .header-container {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 15px;
+                }
+                .header-left {
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
+                    flex-wrap: wrap;
+                }
+                .visibility-toggle-btn {
+                    transition: all 0.3s ease;
+                    font-weight: 500;
+                    white-space: nowrap;
+                }
+                .visibility-toggle-btn:hover:not(:disabled) {
+                    transform: translateY(-2px);
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                }
+                .visibility-toggle-btn:active:not(:disabled) {
+                    transform: translateY(0);
+                }
+                @media (max-width: 768px) {
+                    .header-container {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+                    .header-left {
+                        justify-content: space-between;
+                    }
+                    .visibility-toggle-btn {
+                        font-size: 12px;
+                        padding: 4px 8px;
+                    }
+                    .admin-title {
+                        font-size: 1.2rem;
+                    }
+                }
+            `}</style>
         </div>
     );
 }
@@ -1862,7 +2023,8 @@ const styleElement = document.createElement('style');
 styleElement.textContent = billModalStyles;
 document.head.appendChild(styleElement);
 
-export function Services({ userId }) {
+// Update the Services component to accept onServicesUpdate prop
+export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -1882,27 +2044,36 @@ export function Services({ userId }) {
         return `${hour}:00 - ${hour + 1}:00`;
     });
 
-
-    // In Adminscreen.js, update the Services component's useEffect
     useEffect(() => {
         const fetchServices = async () => {
             try {
                 setLoading(true);
                 setError(null);
-                console.log('Fetching services for userId:', userId); // Add for debugging
+                console.log('Fetching services for userId:', userId);
                 const { data } = await axios.get(`/api/service/getvisible?userid=${userId}`);
-                console.log('Fetched services:', data); // Add for debugging
-                setServices(data); // Only user's services
+                console.log('Fetched services:', data);
+                setServices(data);
+                // Update parent component with services data for visibility toggle
+                if (onServicesUpdate) {
+                    onServicesUpdate(data);
+                }
             } catch (error) {
                 console.error("Fetch services error:", error);
                 setError("Failed to load services. Please try again.");
-                // If 400 error, it might be due to missing userid - check console
             } finally {
                 setLoading(false);
             }
         };
         fetchServices();
-    }, [userId]);
+    }, [userId, onServicesUpdate]);
+
+    // Update parent when services change
+    useEffect(() => {
+        if (onServicesUpdate && services.length > 0) {
+            onServicesUpdate(services);
+        }
+    }, [services, onServicesUpdate]);
+
     // Delete service with proper error handling
     const deleteService = async (id) => {
         if (!window.confirm("Are you sure you want to delete this service?")) return;
@@ -1911,10 +2082,12 @@ export function Services({ userId }) {
             setLoading(true);
             await axios.delete(`/api/service/deleteservice/${id}`);
 
-            // Update state optimistically
-            setServices(prevServices => prevServices.filter(service => service._id !== id));
+            setServices(prevServices => {
+                const updatedServices = prevServices.filter(service => service._id !== id);
+                if (onServicesUpdate) onServicesUpdate(updatedServices);
+                return updatedServices;
+            });
 
-            // Close modal if open
             if (selectedService?._id === id) {
                 setSelectedService(null);
             }
@@ -1935,11 +2108,13 @@ export function Services({ userId }) {
                 isVisible: !currentVisibility
             });
 
-            setServices(prevServices =>
-                prevServices.map(service =>
+            setServices(prevServices => {
+                const updatedServices = prevServices.map(service =>
                     service._id === id ? { ...service, isVisible: !currentVisibility } : service
-                )
-            );
+                );
+                if (onServicesUpdate) onServicesUpdate(updatedServices);
+                return updatedServices;
+            });
 
             message.success(`Visibility ${!currentVisibility ? 'enabled' : 'disabled'}`);
         } catch (error) {
@@ -1948,44 +2123,7 @@ export function Services({ userId }) {
         }
     };
 
-    // Toggle all services visibility
-    const toggleAllVisibility = async () => {
-        const confirm = window.confirm("Are you sure you want to toggle all services' visibility?");
-        if (!confirm) return;
-
-        try {
-            setLoading(true);
-
-            // Determine new state based on current services
-            const allVisible = services.every(service => service.isVisible);
-            const newVisibility = !allVisible;
-
-            // Create array of update promises
-            const promises = services.map(service =>
-                axios.put(`/api/service/togglevisibility/${service._id}`, {
-                    isVisible: newVisibility
-                })
-            );
-
-            // Wait for all updates to complete
-            await Promise.all(promises);
-
-            // Update local state
-            setServices(prevServices =>
-                prevServices.map(service => ({
-                    ...service,
-                    isVisible: newVisibility
-                }))
-            );
-
-            message.success(`All services ${newVisibility ? 'activated' : 'hidden'} successfully`);
-        } catch (error) {
-            console.error("Toggle all error:", error);
-            message.error("Error toggling all services");
-        } finally {
-            setLoading(false);
-        }
-    };
+    // REMOVED toggleAllVisibility function from Services component since it's now in Adminscreen
 
     // Handle calendar open
     const handleCalendarOpen = (service) => {
@@ -2001,7 +2139,6 @@ export function Services({ userId }) {
         const dateString = date.toISOString().split("T")[0];
         setSelectedDate(dateString);
 
-        // Find existing slots for this date
         const existingDate = unavailableDates.find(d => d.date === dateString);
         setSelectedSlots(existingDate?.slots || []);
         setIsFullDay(existingDate?.fullDay || false);
@@ -2009,8 +2146,7 @@ export function Services({ userId }) {
 
     // Handle slot toggle
     const handleSlotToggle = (slot) => {
-        if (isFullDay) return; // Don't allow slot selection when full day is selected
-
+        if (isFullDay) return;
         setSelectedSlots(prev =>
             prev.includes(slot)
                 ? prev.filter(s => s !== slot)
@@ -2025,7 +2161,6 @@ export function Services({ userId }) {
         try {
             const updatedDates = unavailableDates.filter(d => d.date !== selectedDate);
 
-            // Only add new entry if there are slots selected or full day is checked
             if (selectedSlots.length > 0 || isFullDay) {
                 const newEntry = {
                     date: selectedDate,
@@ -2039,7 +2174,6 @@ export function Services({ userId }) {
                 unavailableDates: updatedDates
             });
 
-            // Update local state
             setUnavailableDates(updatedDates);
             setServices(prevServices =>
                 prevServices.map(service =>
@@ -2181,39 +2315,9 @@ export function Services({ userId }) {
 
             <div className='row justify-content-center'>
                 <div className='col-md-11'>
-                    <div className="d-flex justify-content-between align-items-center mb-4">
-                        <h1 className="mb-0">Services Management</h1>
-                        <button
-                            className={`btn btn-sm px-4 ${services.length === 0 ? "btn-secondary" :
-                                    services.every(s => s.isVisible) ? "btn-danger" :
-                                        "btn-success"
-                                }`}
-                            onClick={toggleAllVisibility}
-                            disabled={loading || services.length === 0}
-                        >
-                            {loading ? (
-                                <>
-                                    <span className="spinner-border spinner-border-sm me-2"></span>
-                                    Working...
-                                </>
-                            ) : services.length === 0 ? (
-                                <>
-                                    <i className="bi bi-ban me-2"></i>
-                                    No Services
-                                </>
-                            ) : services.every(s => s.isVisible) ? (
-                                <>
-                                    <i className="bi bi-eye-slash me-2"></i>
-                                    Hide All Services
-                                </>
-                            ) : (
-                                <>
-                                    <i className="bi bi-eye me-2"></i>
-                                    Show All Services
-                                </>
-                            )}
-                        </button>
-                    </div>
+                    {/* Removed the visibility toggle button from here - now in header */}
+                    
+                    <h1 className="mb-4">Services Management</h1>
 
                     {/* Loading State */}
                     {loading && !error && (
@@ -2238,7 +2342,7 @@ export function Services({ userId }) {
                         </div>
                     )}
 
-                    {/* Services Table - Only show when no error and not loading */}
+                    {/* Services Table */}
                     {!error && !loading && (
                         <div className="table-responsive rounded shadow">
                             <table className='table table-bordered table-hover table-dark mb-0'>
@@ -2315,6 +2419,13 @@ export function Services({ userId }) {
                                                         >
                                                             <i className="bi bi-calendar-event"></i> Calendar
                                                         </button>
+                                                        <button
+                                                            className="btn btn-info btn-sm"
+                                                            onClick={() => handleJobAssignment(service)}
+                                                            disabled={loading}
+                                                        >
+                                                            <i className="bi bi-people"></i> Assign
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -2325,10 +2436,11 @@ export function Services({ userId }) {
                         </div>
                     )}
 
-                    {/* Calendar Modal */}
+                    {/* Calendar Modal - keep existing code */}
                     {selectedService && (
                         <div className="modal-overlay">
                             <div className="calendar-modal bg-dark p-4 rounded">
+                                {/* Calendar modal content - same as before */}
                                 <div className="d-flex justify-content-between align-items-center mb-3">
                                     <h4 className="mb-0 text-light">
                                         Availability for {selectedService.name}
@@ -2556,6 +2668,8 @@ export function Services({ userId }) {
         </div>
     );
 }
+
+
 export function Users() {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
