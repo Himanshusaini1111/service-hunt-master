@@ -5,7 +5,10 @@ import Navbar from '../components/Navbar';
 import About from '../components/About';
 import Service from '../components/Service';
 import LocationSearch from '../components/LocationSearch';
-import SearchResults from '../components/SearchResults'; // Import the new component
+import SearchResults from '../components/SearchResults';
+import { Switch, Button, Modal, DatePicker, InputNumber, Select } from 'antd';
+import moment from 'moment';
+import 'antd/dist/reset.css';
 
 const App = () => {
     const images = [
@@ -26,22 +29,28 @@ const App = () => {
     const [locationSearch, setLocationSearch] = useState('');
     const [selectedLocation, setSelectedLocation] = useState(null);
     const [hasLocation, setHasLocation] = useState(false);
+    
+    // Filter states
+    const [availability, setAvailability] = useState(true);
+    const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+    const [selectedDates, setSelectedDates] = useState([]);
+    const [priceRange, setPriceRange] = useState([0, 10000]);
+    const [sortOrder, setSortOrder] = useState("default");
+    const [searchResults, setSearchResults] = useState([]); // Store original search results
+    const { RangePicker } = DatePicker;
 
     const navigate = useNavigate();
-
     const location = useLocation();
-
     const isNavigatingFromSearch = useRef(false);
+
     // ✅ CORRECT - Check if service is available at a location using locationPricing
     const isServiceInLocation = useCallback((service, location) => {
         if (!location) return true;
 
-        // If service has no location pricing configured, don't show (or show based on your business rule)
         if (!service.locationPricing || service.locationPricing.length === 0) {
             return false;
         }
 
-        // Get user location string
         let userLocationLower = '';
         if (typeof location === 'string') {
             userLocationLower = location.toLowerCase();
@@ -55,10 +64,8 @@ const App = () => {
             userLocationLower = String(location).toLowerCase();
         }
 
-        // Extract city name (first part before comma)
         const userCity = userLocationLower.split(',')[0].trim();
 
-        // Check if service's locationPricing includes this location
         const isAvailable = service.locationPricing.some(locationPrice => {
             const locationName = (locationPrice.locationName || "").toLowerCase();
             const locationAddress = (locationPrice.locationAddress || "").toLowerCase();
@@ -72,6 +79,17 @@ const App = () => {
         return isAvailable;
     }, []);
 
+    // Check if service is available today
+    const isServiceAvailableToday = useCallback((service) => {
+        const today = moment().format("YYYY-MM-DD");
+        if (!service.unavailableDates || service.unavailableDates.length === 0) return true;
+        
+        const todayUnavailable = service.unavailableDates.find(d => d.date === today);
+        if (!todayUnavailable) return true;
+        if (todayUnavailable.fullDay) return false;
+        return true;
+    }, []);
+
     // Get location-based services
     const getLocationBasedServices = useCallback((location, services) => {
         if (!location) return [];
@@ -80,13 +98,47 @@ const App = () => {
         return filtered;
     }, [isServiceInLocation]);
 
+    // Apply filters to search results
+    const applyFiltersToResults = useCallback((results) => {
+        let filtered = [...results];
+        
+        // Apply availability filter
+        if (availability) {
+            filtered = filtered.filter(service => isServiceAvailableToday(service));
+        }
+        
+        // Apply price range filter
+        filtered = filtered.filter(
+            s => s.rentperday >= priceRange[0] && s.rentperday <= priceRange[1]
+        );
+        
+        // Apply sorting
+        if (sortOrder === "priceAsc") {
+            filtered.sort((a, b) => a.rentperday - b.rentperday);
+        } else if (sortOrder === "priceDesc") {
+            filtered.sort((a, b) => b.rentperday - a.rentperday);
+        }
+        
+        return filtered;
+    }, [availability, priceRange, sortOrder, isServiceAvailableToday]);
+
+    // Update filtered services when filters change (only in search results mode)
+    useEffect(() => {
+        if (showSearchResults && searchResults.length > 0) {
+            const filtered = applyFiltersToResults(searchResults);
+            setFilteredServices(filtered);
+        }
+    }, [availability, priceRange, sortOrder, showSearchResults, searchResults, applyFiltersToResults]);
+
     // Update location-based services when location or allServices changes
     useEffect(() => {
         if (allServices.length > 0) {
             if (selectedLocation) {
                 const filtered = getLocationBasedServices(selectedLocation, allServices);
                 setLocationBasedServices(filtered);
-                setFilteredServices(filtered);
+                if (!showSearchResults) {
+                    setFilteredServices(filtered);
+                }
                 setHasLocation(true);
                 console.log(`Location selected: ${selectedLocation.display_name || selectedLocation.city}, Found ${filtered.length} services`);
             } else {
@@ -96,7 +148,7 @@ const App = () => {
             }
             setLoading(false);
         }
-    }, [allServices, selectedLocation, getLocationBasedServices]);
+    }, [allServices, selectedLocation, getLocationBasedServices, showSearchResults]);
 
     // Get suggested services (first 10)
     const getSuggestedServices = () => {
@@ -139,7 +191,6 @@ const App = () => {
         const fetchServicesAndLoadLocation = async () => {
             setLoading(true);
             try {
-                // Fetch services
                 const { data } = await axios.get('/api/service/getallservices');
                 const validatedData = data.map(service => ({
                     ...service,
@@ -148,7 +199,6 @@ const App = () => {
                 setAllServices(validatedData);
                 console.log(`Loaded ${validatedData.length} services`);
 
-                // Check localStorage for saved location
                 const savedLocation = localStorage.getItem("selectedLocation");
                 if (savedLocation) {
                     try {
@@ -181,103 +231,146 @@ const App = () => {
             setShowSearchResults(false);
             setSearchTerm('');
             setLocationSearch('');
+            setSearchResults([]);
+            // Reset filters
+            setAvailability(true);
+            setPriceRange([0, 10000]);
+            setSortOrder("default");
         } else {
             localStorage.removeItem("selectedLocation");
             setHasLocation(false);
             setShowSearchResults(false);
             setSearchTerm('');
             setLocationSearch('');
+            setSearchResults([]);
         }
     }, []);
 
     // Handle search from hero section
-  // Update handleSearch function
-const handleSearch = () => {
-    console.log("Search triggered, hasLocation:", hasLocation);
-    
-    if (!hasLocation) {
-        alert("Please select a location first");
-        return;
-    }
-    
-    if (!searchTerm.trim() && !locationSearch.trim()) {
-        alert("Please enter service name or location to search");
-        return;
-    }
-    
-    let results = [...locationBasedServices];
-    
-    if (searchTerm.trim()) {
-        const searchTermLower = searchTerm.trim().toLowerCase();
-        results = results.filter(service =>
+    const handleSearch = () => {
+        console.log("Search triggered, hasLocation:", hasLocation);
+        
+        if (!hasLocation) {
+            alert("Please select a location first");
+            return;
+        }
+        
+        if (!searchTerm.trim() && !locationSearch.trim()) {
+            alert("Please enter service name or location to search");
+            return;
+        }
+        
+        let results = [...locationBasedServices];
+        
+        if (searchTerm.trim()) {
+            const searchTermLower = searchTerm.trim().toLowerCase();
+            results = results.filter(service =>
+                (service.name && service.name.toLowerCase().includes(searchTermLower)) ||
+                (service.category && service.category.toLowerCase().includes(searchTermLower)) ||
+                (service.subCategory && service.subCategory.toLowerCase().includes(searchTermLower)) ||
+                (service.description && service.description.toLowerCase().includes(searchTermLower))
+            );
+        }
+        
+        if (locationSearch.trim()) {
+            results = results.filter(service => isServiceInLocation(service, locationSearch.trim()));
+        }
+        
+        console.log(`Search results: ${results.length} services found`);
+        
+        // Store original search results
+        setSearchResults(results);
+        
+        // Apply filters to results
+        const filtered = applyFiltersToResults(results);
+        setFilteredServices(filtered);
+        setShowSearchResults(true);
+        
+        // Push state to history for back button handling
+        if (!showSearchResults) {
+            window.history.pushState({ searchActive: true }, '', window.location.href);
+        }
+    };
+
+    // Filter by search term only (for navbar search)
+    const filterBySearch = (term) => {
+        console.log("Navbar search triggered, hasLocation:", hasLocation);
+        
+        if (!hasLocation) {
+            alert("Please select a location first");
+            return;
+        }
+        
+        if (!term || term.trim() === "") {
+            setFilteredServices(locationBasedServices);
+            setShowSearchResults(false);
+            setSearchResults([]);
+            return;
+        }
+        
+        const searchTermLower = term.toLowerCase();
+        const results = locationBasedServices.filter(service =>
             (service.name && service.name.toLowerCase().includes(searchTermLower)) ||
             (service.category && service.category.toLowerCase().includes(searchTermLower)) ||
             (service.subCategory && service.subCategory.toLowerCase().includes(searchTermLower)) ||
             (service.description && service.description.toLowerCase().includes(searchTermLower))
         );
-    }
-    
-    if (locationSearch.trim()) {
-        results = results.filter(service => isServiceInLocation(service, locationSearch.trim()));
-    }
-    
-    console.log(`Search results: ${results.length} services found`);
-    setFilteredServices(results);
-    setShowSearchResults(true);
-    
-    // Push state to history for back button handling
-    if (!showSearchResults) {
-        window.history.pushState({ searchActive: true }, '', window.location.href);
-    }
-};
+        
+        console.log(`Search results: ${results.length} services found for term: ${term}`);
+        
+        // Store original search results
+        setSearchResults(results);
+        
+        // Apply filters to results
+        const filtered = applyFiltersToResults(results);
+        setFilteredServices(filtered);
+        setShowSearchResults(true);
+        
+        // Push state to history for back button handling
+        if (!showSearchResults) {
+            window.history.pushState({ searchActive: true }, '', window.location.href);
+        }
+    };
 
-
-    // Filter by search term only (for navbar search)
-  const filterBySearch = (term) => {
-    console.log("Navbar search triggered, hasLocation:", hasLocation);
-    
-    if (!hasLocation) {
-        alert("Please select a location first");
-        return;
-    }
-    
-    if (!term || term.trim() === "") {
+    // Handle clear search
+    const handleClearSearch = () => {
+        setSearchTerm('');
+        setLocationSearch('');
+        setSearchResults([]);
         setFilteredServices(locationBasedServices);
         setShowSearchResults(false);
-        return;
-    }
-    
-    const searchTermLower = term.toLowerCase();
-    const filtered = locationBasedServices.filter(service =>
-        (service.name && service.name.toLowerCase().includes(searchTermLower)) ||
-        (service.category && service.category.toLowerCase().includes(searchTermLower)) ||
-        (service.subCategory && service.subCategory.toLowerCase().includes(searchTermLower)) ||
-        (service.description && service.description.toLowerCase().includes(searchTermLower))
-    );
-    
-    console.log(`Search results: ${filtered.length} services found for term: ${term}`);
-    setFilteredServices(filtered);
-    setShowSearchResults(true);
-    
-    // Push state to history for back button handling
-    if (!showSearchResults) {
-        window.history.pushState({ searchActive: true }, '', window.location.href);
-    }
-};
+        // Reset filters
+        setAvailability(true);
+        setPriceRange([0, 10000]);
+        setSortOrder("default");
+        
+        if (window.history.state?.searchActive) {
+            window.history.back();
+        }
+    };
 
+    // Reset filters
+    const resetFilters = () => {
+        setSelectedDates([]);
+        setPriceRange([0, 10000]);
+        setSortOrder("default");
+        setAvailability(true);
+        
+        // Re-apply filters to search results
+        if (searchResults.length > 0) {
+            const filtered = applyFiltersToResults(searchResults);
+            setFilteredServices(filtered);
+        }
+    };
 
-   // Update handleClearSearch function
-const handleClearSearch = () => {
-    setSearchTerm('');
-    setLocationSearch('');
-    setFilteredServices(locationBasedServices);
-    setShowSearchResults(false);
-    
-    // Remove the search state from history
-    if (window.history.state?.searchActive) {
-        window.history.back();
-    }
-};
+    // Apply filters modal
+    const applyFiltersModal = () => {
+        setIsFilterModalVisible(false);
+        if (searchResults.length > 0) {
+            const filtered = applyFiltersToResults(searchResults);
+            setFilteredServices(filtered);
+        }
+    };
 
     const handleCategoryClick = (category) => {
         if (!hasLocation) {
@@ -307,39 +400,39 @@ const handleClearSearch = () => {
         });
     };
 
-    // Add useEffect to handle browser back/forward buttons
-useEffect(() => {
-    const handlePopState = (event) => {
-        // If we're going back from search results
-        if (showSearchResults) {
-            setShowSearchResults(false);
-            setFilteredServices(locationBasedServices);
-            setSearchTerm('');
-            setLocationSearch('');
-        }
-    };
+    // Handle browser back/forward buttons
+    useEffect(() => {
+        const handlePopState = (event) => {
+            if (showSearchResults) {
+                setShowSearchResults(false);
+                setSearchResults([]);
+                setFilteredServices(locationBasedServices);
+                setSearchTerm('');
+                setLocationSearch('');
+                setAvailability(true);
+                setPriceRange([0, 10000]);
+                setSortOrder("default");
+            }
+        };
 
-    window.addEventListener('popstate', handlePopState);
-    
-    return () => {
-        window.removeEventListener('popstate', handlePopState);
-    };
-}, [showSearchResults, locationBasedServices]);
+        window.addEventListener('popstate', handlePopState);
+        
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, [showSearchResults, locationBasedServices]);
 
-// Add useEffect to handle initial load and navigation
-useEffect(() => {
-    // Check if we need to clear search on route change
-    const unlisten = () => {
-        if (showSearchResults) {
-            setShowSearchResults(false);
-            setFilteredServices(locationBasedServices);
-        }
-    };
-    
-    // Cleanup function
-    return unlisten;
-}, [location.pathname]);
-
+    // Handle route changes
+    useEffect(() => {
+        const unlisten = () => {
+            if (showSearchResults) {
+                setShowSearchResults(false);
+                setSearchResults([]);
+                setFilteredServices(locationBasedServices);
+            }
+        };
+        return unlisten;
+    }, [location.pathname]);
 
     // Image slider for banners
     useEffect(() => {
@@ -428,16 +521,54 @@ useEffect(() => {
             />
             <br />
 
-            {/* Search Results Section - Using the new component */}
+            {/* Search Results Section with Filters */}
             {showSearchResults && (
-                <SearchResults
-                    filteredServices={filteredServices}
-                    onClearSearch={handleClearSearch}
-                    selectedLocation={selectedLocation}
-                />
+                <>
+                    {/* Filter Controls - Only shown in search results */}
+                    <div style={{
+                        marginTop: "15px",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "0 15px",
+                        maxWidth: "1200px",
+                        marginLeft: "auto",
+                        marginRight: "auto",
+                        backgroundColor: "#FFFFFF",
+                        padding: "15px 20px",
+                        borderRadius: "10px",
+                        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+                        marginBottom: "15px"
+                    }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+                            <Switch
+                                checked={availability}
+                                onChange={() => setAvailability(!availability)}
+                                checkedChildren="Available Today"
+                                unCheckedChildren="All Services"
+                            />
+                            <span style={{ color: "#666", fontSize: "14px" }}>
+                                {filteredServices.length} results found
+                            </span>
+                        </div>
+                        <Button
+                            type="primary"
+                            onClick={() => setIsFilterModalVisible(true)}
+                            style={{ backgroundColor: "#4a54e1", borderRadius: "8px" }}
+                        >
+                            <i className="bi bi-funnel-fill"></i> Filter
+                        </Button>
+                    </div>
+
+                    <SearchResults
+                        filteredServices={filteredServices}
+                        onClearSearch={handleClearSearch}
+                        selectedLocation={selectedLocation}
+                    />
+                </>
             )}
 
-            {/* Rest of the Content */}
+            {/* Rest of the Content - Only shown when not in search results */}
             {!showSearchResults && (
                 <>
                     {/* Hero Section */}
@@ -1145,6 +1276,60 @@ useEffect(() => {
                     )}
                 </>
             )}
+
+            {/* Filter Modal */}
+            <Modal
+                title="Filter Services"
+                open={isFilterModalVisible}
+                onOk={applyFiltersModal}
+                onCancel={() => setIsFilterModalVisible(false)}
+                footer={[
+                    <Button key="reset" onClick={resetFilters}>Reset</Button>,
+                    <Button key="apply" type="primary" onClick={applyFiltersModal}>Apply</Button>,
+                ]}
+            >
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <div>
+                        <label>Select Date Range:</label>
+                        <RangePicker
+                            value={selectedDates}
+                            onChange={(d) => setSelectedDates(d)}
+                            style={{ width: "100%" }}
+                        />
+                    </div>
+                    <div>
+                        <label>Price Range:</label>
+                        <div style={{ display: "flex", gap: "10px" }}>
+                            <InputNumber
+                                min={0}
+                                value={priceRange[0]}
+                                onChange={(v) => setPriceRange([v, priceRange[1]])}
+                                placeholder="Min"
+                                style={{ width: "50%" }}
+                            />
+                            <InputNumber
+                                min={priceRange[0]}
+                                value={priceRange[1]}
+                                onChange={(v) => setPriceRange([priceRange[0], v])}
+                                placeholder="Max"
+                                style={{ width: "50%" }}
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label>Sort By:</label>
+                        <Select
+                            value={sortOrder}
+                            onChange={(v) => setSortOrder(v)}
+                            style={{ width: "100%" }}
+                        >
+                            <Select.Option value="default">Default</Select.Option>
+                            <Select.Option value="priceAsc">Price: Low to High</Select.Option>
+                            <Select.Option value="priceDesc">Price: High to Low</Select.Option>
+                        </Select>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

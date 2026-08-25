@@ -78,7 +78,6 @@ async function sendPushNotification(userIds, bookingData) {
     }
 }
 
-
 router.post("/bookservice", async (req, res) => {
     try {
         const {
@@ -111,49 +110,142 @@ router.post("/bookservice", async (req, res) => {
             selectedServiceArea
         } = req.body;
 
-        // Validate required fields - make totalAmount optional for inquiry bookings
+        // Validate required fields
         if (!serviceid || !userid || !name || !phone || !description || !service) {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
-        // For non-inquiry bookings, totalAmount is required
         if (bookingType !== 'Inquari Booking' && !totalAmount && totalAmount !== 0) {
             return res.status(400).json({ message: "Total amount is required for regular bookings" });
         }
 
-        // Get service and check if it exists
         const serviceData = await Service.findById(serviceid);
         if (!serviceData) {
             return res.status(404).json({ message: "Service not found" });
         }
 
-        // CRITICAL: Get the vendorId from the service
         const vendorId = serviceData.vendorId || serviceData.userid || null;
         
         if (!vendorId) {
             console.warn(`Service ${serviceid} has no vendorId assigned`);
         }
 
-        // Check availability (skip for inquiry bookings?)
-        if (fromDate && bookingType !== 'Inquari Booking') {
-            const dateStr = moment(fromDate).format('YYYY-MM-DD');
-            const unavailableDate = serviceData.unavailableDates.find(d => 
-                moment(d.date).format('YYYY-MM-DD') === dateStr
-            );
+        // Get the selected date (use first date if multiple dates selected)
+        let selectedDateStr = null;
+        if (selectedDates && selectedDates.length > 0) {
+            selectedDateStr = moment(selectedDates[0]).format('YYYY-MM-DD');
+        } else if (fromDate) {
+            selectedDateStr = moment(fromDate).format('YYYY-MM-DD');
+        }
 
-            if (unavailableDate?.fullDay) {
-                return res.status(400).json({ message: "Selected date is fully booked" });
+        // ============================================
+        // ✅ CHECK MAX QUANTITY PER DAY (Inventory Limit)
+        // ============================================
+        if (serviceData.maxQuantityPerDay && selectedDateStr) {
+            // Find all confirmed bookings for this service on this date
+            const existingBookingsForDate = await Booking.find({
+                serviceid: serviceid,
+                selectedDates: selectedDateStr,
+                status: { $in: ['booked', 'pending', 'confirmed', 'assigned', 'inquiry'] }
+            });
+            
+            // Calculate total quantity already booked for this date
+            let totalBookedQuantity = 0;
+            
+            for (const booking of existingBookingsForDate) {
+                // Skip inquiry bookings as they're not confirmed
+                if (booking.status === 'inquiry') continue;
+                
+                // Add main service quantity
+                totalBookedQuantity += (booking.quantity || 1);
+                
+                // Add optional input quantities if they affect inventory
+                if (booking.optionalInputs && booking.optionalInputs.length > 0) {
+                    for (const opt of booking.optionalInputs) {
+                        if (opt.isCountable !== false) {
+                            totalBookedQuantity += (opt.count || 0);
+                        }
+                    }
+                }
             }
-
-            if (time && unavailableDate?.slots?.includes(time)) {
-                return res.status(400).json({ message: "Selected time slot is not available" });
+            
+            // Check if adding this booking would exceed the limit
+            const requestedQuantity = quantity || 1;
+            const newTotal = totalBookedQuantity + requestedQuantity;
+            
+            if (newTotal > serviceData.maxQuantityPerDay) {
+                const remaining = serviceData.maxQuantityPerDay - totalBookedQuantity;
+                return res.status(400).json({ 
+                    message: `Sorry, only ${remaining} ${serviceData.name} remaining for ${selectedDateStr}. Please reduce your quantity or choose another date.`,
+                    remainingQuantity: remaining,
+                    totalBooked: totalBookedQuantity,
+                    requestedQuantity: requestedQuantity,
+                    maxQuantityPerDay: serviceData.maxQuantityPerDay,
+                    limitType: 'maxQuantityPerDay'
+                });
             }
         }
 
-        // Create booking data with all fields
+        // ============================================
+        // ✅ CHECK MAX USERS PER DAY (User Capacity Limit)
+        // ============================================
+        if (serviceData.maxUsersPerDay && selectedDateStr) {
+            // Find all confirmed bookings for this date
+            const existingBookingsForDate = await Booking.find({
+                serviceid: serviceid,
+                selectedDates: selectedDateStr,
+                status: { $in: ['booked', 'pending', 'confirmed', 'assigned'] }
+            });
+            
+            // Get unique user IDs from confirmed bookings
+            const uniqueUserIds = new Set();
+            for (const booking of existingBookingsForDate) {
+                if (booking.userid) {
+                    uniqueUserIds.add(booking.userid.toString());
+                }
+            }
+            
+            // Check if current user has already booked for this date
+            const currentUserId = userid.toString();
+            const hasUserAlreadyBooked = uniqueUserIds.has(currentUserId);
+            
+            // If user hasn't booked yet, check if adding them would exceed the limit
+            if (!hasUserAlreadyBooked) {
+                if (uniqueUserIds.size + 1 > serviceData.maxUsersPerDay) {
+                    return res.status(400).json({ 
+                        message: `Sorry, maximum ${serviceData.maxUsersPerDay} different users can book this service per day. ${uniqueUserIds.size} user(s) already booked. Please choose another date.`,
+                        currentUsersCount: uniqueUserIds.size,
+                        maxUsersPerDay: serviceData.maxUsersPerDay,
+                        limitType: 'maxUsersPerDay'
+                    });
+                }
+            }
+        }
+
+        // ============================================
+        // ✅ CHECK TIME SLOT AVAILABILITY (if applicable)
+        // ============================================
+        if (selectedDateStr && bookingType !== 'Inquari Booking') {
+            // Check if this specific time slot is already booked
+            const timeSlotBookings = await Booking.find({
+                serviceid: serviceid,
+                selectedDates: selectedDateStr,
+                slots: { $elemMatch: { slot: time } },
+                status: { $in: ['booked', 'pending', 'confirmed', 'assigned'] }
+            });
+            
+            if (timeSlotBookings.length > 0 && time) {
+                return res.status(400).json({ 
+                    message: `Sorry, the time slot "${time}" on ${selectedDateStr} is already booked. Please select another time slot.`,
+                    limitType: 'timeSlot'
+                });
+            }
+        }
+
+        // Create booking data
         const bookingData = {
             serviceid,
-            totalAmount: bookingType === 'Inquari Booking' ? 0 : totalAmount, // Set to 0 for inquiry bookings
+            totalAmount: bookingType === 'Inquari Booking' ? 0 : totalAmount,
             userid,
             vendorId: vendorId,
             name,
@@ -168,14 +260,14 @@ router.post("/bookservice", async (req, res) => {
             rentperday: rentperday || serviceData.rentperday,
             fromDate: fromDate ? new Date(fromDate) : null,
             toDate: toDate ? new Date(toDate) : null,
-            selectedDates: selectedDates || [],
-            slots: slots || [],
-            time: time || 'N/A',  
+            selectedDates: selectedDates || (selectedDateStr ? [selectedDateStr] : []),
+            slots: slots || (time ? [{ date: selectedDateStr, slot: time }] : []),
+            time: time || 'N/A',
             locationType: locationType || 'Simple',
             bookingType: bookingType || 'Automatic Booking',
             optionalInputs: optionalInputs || [],
             extraInputs: extraInputs || [],
-            status: bookingType === 'Inquari Booking' ? "inquiry" : "booked", // Set different initial status
+            status: bookingType === 'Inquari Booking' ? "inquiry" : "booked",
             ...(selectedServiceArea && typeof selectedServiceArea === 'object' ? {
                 selectedServiceArea: {
                     city: selectedServiceArea.city || '',
@@ -197,76 +289,64 @@ router.post("/bookservice", async (req, res) => {
         }
 
         // Save booking
-// Save booking
-const newBooking = new Booking(bookingData);
-await newBooking.save();
+        const newBooking = new Booking(bookingData);
+        await newBooking.save();
 
-console.log(`✅ Booking created: ${newBooking._id} for vendor: ${vendorId} (Type: ${bookingType})`);
+        console.log(`✅ Booking created: ${newBooking._id} for vendor: ${vendorId} (Type: ${bookingType})`);
 
-// ============================================
-// ✅ ADD PUSH NOTIFICATION CODE HERE
-// ============================================
-
-// Find users to notify (admins + vendor)
-const adminUsers = await User.find({ 
-    $or: [
-        { role: 'admin' },
-        { isAdmin: true },
-        { role: 'superadmin' },
-        { email: 'himanshufa875@gmail.com' }
-    ]
-});
-
-// Get the vendor (service owner)
-const vendorUser = await User.findById(vendorId);
-
-// Combine users to notify
-const usersToNotify = [...adminUsers];
-if (vendorUser && !usersToNotify.some(u => u._id.equals(vendorUser._id))) {
-    usersToNotify.push(vendorUser);
-}
-
-// Send push notifications
-if (usersToNotify.length > 0) {
-    await sendPushNotification(
-        usersToNotify.map(u => u._id),
-        newBooking
-    );
-}
-
-// ============================================
-// END OF PUSH NOTIFICATION CODE
-// ============================================
-
-// Skip availability update for inquiry bookings
-if (fromDate && bookingType !== 'Inquari Booking') {
-    
-            const dateStr = moment(fromDate).format('YYYY-MM-DD');
+        // ============================================
+        // ✅ UPDATE UNAVAILABLE DATES (ONLY FOR TIME SLOTS, NOT FULL DAYS)
+        // ============================================
+        // We should ONLY mark time slots as unavailable, NOT full days
+        // The quantity and user limits will automatically prevent overbooking
+        if (selectedDateStr && time && bookingType !== 'Inquari Booking') {
             let unavailableDates = serviceData.unavailableDates || [];
             
             const existingDateIndex = unavailableDates.findIndex(d => 
-                moment(d.date).format('YYYY-MM-DD') === dateStr
+                moment(d.date).format('YYYY-MM-DD') === selectedDateStr
             );
 
             if (existingDateIndex >= 0) {
-                if (time) {
-                    if (!unavailableDates[existingDateIndex].slots.includes(time)) {
-                        unavailableDates[existingDateIndex].slots.push(time);
-                    }
-                } else {
-                    unavailableDates[existingDateIndex].fullDay = true;
+                // Add time slot to existing date
+                if (!unavailableDates[existingDateIndex].slots.includes(time)) {
+                    unavailableDates[existingDateIndex].slots.push(time);
                 }
+                // IMPORTANT: DO NOT set fullDay = true
             } else {
+                // Create new date entry with only this time slot
                 unavailableDates.push({
-                    date: new Date(dateStr),
-                    slots: time ? [time] : [],
-                    fullDay: !time
+                    date: new Date(selectedDateStr),
+                    slots: [time],
+                    fullDay: false  // Always false - we only block specific time slots
                 });
             }
 
             await Service.findByIdAndUpdate(serviceid, {
                 unavailableDates: unavailableDates
             });
+        }
+
+        // Send push notifications
+        const adminUsers = await User.find({ 
+            $or: [
+                { role: 'admin' },
+                { isAdmin: true },
+                { role: 'superadmin' },
+                { email: 'himanshufa875@gmail.com' }
+            ]
+        });
+
+        const vendorUser = await User.findById(vendorId);
+        const usersToNotify = [...adminUsers];
+        if (vendorUser && !usersToNotify.some(u => u._id.equals(vendorUser._id))) {
+            usersToNotify.push(vendorUser);
+        }
+
+        if (usersToNotify.length > 0) {
+            await sendPushNotification(
+                usersToNotify.map(u => u._id),
+                newBooking
+            );
         }
 
         res.status(201).json({

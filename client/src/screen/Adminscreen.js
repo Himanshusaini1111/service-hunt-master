@@ -2024,9 +2024,11 @@ styleElement.textContent = billModalStyles;
 document.head.appendChild(styleElement);
 
 // Update the Services component to accept onServicesUpdate prop
+// Update the Services component to show area-wise pricing
+// Update the Services component to show area-wise pricing
 export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
-    const [services, setServices] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [services, setServices] =useState([]);
+    const [loading, setLoading] =useState(false);
     const [error, setError] = useState(null);
     const [selectedService, setSelectedService] = useState(null);
     const [unavailableDates, setUnavailableDates] = useState([]);
@@ -2038,6 +2040,7 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
     const [showHelperModal, setShowHelperModal] = useState(false);
     const [currentService, setCurrentService] = useState(null);
     const [isFullDay, setIsFullDay] = useState(false);
+    const [expandedPriceRows, setExpandedPriceRows] = useState({}); // Track expanded rows
 
     const timeSlots = Array.from({ length: 10 }, (_, i) => {
         const hour = i + 9;
@@ -2073,6 +2076,22 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
             onServicesUpdate(services);
         }
     }, [services, onServicesUpdate]);
+
+    // Toggle expanded price view
+    const togglePriceExpansion = (serviceId) => {
+        setExpandedPriceRows(prev => ({
+            ...prev,
+            [serviceId]: !prev[serviceId]
+        }));
+    };
+
+    // Helper function to format unit display
+    const formatUnit = (service) => {
+        if (service.unit === "Other") {
+            return service.customUnit || "per unit";
+        }
+        return service.unit || "per day";
+    };
 
     // Delete service with proper error handling
     const deleteService = async (id) => {
@@ -2122,8 +2141,6 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
             message.error("Error updating visibility");
         }
     };
-
-    // REMOVED toggleAllVisibility function from Services component since it's now in Adminscreen
 
     // Handle calendar open
     const handleCalendarOpen = (service) => {
@@ -2249,8 +2266,8 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         }
     };
 
-    // Add CSS for calendar styling
-    const calendarStyle = `
+    // Add CSS for calendar and pricing styling
+    const customStyles = `
         .availability-calendar .react-calendar__tile {
             color: white;
             border-radius: 4px;
@@ -2307,16 +2324,95 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
             right: 5px;
             font-size: 12px;
         }
+        
+        /* Pricing Table Styles */
+        .price-cell {
+            min-width: 200px;
+        }
+        .price-summary {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .base-price {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px dashed #555;
+        }
+        .expand-btn {
+            background: none;
+            border: none;
+            color: #0d6efd;
+            cursor: pointer;
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .expand-btn:hover {
+            background-color: #0d6efd;
+            color: white;
+        }
+        .location-pricing-table {
+            margin-top: 10px;
+            background: #2d2d2d;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .location-pricing-table table {
+            width: 100%;
+            font-size: 12px;
+            margin: 0;
+        }
+        .location-pricing-table th {
+            background-color: #1a1a1a;
+            padding: 8px;
+            text-align: left;
+            color: #aaa;
+            font-weight: 500;
+        }
+        .location-pricing-table td {
+            padding: 8px;
+            border-bottom: 1px solid #3d3d3d;
+        }
+        .location-pricing-table tr:last-child td {
+            border-bottom: none;
+        }
+        .location-name {
+            font-weight: 500;
+            color: #fff;
+        }
+        .price-tag {
+            font-family: monospace;
+            font-weight: 600;
+        }
+        .price-tag.base {
+            color: #28a745;
+        }
+        .price-tag.total {
+            color: #17a2b8;
+        }
+        .price-tag.extra {
+            color: #ffc107;
+        }
+        .badge-price {
+            background-color: #28a745;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-left: 5px;
+        }
     `;
 
     return (
         <div className='container-fluid'>
-            <style>{calendarStyle}</style>
+            <style>{customStyles}</style>
 
             <div className='row justify-content-center'>
                 <div className='col-md-11'>
-                    {/* Removed the visibility toggle button from here - now in header */}
-                    
                     <h1 className="mb-4">Services Management</h1>
 
                     {/* Loading State */}
@@ -2348,9 +2444,9 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                             <table className='table table-bordered table-hover table-dark mb-0'>
                                 <thead className='bg-secondary'>
                                     <tr>
-                                        <th>Service ID</th>
+                                        {/* <th>Service ID</th> */}
                                         <th>Name</th>
-                                        <th>Daily Rate</th>
+                                        <th>Daily Rate & Location Pricing</th>
                                         <th>Contact</th>
                                         <th className='text-center'>Visibility</th>
                                         <th className='text-center'>Availability</th>
@@ -2366,69 +2462,169 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                                         </tr>
                                     ) : (
                                         services.map(service => (
-                                            <tr key={service._id}>
-                                                <td>{service._id.substring(0, 8)}...</td>
-                                                <td>
-                                                    <Link
-                                                        to={`/book/${service._id}`}
-                                                        className="text-white text-decoration-underline"
-                                                        target="_blank"
-                                                    >
-                                                        {service.name}
-                                                    </Link>
-                                                </td>
-                                                <td>${service.rentperday}/day</td>
-                                                <td>{service.phonenumber}</td>
+                                            <React.Fragment key={service._id}>
+                                                <tr>
+                                                    {/* <td>{service._id.substring(0, 8)}...</td> */}
+                                                    <td>
+                                                        <Link
+                                                            to={`/book/${service._id}`}
+                                                            className="text-white text-decoration-underline"
+                                                            target="_blank"
+                                                        >
+                                                            {service.name}
+                                                        </Link>
+                                                    </td>
+                                                    <td>
+                                                        <div className="price-summary">
+                                                            <div className="base-price">
+                                                                <span>
+                                                                    <strong>Base Price:</strong>
+                                                                    <span className="price-tag base ms-2">
+                                                                        ₹{service.rentperday}
+                                                                    </span>
+                                                                    <small className="text-muted ms-1">
+                                                                        /{formatUnit(service)}
+                                                                    </small>
+                                                                </span>
+                                                                {service.locationPricing && service.locationPricing.length > 0 && (
+                                                                    <button
+                                                                        className="expand-btn"
+                                                                        onClick={() => togglePriceExpansion(service._id)}
+                                                                    >
+                                                                        {expandedPriceRows[service._id] ? '▲ Hide' : '▼ Show'} 
+                                                                        <span className="badge-price">
+                                                                            {service.locationPricing.length} locations
+                                                                        </span>
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            {(!service.locationPricing || service.locationPricing.length === 0) && (
+                                                                <div className="text-muted small">
+                                                                    <i className="bi bi-geo-alt"></i> No location-based pricing set
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td>{service.phonenumber}</td>
 
-                                                {/* Visibility Status */}
-                                                <td className='text-center'>
-                                                    <button
-                                                        className={`btn ${service.isVisible ? "btn-success" : "btn-secondary"} btn-sm px-3`}
-                                                        onClick={() => toggleVisibility(service._id, service.isVisible)}
-                                                        disabled={loading}
-                                                    >
-                                                        {service.isVisible ? "ACTIVE" : "HIDDEN"}
-                                                    </button>
-                                                </td>
-
-                                                {/* Availability Status */}
-                                                <td className='text-center align-middle'>
-                                                    {service.unavailableDates && service.unavailableDates.length > 0 ? (
-                                                        <span className="badge bg-warning">
-                                                            {service.unavailableDates.length} blocked dates
-                                                        </span>
-                                                    ) : (
-                                                        <span className="badge bg-success">Fully Available</span>
-                                                    )}
-                                                </td>
-
-                                                {/* Action Buttons */}
-                                                <td className='text-center'>
-                                                    <div className="d-flex gap-2 justify-content-center">
+                                                    {/* Visibility Status */}
+                                                    <td className='text-center'>
                                                         <button
-                                                            className="btn btn-danger btn-sm"
-                                                            onClick={() => deleteService(service._id)}
+                                                            className={`btn ${service.isVisible ? "btn-success" : "btn-secondary"} btn-sm px-3`}
+                                                            onClick={() => toggleVisibility(service._id, service.isVisible)}
                                                             disabled={loading}
                                                         >
-                                                            <i className="bi bi-trash"></i> Delete
+                                                            {service.isVisible ? "ACTIVE" : "HIDDEN"}
                                                         </button>
-                                                        <button
-                                                            className="btn btn-primary btn-sm"
-                                                            onClick={() => handleCalendarOpen(service)}
-                                                            disabled={loading}
-                                                        >
-                                                            <i className="bi bi-calendar-event"></i> Calendar
-                                                        </button>
-                                                        <button
-                                                            className="btn btn-info btn-sm"
-                                                            onClick={() => handleJobAssignment(service)}
-                                                            disabled={loading}
-                                                        >
-                                                            <i className="bi bi-people"></i> Assign
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
+                                                    </td>
+
+                                                    {/* Availability Status */}
+                                                    <td className='text-center align-middle'>
+                                                        {service.unavailableDates && service.unavailableDates.length > 0 ? (
+                                                            <span className="badge bg-warning">
+                                                                {service.unavailableDates.length} blocked dates
+                                                            </span>
+                                                        ) : (
+                                                            <span className="badge bg-success">Fully Available</span>
+                                                        )}
+                                                    </td>
+
+                                                    {/* Action Buttons */}
+                                                    <td className='text-center'>
+                                                        <div className="d-flex gap-2 justify-content-center">
+                                                            <button
+                                                                className="btn btn-danger btn-sm"
+                                                                onClick={() => deleteService(service._id)}
+                                                                disabled={loading}
+                                                            >
+                                                                <i className="bi bi-trash"></i> Delete
+                                                            </button>
+                                                            <button
+                                                                className="btn btn-primary btn-sm"
+                                                                onClick={() => handleCalendarOpen(service)}
+                                                                disabled={loading}
+                                                            >
+                                                                <i className="bi bi-calendar-event"></i> Calendar
+                                                            </button>
+                                                            {/* <button
+                                                                className="btn btn-info btn-sm"
+                                                                onClick={() => handleJobAssignment(service)}
+                                                                disabled={loading}
+                                                            >
+                                                                <i className="bi bi-people"></i> Assign
+                                                            </button> */}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+
+                                                {/* Expanded Location Pricing Row */}
+                                                {expandedPriceRows[service._id] && service.locationPricing && service.locationPricing.length > 0 && (
+                                                    <tr className="location-pricing-row">
+                                                        <td colSpan="7" style={{ padding: 0 }}>
+                                                            <div className="location-pricing-table">
+                                                                <table>
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>Location</th>
+                                                                            <th>Address</th>
+                                                                            <th>Base Price</th>
+                                                                            <th>Extra Charge</th>
+                                                                            <th>Total Price</th>
+                                                                            <th>Optional Services Extra</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {service.locationPricing.map((location, idx) => (
+                                                                            <tr key={idx}>
+                                                                                <td className="location-name">
+                                                                                    <i className="bi bi-geo-alt-fill me-1" style={{ color: '#0d6efd' }}></i>
+                                                                                    {location.locationName}
+                                                                                </td>
+                                                                                <td className="text-muted small">
+                                                                                    {location.locationAddress.length > 50 
+                                                                                        ? location.locationAddress.substring(0, 50) + '...' 
+                                                                                        : location.locationAddress}
+                                                                                </td>
+                                                                                <td>
+                                                                                    <span className="price-tag base">
+                                                                                        ₹{service.rentperday}
+                                                                                    </span>
+                                                                                    <small className="text-muted">/{formatUnit(service)}</small>
+                                                                                </td>
+                                                                                <td>
+                                                                                    <span className="price-tag extra">
+                                                                                        +₹{location.extraPrice || 0}
+                                                                                    </span>
+                                                                                </td>
+                                                                                <td>
+                                                                                    <span className="price-tag total fw-bold">
+                                                                                        ₹{(service.rentperday + (location.extraPrice || 0))}
+                                                                                    </span>
+                                                                                    <small className="text-muted">/{formatUnit(service)}</small>
+                                                                                </td>
+                                                                                <td>
+                                                                                    {location.optionalInputsExtra && location.optionalInputsExtra.length > 0 ? (
+                                                                                        <div className="small">
+                                                                                            {location.optionalInputsExtra.map((opt, optIdx) => (
+                                                                                                <div key={optIdx}>
+                                                                                                    <span>{opt.inputName}: </span>
+                                                                                                    <span className="price-tag extra">+₹{opt.extraPrice}</span>
+                                                                                                </div>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <span className="text-muted">—</span>
+                                                                                    )}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
                                         ))
                                     )}
                                 </tbody>
@@ -2436,11 +2632,10 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                         </div>
                     )}
 
-                    {/* Calendar Modal - keep existing code */}
+                    {/* Calendar Modal */}
                     {selectedService && (
                         <div className="modal-overlay">
                             <div className="calendar-modal bg-dark p-4 rounded">
-                                {/* Calendar modal content - same as before */}
                                 <div className="d-flex justify-content-between align-items-center mb-3">
                                     <h4 className="mb-0 text-light">
                                         Availability for {selectedService.name}
@@ -2668,7 +2863,6 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         </div>
     );
 }
-
 
 export function Users() {
     const [users, setUsers] = useState([]);

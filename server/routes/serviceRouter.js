@@ -1,7 +1,7 @@
 const express = require("express");
 const Service = require("../models/service");
 const Vendor = require("../models/vendor");
-const User = require("../models/user");  // <-- ADD THIS LINE: Import the User model
+const User = require("../models/user");
 const Booking = require("../models/booking");
 const multer = require('multer');
 const path = require('path');
@@ -48,11 +48,10 @@ function normalizeOptionalInputs(inputs) {
         unit: input.unit || 'per day',
         customUnit: input.customUnit || '',
         isCountable: input.isCountable !== false,
+        bookingType: input.bookingType || 'Automatic Booking' // Inherit from main service
     }));
 }
 
-
-// In services.js
 // Get services for admin/vendor dashboard
 router.get("/getvisible", async (req, res) => {
     try {
@@ -71,6 +70,8 @@ router.get("/getvisible", async (req, res) => {
         res.status(400).json({ message: error.message });
     }
 });
+
+// Upload image endpoint
 router.post('/upload', upload.single('image'), async (req, res) => {
     try {
         if (!req.file) {
@@ -89,6 +90,7 @@ router.post('/upload', upload.single('image'), async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 });
+
 // Get all services (public)
 router.get("/getallservices", async (req, res) => {
     try {
@@ -98,7 +100,6 @@ router.get("/getallservices", async (req, res) => {
         res.status(400).json({ message: error.message });
     }
 });
-
 
 // Get service by ID
 router.post("/getservicebyid", async (req, res) => {
@@ -114,17 +115,22 @@ router.post("/getservicebyid", async (req, res) => {
     }
 });
 
+// routes/serviceRoute.js - Updated addservice endpoint
 
-// Add service - With both location types and location pricing
+// routes/serviceRoute.js - Updated addservice endpoint
+
 router.post("/addservice", async (req, res) => {
     try {
-        const { userid } = req.query; 
+        const { userid } = req.query;
         const {
             service,
-            rentperday,
-            unit,
-            customUnit,
+            pricingUnits, // NEW: Array of pricing units
+            rentperday, // Legacy - fallback
+            unit, // Legacy - fallback
+            customUnit, // Legacy - fallback
             isCountable,
+            maxQuantityPerDay,
+            maxUsersPerDay,
             description,
             phonenumber,
             companyname,
@@ -136,8 +142,8 @@ router.post("/addservice", async (req, res) => {
             category,
             subCategory,
             bookingType,
-            locations,        // Location Type array
-            locationPricing,  // Location Pricing array
+            locations,
+            locationPricing
         } = req.body;
 
         // Validate required fields
@@ -159,19 +165,72 @@ router.post("/addservice", async (req, res) => {
             });
         }
 
+        // Process pricing units
+        let processedPricingUnits = [];
+        let defaultUnit = null;
+
+        if (pricingUnits && Array.isArray(pricingUnits) && pricingUnits.length > 0) {
+            processedPricingUnits = pricingUnits.map(u => ({
+                unit: u.unit || 'per day',
+                price: parseFloat(u.price) || 0,
+                customUnit: u.unit === 'Other' ? (u.customUnit || '') : '',
+                isDefault: u.isDefault || false,
+                isCountable: u.isCountable !== false,
+                maxQuantityPerDay: u.maxQuantityPerDay ? parseInt(u.maxQuantityPerDay) : null,
+                maxUsersPerDay: u.maxUsersPerDay ? parseInt(u.maxUsersPerDay) : null,
+                description: u.description || ''
+            }));
+
+            // Find default unit
+            defaultUnit = processedPricingUnits.find(u => u.isDefault) || processedPricingUnits[0];
+        }
+
+        // If no pricing units provided, use legacy fields
+        if (!processedPricingUnits.length) {
+            const defaultUnitData = {
+                unit: unit || 'per day',
+                price: parseFloat(rentperday) || 0,
+                customUnit: unit === 'Other' ? (customUnit || '') : '',
+                isDefault: true,
+                isCountable: isCountable !== false,
+                maxQuantityPerDay: maxQuantityPerDay ? parseInt(maxQuantityPerDay) : null,
+                maxUsersPerDay: maxUsersPerDay ? parseInt(maxUsersPerDay) : null,
+                description: ''
+            };
+            processedPricingUnits = [defaultUnitData];
+            defaultUnit = defaultUnitData;
+        }
+
+        const processedLocationPricing = (locationPricing || []).map(location => ({
+            locationName: location.locationName,
+            locationAddress: location.locationAddress,
+            extraPrice: parseFloat(location.extraPrice) || 0,
+            optionalInputsExtra: (location.optionalInputsExtra || []).map(opt => ({
+                inputName: opt.inputName,
+                extraPrice: parseFloat(opt.extraPrice) || 0
+            }))
+        }));
+
+        const processedLocations = (locations && locations.length > 0) ? locations : ['Simple'];
+
         const newService = new Service({
             name: service,
-            rentperday: parseFloat(rentperday) || 0,
-            unit: unit || 'per day',
-            customUnit: unit === 'Other' ? (customUnit || '') : '',
-            isCountable: isCountable !== false,
+            // New: Multiple pricing units
+            pricingUnits: processedPricingUnits,
+            // Legacy fields (for backward compatibility)
+            rentperday: defaultUnit.price,
+            unit: defaultUnit.unit,
+            customUnit: defaultUnit.customUnit || '',
+            isCountable: defaultUnit.isCountable !== false,
+            maxQuantityPerDay: defaultUnit.maxQuantityPerDay || null,
+            maxUsersPerDay: defaultUnit.maxUsersPerDay || null,
             description: description || '',
             phonenumber: phonenumber || '',
             companyname: companyname || '',
             address: address,
             facility: facility || '',
-            locations: locations || ['Simple'],  // Location Type
-            locationPricing: locationPricing || [],  // Location Pricing
+            locations: processedLocations,
+            locationPricing: processedLocationPricing,
             imageurls: imageURLs,
             optionalInputs: normalizeOptionalInputs(optionalInputs),
             extraInputs: extraInputs || [],
@@ -180,25 +239,27 @@ router.post("/addservice", async (req, res) => {
             bookingType: bookingType,
             vendorId: userid,
             userid: userid,
-            isVisible: true
+            isVisible: true,
+            unavailableDates: []
         });
 
         await newService.save();
-        
+
         console.log(`✅ Service created: ${newService._id}`);
-        console.log(`📍 Location Types: ${locations?.join(', ') || 'Simple'}`);
-        console.log(`💰 Location Pricing: ${locationPricing?.length || 0} areas configured`);
-        
-        res.status(201).json({ 
-            message: "Service added successfully", 
-            serviceId: newService._id 
+        console.log(`💰 Pricing Units: ${processedPricingUnits.length} options configured`);
+        console.log(`⭐ Default Unit: ${defaultUnit.unit} @ ₹${defaultUnit.price}`);
+        console.log(`📍 Location Types: ${processedLocations.join(', ')}`);
+
+        res.status(201).json({
+            message: "Service added successfully",
+            serviceId: newService._id,
+            service: newService
         });
     } catch (error) {
         console.error("Add service error:", error);
         res.status(400).json({ error: error.message });
     }
 });
-
 // Delete service
 router.delete("/deleteservice/:id", async (req, res) => {
     try {
@@ -257,9 +318,92 @@ router.put("/update/:id", async (req, res) => {
             req.body,
             { new: true }
         );
+        
+        if (!updatedService) {
+            return res.status(404).json({ message: "Service not found" });
+        }
+        
         res.json(updatedService);
     } catch (error) {
         res.status(500).json({ message: 'Error updating service' });
+    }
+});
+
+// Get service with location pricing details
+router.get("/servicewithpricing/:id", async (req, res) => {
+    try {
+        const service = await Service.findById(req.params.id);
+        if (!service) {
+            return res.status(404).json({ message: "Service not found" });
+        }
+        
+        // Return complete service details including location pricing
+        res.json({
+            ...service.toObject(),
+            locationPricing: service.locationPricing || [],
+            locations: service.locations || ['Simple']
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Get price for specific location
+router.post("/getlocationprice", async (req, res) => {
+    try {
+        const { serviceId, locationName, locationAddress } = req.body;
+        
+        const service = await Service.findById(serviceId);
+        if (!service) {
+            return res.status(404).json({ message: "Service not found" });
+        }
+        
+        // Find location-specific pricing
+        const locationPricing = service.locationPricing || [];
+        const matchedLocation = locationPricing.find(loc => 
+            loc.locationName === locationName || 
+            loc.locationAddress === locationAddress
+        );
+        
+        let finalPrice = service.rentperday;
+        let extraCharge = 0;
+        
+        if (matchedLocation) {
+            extraCharge = matchedLocation.extraPrice || 0;
+            finalPrice = service.rentperday + extraCharge;
+        }
+        
+        res.json({
+            basePrice: service.rentperday,
+            extraCharge: extraCharge,
+            totalPrice: finalPrice,
+            unit: service.unit,
+            customUnit: service.customUnit,
+            locationSpecific: !!matchedLocation,
+            locationPricing: matchedLocation || null
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Get all location pricing for a service
+router.get("/locationpricing/:serviceId", async (req, res) => {
+    try {
+        const service = await Service.findById(req.params.serviceId);
+        if (!service) {
+            return res.status(404).json({ message: "Service not found" });
+        }
+        
+        res.json({
+            serviceName: service.name,
+            basePrice: service.rentperday,
+            unit: service.unit,
+            locations: service.locationPricing || [],
+            locationTypes: service.locations || ['Simple']
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 });
 
@@ -310,6 +454,5 @@ router.get("/vendorservice", async (req, res) => {
         res.status(400).json({ message: error.message });
     }
 });
-
 
 module.exports = router;

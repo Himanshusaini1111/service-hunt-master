@@ -54,70 +54,100 @@ function Service({ service, onClick, isLandingPage = false, bookingArea = null }
     // Landing Page View
     if (isLandingPage) {
         return (
-            <div className="coloum m-3 p-3 bs border rounded shadow-sm bg-light" style={{ width: '300px', height: "280px" }}>
-                <div className="position-relative d-flex justify-content-center align-items-center mb-3 mb-md-0">
-                    <Link
-                        to={`/book/${service._id}`}
-                        state={bookingArea ? { selectedServiceArea: bookingArea } : undefined}
-                    >
-                        <div
-                            className="image-container"
-                            style={{
-                                width: "275px",
-                                height: "200px",
-                                overflow: "hidden",
-                                borderRadius: "12px",
-                                position: "relative"
-                            }}
-                        >
-                            <img
-                                src={service.imageurls?.[0] || "/placeholder-image.jpg"}
-                                className="img-fluid"
-                                style={{
-                                    width: "100%",
-                                    height: "100%",
-                                    objectFit: "cover",
-                                    objectPosition: "center",
-                                    cursor: "pointer",
-                                    transition: "transform 0.3s ease"
-                                }}
-                                onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = "/placeholder-image.jpg";
-                                }}
-                                alt={service.name || "Service image"}
-                            />
-                        </div>
-                    </Link>
-
-                    <div
-                        className="position-absolute"
-                        style={{
-                            top: "10px",
-                            right: "10px",
-                            background: "white",
-                            padding: "5px 10px",
-                            borderRadius: "10px",
-                            boxShadow: "0 2px 5px rgba(0,0,0,0.25)",
-                            zIndex: 10,
-                        }}
-                    >
-                        <ReviewSystem
-                            serviceId={service._id}
-                            showFullDetails={false}
-                            onAverageRating={(rating) => setAverageRating(rating || "")}
-                        />
-                    </div>
-                </div>
-
-                <div className="col-12 col-md-2 mt-2">
-                    <div className="d-flex flex-column flex-md-row align-items-left justify-content-between mb-2">
-                        <h2 className="fw-bold" style={{ fontSize: "25px", textAlign: "left" }}>{service.name}</h2>
-                    </div>
-                </div>
+            <div
+    className="m-3 p-3 border rounded shadow-sm bg-light"
+    style={{
+        width: "300px",
+        height: "280px",
+        overflow: "hidden",
+    }}
+>
+    <div
+        className="position-relative d-flex justify-content-center align-items-center"
+        style={{ width: "100%" }}
+    >
+        <Link
+            to={`/book/${service._id}`}
+            state={bookingArea ? { selectedServiceArea: bookingArea } : undefined}
+        >
+            <div
+                className="image-container"
+                style={{
+                    width: "270px",
+                    height: "200px",
+                    overflow: "hidden",
+                    borderRadius: "12px",
+                    position: "relative",
+                }}
+            >
+                <img
+                    src={service.imageurls?.[0] || "/placeholder-image.jpg"}
+                    className="img-fluid"
+                    style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center",
+                        cursor: "pointer",
+                        transition: "transform 0.3s ease",
+                    }}
+                    onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = "/placeholder-image.jpg";
+                    }}
+                    alt={service.name || "Service image"}
+                />
             </div>
-        );
-    }
+        </Link>
+
+        {/* Rating */}
+        <div
+            className="position-absolute"
+            style={{
+                top: "10px",
+                right: "10px",
+                background: "white",
+                padding: "5px 10px",
+                borderRadius: "10px",
+                boxShadow: "0 2px 5px rgba(0,0,0,0.25)",
+                zIndex: 10,
+            }}
+        >
+            <ReviewSystem
+                serviceId={service._id}
+                showFullDetails={false}
+                onAverageRating={(rating) =>
+                    setAverageRating(rating || "")
+                }
+            />
+        </div>
+    </div>
+
+    {/* Service Name */}
+    <div
+        style={{
+            width: "100%",
+            maxWidth: "270px",
+            marginTop: "10px",
+            overflow: "hidden",
+        }}
+    >
+        <h2
+            className="fw-bold mb-0"
+            title={service.name}
+            style={{
+                fontSize: "25px",
+                textAlign: "left",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                width: "100%",
+            }}
+        >
+            {service.name}
+        </h2>
+    </div>
+</div>)}
 
     // Home Screen View - Professional Redesign
     return (
@@ -134,39 +164,36 @@ function Service({ service, onClick, isLandingPage = false, bookingArea = null }
                     >
                     
 
-
-                         <div
-                            className="image-container"
-                            style={{
-                                width: "275px",
-                                height: "200px",
-                                overflow: "hidden",
-                                borderRadius: "12px",
-                                position: "relative",
-                            }}
-                        >
-                               <img
-                            src={service.imageurls?.[0] || "/placeholder-image.jpg"}
-                            alt={`${service.name} - ${service.companyname || "Service Provider"}`}
-                             style={{
-                                    width: "100%",
-                                    height: "100%",
-                                    objectFit: "cover",
-                                    objectPosition: "center",
-                                    cursor: "pointer",
-                                    transition: "transform 0.3s ease"
-                                }}
-                                className="service-card__image"
-                            loading="lazy"
-                            onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = "/placeholder-image.jpg";
-                            }}
-                        
-                               
-                               
-                            />
-                        </div>
+<div
+    className="image-container"
+    style={{
+        width: "100%",
+        aspectRatio: "275 / 200",
+        overflow: "hidden",
+        borderRadius: "12px",
+        position: "relative",
+    }}
+>
+    <img
+        src={service.imageurls?.[0] || "/placeholder-image.jpg"}
+        alt={`${service.name} - ${service.companyname || "Service Provider"}`}
+        style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center",
+            cursor: "pointer",
+            transition: "transform 0.3s ease",
+            display: "block",
+        }}
+        className="service-card__image"
+        loading="lazy"
+        onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = "/placeholder-image.jpg";
+        }}
+    />
+</div>
                         
                         {service.imageurls?.length > 1 && (
                             <div className="service-card__badge service-card__badge--photos" aria-label={`${service.imageurls.length} photos available`}>
@@ -256,22 +283,38 @@ function Service({ service, onClick, isLandingPage = false, bookingArea = null }
                         </ul>
                     )}
 
-                    {/* Action Buttons */}
-                    <div className="service-card__actions">
-                        <Link
-                            to={`/book/${service._id}`}
-                            state={bookingArea ? { selectedServiceArea: bookingArea } : undefined}
-                            className="btn btn--primary btn--book"
-                        >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                                <line x1="16" y1="2" x2="16" y2="6"/>
-                                <line x1="8" y1="2" x2="8" y2="6"/>
-                                <line x1="3" y1="10" x2="21" y2="10"/>
-                            </svg>
-                            <span>Book Now</span>
-                        </Link>
-                    </div>
+               {/* Action Buttons */}
+<div className="service-card__actions">
+    <Link
+        to={`/book/${service._id}`}
+        state={
+            bookingArea
+                ? { selectedServiceArea: bookingArea }
+                : undefined
+        }
+        className="btn btn--primary btn--book"
+        style={{
+            background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+            color: "#fff",
+        }}
+    >
+        <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+        >
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+
+        <span>Book Now</span>
+    </Link>
+</div>
                 </div>
             </div>
 
