@@ -972,28 +972,36 @@ const handleBooking = async (e) => {
               )}
             </div>
 
-            <h1 style={{
-              textAlign: "left",
-              width: "100%",
-              marginTop: "clamp(16px, 3vh, 24px)",
-              fontSize: "clamp(20px, 4vw, 32px)",
-              padding: "0 clamp(12px, 3vw, 24px)",
-              fontWeight: "bold",
-              lineHeight: "1.3",
-              marginBottom: "clamp(8px, 1.5vh, 12px)"
-            }}>
-              <b>{service.name}</b>
-            </h1>
+           <h1 style={{
+  textAlign: "left",
+  width: "100%",
+  marginTop: "clamp(12px, 2vh, 24px)",
+  marginBottom: "clamp(6px, 1vh, 12px)",
+  padding: "0 clamp(16px, 4vw, 32px)",
+  fontSize: "clamp(18px, 5vw, 36px)",
+  fontWeight: "bold",
+  lineHeight: "1.2",
+  wordBreak: "break-word",
+  hyphens: "auto",
+  color: "#1a1a1a",
+  letterSpacing: "-0.02em"
+}}>
+  <b>{service.name}</b>
+</h1>
 
-            <p style={{
-              color: "#666",
-              marginBottom: "clamp(16px, 3vh, 24px)",
-              fontSize: "clamp(14px, 2.5vw, 16px)",
-              padding: "0 clamp(12px, 3vw, 24px)",
-              lineHeight: "1.5"
-            }}>
-              {service.companyname || "N/A"}
-            </p>
+<p style={{
+  color: "#666",
+  marginTop: "0",
+  marginBottom: "clamp(12px, 2vh, 24px)",
+  padding: "0 clamp(16px, 4vw, 32px)",
+  fontSize: "clamp(13px, 2.5vw, 18px)",
+  lineHeight: "1.6",
+  wordBreak: "break-word",
+  hyphens: "auto",
+  opacity: "0.85"
+}}>
+  {service.companyname || "N/A"}
+</p>
           </div>
 
          <div style={{
