@@ -785,21 +785,23 @@ const handleBooking = async (e) => {
           <div style={{ marginTop: "15px", marginRight: "5px" }}>
             <p><b>Select Date for Service:</b></p>
             <div
-              className="date-picker-trigger"
-              onClick={() => setIsCalendarOpen(true)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 15px",
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                cursor: "pointer",
-                background: "white",
-                width: "300px",
-                marginTop: "5px"
-              }}
-            >
+  className="date-picker-trigger"
+  onClick={() => setIsCalendarOpen(true)}
+  style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "10px 15px",
+    border: "1px solid #ddd",
+    borderRadius: "8px",
+    cursor: "pointer",
+    background: "white",
+    width: "100%", // Takes full width of parent
+    maxWidth: "250px", // But no more than 250px
+    minWidth: "150px", // And no less than 150px
+    marginTop: "5px"
+  }}
+>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <span>📅</span>
                 <div>
@@ -1044,416 +1046,513 @@ const handleBooking = async (e) => {
     </span>
   </div>
 
-  {/* Unit Controls */}
-  <div style={{ marginBottom: "20px", width: "100%" }}>
-    {renderUnitBasedControls()}
-  </div>
+{/* Unit Controls */}
+<div style={{ marginBottom: "20px", width: "100%" }}>
+  {renderUnitBasedControls()}
+</div>
 
-  {/* Unit Selector - Premium */}
-  {availableUnits.length > 1 && (
+{/* Unit Selector - Premium & Responsive */}
+{availableUnits.length > 1 && (
+  <div style={{ 
+    margin: "0 0 20px 0",
+    padding: "clamp(10px, 2vw, 16px)",
+    backgroundColor: "#f8fafc",
+    borderRadius: "10px",
+    border: "1px solid #e8edf4",
+    display: "flex",
+    alignItems: "center",
+    gap: "clamp(10px, 1.5vw, 14px)",
+    flexWrap: "wrap",
+    width: "100%",
+    transition: "all 0.2s ease"
+  }}>
     <div style={{ 
-      margin: "0 0 20px 0",
-      padding: "12px 16px",
-      backgroundColor: "#f8fafc",
-      borderRadius: "10px",
-      border: "1px solid #e8edf4",
+      display: "flex", 
+      alignItems: "center", 
+      gap: "8px",
+      flexShrink: 0
+    }}>
+      <svg width="clamp(14px, 1.5vw, 16px)" height="clamp(14px, 1.5vw, 16px)" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+      <label style={{ 
+        fontWeight: "500", 
+        fontSize: "clamp(12px, 1.2vw, 13px)",
+        color: "#475569",
+        margin: 0,
+        letterSpacing: "0.2px"
+      }}>
+        Pricing Plan
+      </label>
+    </div>
+    <select
+      value={selectedUnitIndex}
+      onChange={(e) => {
+        const index = parseInt(e.target.value);
+        setSelectedUnitIndex(index);
+      }}
+      style={{
+        padding: "clamp(6px, 1vw, 8px) clamp(32px, 4vw, 40px) clamp(6px, 1vw, 8px) clamp(10px, 1.5vw, 14px)",
+        borderRadius: "8px",
+        border: "1px solid #d1d9e6",
+        backgroundColor: "white",
+        fontSize: "clamp(12px, 1.2vw, 13px)",
+        fontWeight: "500",
+        flex: "1 1 auto",
+        minWidth: "clamp(140px, 20vw, 180px)",
+        maxWidth: "100%",
+        cursor: "pointer",
+        color: "#0f172a",
+        outline: "none",
+        appearance: "none",
+        backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E\")",
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "right clamp(10px, 1.5vw, 14px) center",
+        backgroundSize: "clamp(8px, 0.8vw, 10px)",
+        transition: "all 0.2s ease",
+        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+        width: "100%",
+        maxWidth: "100%",
+        boxSizing: "border-box",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+        overflow: "hidden"
+      }}
+      onFocus={(e) => {
+        e.target.style.borderColor = "#6366f1";
+        e.target.style.boxShadow = "0 0 0 4px rgba(99,102,241,0.1)";
+      }}
+      onBlur={(e) => {
+        e.target.style.borderColor = "#d1d9e6";
+        e.target.style.boxShadow = "0 1px 2px rgba(0,0,0,0.05)";
+      }}
+    >
+      {availableUnits.map((unit, index) => (
+        <option key={index} value={index} style={{ 
+          fontSize: "clamp(12px, 1.2vw, 13px)",
+          padding: "4px 8px"
+        }}>
+          {unit.unit === 'Other' ? unit.customUnit : unit.unit} — ₹{unit.price}
+          {unit.isDefault && " ✦"}
+        </option>
+      ))}
+    </select>
+    {availableUnits.some(u => u.isDefault) && (
+      <span style={{
+        fontSize: "clamp(9px, 0.9vw, 10px)",
+        fontWeight: "600",
+        color: "#6366f1",
+        backgroundColor: "#eef2ff",
+        padding: "2px clamp(6px, 1vw, 10px)",
+        borderRadius: "12px",
+        letterSpacing: "0.3px",
+        textTransform: "uppercase",
+        flexShrink: 0,
+        whiteSpace: "nowrap"
+      }}>
+        Best Value
+      </span>
+    )}
+  </div>
+)}
+
+{/* Price Display - Premium Card & Responsive */}
+<div style={{
+  padding: "clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 20px)",
+  backgroundColor: "#fafbfc",
+  borderRadius: "10px",
+  border: "1px solid #eef2f6",
+  marginBottom: "16px",
+  width: "100%",
+  position: "relative",
+  overflow: "hidden"
+}}>
+  {/* Subtle background pattern */}
+  <div style={{
+    position: "absolute",
+    top: "-50%",
+    right: "-20%",
+    width: "clamp(120px, 20vw, 200px)",
+    height: "clamp(120px, 20vw, 200px)",
+    background: "radial-gradient(circle, rgba(99,102,241,0.03) 0%, transparent 70%)",
+    borderRadius: "50%",
+    pointerEvents: "none"
+  }}></div>
+  
+  {bookingType !== 'Inquari Booking' ? (
+    <div style={{ 
       display: "flex",
       alignItems: "center",
-      gap: "14px",
+      justifyContent: "space-between",
       flexWrap: "wrap",
-      width: "100%",
-      transition: "all 0.2s ease"
+      gap: "clamp(6px, 1vw, 8px)",
+      position: "relative",
+      zIndex: 1
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-        </svg>
-        <label style={{ 
-          fontWeight: "500", 
-          fontSize: "13px",
-          color: "#475569",
-          margin: 0,
-          letterSpacing: "0.2px"
+      <div style={{ 
+        display: "flex", 
+        alignItems: "baseline", 
+        gap: "clamp(4px, 0.8vw, 6px)",
+        flexWrap: "wrap"
+      }}>
+        <span style={{ 
+          fontSize: "clamp(12px, 1.2vw, 13px)", 
+          color: "#64748b", 
+          fontWeight: "450" 
         }}>
-          Pricing Plan
-        </label>
-      </div>
-      <select
-        value={selectedUnitIndex}
-        onChange={(e) => {
-          const index = parseInt(e.target.value);
-          setSelectedUnitIndex(index);
-        }}
-        style={{
-          padding: "8px 40px 8px 14px",
-          borderRadius: "8px",
-          border: "1px solid #d1d9e6",
-          backgroundColor: "white",
-          fontSize: "13px",
-          fontWeight: "500",
-          flex: "1",
-          minWidth: "180px",
-          cursor: "pointer",
-          color: "#0f172a",
-          outline: "none",
-          appearance: "none",
-          backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E\")",
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "right 14px center",
-          backgroundSize: "10px",
-          transition: "all 0.2s ease",
-          boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
-        }}
-        onFocus={(e) => {
-          e.target.style.borderColor = "#6366f1";
-          e.target.style.boxShadow = "0 0 0 4px rgba(99,102,241,0.1)";
-        }}
-        onBlur={(e) => {
-          e.target.style.borderColor = "#d1d9e6";
-          e.target.style.boxShadow = "0 1px 2px rgba(0,0,0,0.05)";
-        }}
-      >
-        {availableUnits.map((unit, index) => (
-          <option key={index} value={index}>
-            {unit.unit === 'Other' ? unit.customUnit : unit.unit} — ₹{unit.price}
-            {unit.isDefault && " ✦"}
-          </option>
-        ))}
-      </select>
-      {availableUnits.some(u => u.isDefault) && (
-        <span style={{
-          fontSize: "10px",
-          fontWeight: "600",
-          color: "#6366f1",
-          backgroundColor: "#eef2ff",
-          padding: "2px 10px",
-          borderRadius: "12px",
-          letterSpacing: "0.3px",
-          textTransform: "uppercase"
-        }}>
-          Best Value
+          Price
         </span>
+        <span style={{ 
+          fontSize: "clamp(22px, 4vw, 28px)", 
+          fontWeight: "700", 
+          color: "#0f172a",
+          letterSpacing: "-0.5px",
+          lineHeight: 1.2
+        }}>
+          ₹{effectiveRate}
+        </span>
+        {displayUnit && (
+          <span style={{ 
+            color: "#64748b", 
+            fontSize: "clamp(12px, 1.2vw, 14px)", 
+            fontWeight: "400" 
+          }}>
+            <span style={{ margin: "0 4px" }}>/</span> {displayUnit}
+          </span>
+        )}
+      </div>
+      {coverageAreas.length === 0 && (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+          backgroundColor: "#f1f5f9",
+          padding: "2px clamp(6px, 1vw, 10px)",
+          borderRadius: "12px",
+          flexShrink: 0
+        }}>
+          <svg width="clamp(10px, 1vw, 12px)" height="clamp(10px, 1vw, 12px)" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 8v8M8 12h8"/>
+          </svg>
+          <span style={{ 
+            fontSize: "clamp(10px, 1vw, 11px)", 
+            color: "#64748b", 
+            fontWeight: "400",
+            whiteSpace: "nowrap"
+          }}>
+            All Locations
+          </span>
+        </div>
       )}
     </div>
+  ) : (
+    <div style={{ 
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      flexWrap: "wrap",
+      gap: "clamp(6px, 1vw, 8px)",
+      position: "relative",
+      zIndex: 1
+    }}>
+      <div style={{ 
+        display: "flex", 
+        alignItems: "center", 
+        gap: "clamp(6px, 1vw, 10px)",
+        flexWrap: "wrap"
+      }}>
+        <span style={{ 
+          fontSize: "clamp(12px, 1.2vw, 13px)", 
+          color: "#64748b", 
+          fontWeight: "450" 
+        }}>
+          Status
+        </span>
+        <span style={{ 
+          fontWeight: "600",
+          color: "#d97706",
+          fontSize: "clamp(12px, 1.2vw, 13px)",
+          backgroundColor: "#fef3c7",
+          padding: "clamp(3px, 0.5vw, 4px) clamp(10px, 1.5vw, 14px)",
+          borderRadius: "20px",
+          border: "1px solid #fcd34d",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          whiteSpace: "nowrap"
+        }}>
+          <span style={{
+            display: "inline-block",
+            width: "4px",
+            height: "4px",
+            backgroundColor: "#d97706",
+            borderRadius: "50%",
+            animation: "pulse 1.5s infinite"
+          }}></span>
+          On Inquiry
+        </span>
+      </div>
+      <span style={{ 
+        fontSize: "clamp(10px, 1vw, 11px)", 
+        color: "#94a3b8",
+        fontWeight: "400",
+        backgroundColor: "#f8fafc",
+        padding: "2px clamp(6px, 1vw, 10px)",
+        borderRadius: "12px",
+        whiteSpace: "nowrap"
+      }}>
+        Ref: ₹{effectiveRate} {displayUnit ? `/ ${displayUnit}` : ""}
+      </span>
+    </div>
   )}
+</div>
 
-  {/* Price Display - Premium Card */}
+{/* Quantity Control - Refined & Responsive */}
+{bookingType !== 'Inquari Booking' && currentUnit?.isCountable !== false && (
   <div style={{
-    padding: "16px 20px",
+    display: "flex",
+    alignItems: "center",
+    gap: "clamp(12px, 2vw, 20px)",
+    padding: "clamp(10px, 1.5vw, 12px) clamp(12px, 2vw, 16px)",
     backgroundColor: "#fafbfc",
     borderRadius: "10px",
     border: "1px solid #eef2f6",
     marginBottom: "16px",
     width: "100%",
-    position: "relative",
-    overflow: "hidden"
+    flexWrap: "wrap"
   }}>
-    {/* Subtle background pattern */}
-    <div style={{
-      position: "absolute",
-      top: "-50%",
-      right: "-20%",
-      width: "200px",
-      height: "200px",
-      background: "radial-gradient(circle, rgba(99,102,241,0.03) 0%, transparent 70%)",
-      borderRadius: "50%",
-      pointerEvents: "none"
-    }}></div>
-    
-    {bookingType !== 'Inquari Booking' ? (
-      <div style={{ 
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: "8px",
-        position: "relative",
-        zIndex: 1
-      }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-          <span style={{ fontSize: "13px", color: "#64748b", fontWeight: "450" }}>Price</span>
-          <span style={{ 
-            fontSize: "28px", 
-            fontWeight: "700", 
-            color: "#0f172a",
-            letterSpacing: "-0.5px",
-            lineHeight: 1.2
-          }}>
-            ₹{effectiveRate}
-          </span>
-          {displayUnit && (
-            <span style={{ color: "#64748b", fontSize: "14px", fontWeight: "400" }}>
-              <span style={{ margin: "0 4px" }}>/</span> {displayUnit}
-            </span>
-          )}
-        </div>
-        {coverageAreas.length === 0 && (
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-            backgroundColor: "#f1f5f9",
-            padding: "2px 10px",
-            borderRadius: "12px"
-          }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M12 8v8M8 12h8"/>
-            </svg>
-            <span style={{ fontSize: "11px", color: "#64748b", fontWeight: "400" }}>
-              All Locations
-            </span>
-          </div>
-        )}
-      </div>
-    ) : (
-      <div style={{ 
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: "8px",
-        position: "relative",
-        zIndex: 1
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ fontSize: "13px", color: "#64748b", fontWeight: "450" }}>Status</span>
-          <span style={{ 
-            fontWeight: "600",
-            color: "#d97706",
-            fontSize: "13px",
-            backgroundColor: "#fef3c7",
-            padding: "4px 14px",
-            borderRadius: "20px",
-            border: "1px solid #fcd34d",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px"
-          }}>
-            <span style={{
-              display: "inline-block",
-              width: "4px",
-              height: "4px",
-              backgroundColor: "#d97706",
-              borderRadius: "50%",
-              animation: "pulse 1.5s infinite"
-            }}></span>
-            On Inquiry
-          </span>
-        </div>
-        <span style={{ 
-          fontSize: "11px", 
-          color: "#94a3b8",
-          fontWeight: "400",
-          backgroundColor: "#f8fafc",
-          padding: "2px 10px",
-          borderRadius: "12px"
-        }}>
-          Ref: ₹{effectiveRate} {displayUnit ? `/ ${displayUnit}` : ""}
-        </span>
-      </div>
-    )}
-  </div>
-
-  {/* Quantity Control - Refined */}
-  {bookingType !== 'Inquari Booking' && currentUnit?.isCountable !== false && (
-    <div style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "20px",
-      padding: "12px 16px",
-      backgroundColor: "#fafbfc",
-      borderRadius: "10px",
-      border: "1px solid #eef2f6",
-      marginBottom: "16px",
-      width: "100%"
+    <div style={{ 
+      display: "flex", 
+      alignItems: "center", 
+      gap: "clamp(6px, 0.8vw, 8px)",
+      flexShrink: 0
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
-          <rect x="3" y="3" width="18" height="18" rx="2"/>
-          <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
-        </svg>
-        <span style={{ 
-          fontSize: "13px", 
-          fontWeight: "500", 
-          color: "#475569"
-        }}>
-          Quantity
-        </span>
-      </div>
-      <div style={{ 
+      <svg width="clamp(14px, 1.5vw, 16px)" height="clamp(14px, 1.5vw, 16px)" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
+      </svg>
+      <span style={{ 
+        fontSize: "clamp(12px, 1.2vw, 13px)", 
+        fontWeight: "500", 
+        color: "#475569"
+      }}>
+        Quantity
+      </span>
+    </div>
+    <div style={{ 
+      display: "flex", 
+      alignItems: "center", 
+      gap: "2px",
+      backgroundColor: "white",
+      borderRadius: "8px",
+      border: "1px solid #e2e8f0",
+      padding: "2px",
+      boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+      flex: "0 1 auto"
+    }}>
+      <button
+        onClick={() => setQuantity(prev => prev > 1 ? prev - 1 : 1)}
+        style={{
+          width: "clamp(30px, 4vw, 34px)",
+          height: "clamp(30px, 4vw, 34px)",
+          border: "none",
+          background: "transparent",
+          cursor: "pointer",
+          fontSize: "clamp(16px, 2vw, 18px)",
+          fontWeight: "500",
+          color: "#475569",
+          borderRadius: "6px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "all 0.15s ease",
+          touchAction: "manipulation"
+        }}
+        onMouseEnter={(e) => {
+          e.target.style.backgroundColor = "#f1f5f9";
+          e.target.style.color = "#0f172a";
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.backgroundColor = "transparent";
+          e.target.style.color = "#475569";
+        }}
+        onTouchStart={(e) => {
+          e.target.style.backgroundColor = "#f1f5f9";
+        }}
+        onTouchEnd={(e) => {
+          e.target.style.backgroundColor = "transparent";
+        }}
+      >
+        −
+      </button>
+      <span style={{ 
+        minWidth: "clamp(28px, 4vw, 36px)", 
+        textAlign: "center", 
+        fontWeight: "600",
+        fontSize: "clamp(14px, 1.8vw, 15px)",
+        color: "#0f172a",
+        padding: "0 4px",
+        fontFeatureSettings: "'tnum'"
+      }}>
+        {String(quantity).padStart(2, '0')}
+      </span>
+      <button
+        onClick={() => setQuantity(prev => prev + 1)}
+        style={{
+          width: "clamp(30px, 4vw, 34px)",
+          height: "clamp(30px, 4vw, 34px)",
+          border: "none",
+          background: "transparent",
+          cursor: "pointer",
+          fontSize: "clamp(16px, 2vw, 18px)",
+          fontWeight: "500",
+          color: "#475569",
+          borderRadius: "6px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          transition: "all 0.15s ease",
+          touchAction: "manipulation"
+        }}
+        onMouseEnter={(e) => {
+          e.target.style.backgroundColor = "#f1f5f9";
+          e.target.style.color = "#0f172a";
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.backgroundColor = "transparent";
+          e.target.style.color = "#475569";
+        }}
+        onTouchStart={(e) => {
+          e.target.style.backgroundColor = "#f1f5f9";
+        }}
+        onTouchEnd={(e) => {
+          e.target.style.backgroundColor = "transparent";
+        }}
+      >
+        +
+      </button>
+    </div>
+  </div>
+)}
+
+{/* Total Amount - Premium Gradient & Responsive */}
+{bookingType !== 'Inquari Booking' ? (
+  <div style={{ 
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "clamp(14px, 2.5vw, 18px) clamp(16px, 3vw, 22px)",
+    background: "linear-gradient(135deg, #f0f4ff 0%, #e6edff 100%)",
+    borderRadius: "12px",
+    border: "1px solid #c7d9ff",
+    marginBottom: "20px",
+    width: "100%",
+    position: "relative",
+    overflow: "hidden",
+    flexWrap: "wrap",
+    gap: "clamp(8px, 1.5vw, 12px)"
+  }}>
+    <div style={{ 
+      position: "absolute", 
+      top: 0, 
+      right: 0, 
+      width: "100%", 
+      height: "100%", 
+      background: "linear-gradient(90deg, transparent 0%, rgba(99,102,241,0.05) 100%)", 
+      pointerEvents: "none" 
+    }}></div>
+    <div style={{ position: "relative", zIndex: 1 }}>
+      <span style={{ 
+        fontSize: "clamp(12px, 1.3vw, 13px)", 
+        fontWeight: "600", 
+        color: "#4338ca", 
+        letterSpacing: "0.3px", 
         display: "flex", 
         alignItems: "center", 
-        gap: "2px",
-        backgroundColor: "white",
-        borderRadius: "8px",
-        border: "1px solid #e2e8f0",
-        padding: "2px",
-        boxShadow: "0 1px 2px rgba(0,0,0,0.04)"
+        gap: "6px" 
       }}>
-        <button
-          onClick={() => setQuantity(prev => prev > 1 ? prev - 1 : 1)}
-          style={{
-            width: "34px",
-            height: "34px",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            fontSize: "18px",
-            fontWeight: "500",
-            color: "#475569",
-            borderRadius: "6px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "all 0.15s ease"
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.backgroundColor = "#f1f5f9";
-            e.target.style.color = "#0f172a";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.backgroundColor = "transparent";
-            e.target.style.color = "#475569";
-          }}
-        >
-          −
-        </button>
-        <span style={{ 
-          minWidth: "36px", 
-          textAlign: "center", 
-          fontWeight: "600",
-          fontSize: "15px",
-          color: "#0f172a",
-          padding: "0 4px",
-          fontFeatureSettings: "'tnum'"
-        }}>
-          {String(quantity).padStart(2, '0')}
-        </span>
-        <button
-          onClick={() => setQuantity(prev => prev + 1)}
-          style={{
-            width: "34px",
-            height: "34px",
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            fontSize: "18px",
-            fontWeight: "500",
-            color: "#475569",
-            borderRadius: "6px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "all 0.15s ease"
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.backgroundColor = "#f1f5f9";
-            e.target.style.color = "#0f172a";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.backgroundColor = "transparent";
-            e.target.style.color = "#475569";
-          }}
-        >
-          +
-        </button>
-      </div>
+        <svg width="clamp(16px, 1.8vw, 18px)" height="clamp(16px, 1.8vw, 18px)" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+        Total Amount
+      </span>
+      <span style={{ 
+        display: "block",
+        fontSize: "clamp(10px, 1vw, 11px)", 
+        color: "#6366f1",
+        fontWeight: "400",
+        marginTop: "2px",
+        letterSpacing: "0.2px"
+      }}>
+        Inclusive of all taxes & charges
+      </span>
     </div>
-  )}
-
-  {/* Total Amount - Premium Gradient */}
-  {bookingType !== 'Inquari Booking' ? (
-    <div style={{ 
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "18px 22px",
-      background: "linear-gradient(135deg, #f0f4ff 0%, #e6edff 100%)",
-      borderRadius: "12px",
-      border: "1px solid #c7d9ff",
-      marginBottom: "20px",
-      width: "100%",
+    <span style={{ 
+      fontSize: "clamp(24px, 4.5vw, 30px)", 
+      fontWeight: "700", 
+      color: "#1e1b4b",
+      letterSpacing: "-0.5px",
       position: "relative",
-      overflow: "hidden"
+      zIndex: 1
     }}>
-      <div style={{ position: "absolute", top: 0, right: 0, width: "100%", height: "100%", background: "linear-gradient(90deg, transparent 0%, rgba(99,102,241,0.05) 100%)", pointerEvents: "none" }}></div>
-      <div style={{ position: "relative", zIndex: 1 }}>
-        <span style={{ fontSize: "13px", fontWeight: "600", color: "#4338ca", letterSpacing: "0.3px", display: "flex", alignItems: "center", gap: "6px" }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2">
+      ₹{totalAmount}
+    </span>
+  </div>
+) : (
+  <div style={{ 
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "clamp(14px, 2.5vw, 18px) clamp(16px, 3vw, 22px)",
+    backgroundColor: "#fffbeb",
+    borderRadius: "12px",
+    border: "1px solid #fde68a",
+    marginBottom: "20px",
+    width: "100%",
+    flexWrap: "wrap",
+    gap: "clamp(8px, 1.5vw, 12px)"
+  }}>
+    <div>
+      <span style={{ 
+        fontSize: "clamp(12px, 1.3vw, 13px)", 
+        fontWeight: "600", 
+        color: "#92400e", 
+        letterSpacing: "0.3px" 
+      }}>
+        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <svg width="clamp(16px, 1.8vw, 18px)" height="clamp(16px, 1.8vw, 18px)" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2">
             <circle cx="12" cy="12" r="10"/>
-            <path d="M12 6v6l4 2"/>
+            <path d="M12 16v-4M12 8h.01"/>
           </svg>
           Total Amount
         </span>
-        <span style={{ 
-          display: "block",
-          fontSize: "11px", 
-          color: "#6366f1",
-          fontWeight: "400",
-          marginTop: "2px",
-          letterSpacing: "0.2px"
-        }}>
-          Inclusive of all taxes & charges
-        </span>
-      </div>
+      </span>
       <span style={{ 
-        fontSize: "30px", 
-        fontWeight: "700", 
-        color: "#1e1b4b",
-        letterSpacing: "-0.5px",
-        position: "relative",
-        zIndex: 1
+        display: "block",
+        fontSize: "clamp(10px, 1vw, 11px)", 
+        color: "#b45309",
+        fontWeight: "400",
+        marginTop: "2px"
       }}>
-        ₹{totalAmount}
+        Final price confirmed after inquiry
       </span>
     </div>
-  ) : (
-    <div style={{ 
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "18px 22px",
-      backgroundColor: "#fffbeb",
-      borderRadius: "12px",
-      border: "1px solid #fde68a",
-      marginBottom: "20px",
-      width: "100%"
+    <span style={{ 
+      fontSize: "clamp(14px, 1.8vw, 16px)", 
+      fontWeight: "600", 
+      color: "#d97706",
+      backgroundColor: "#fef3c7",
+      padding: "clamp(3px, 0.5vw, 4px) clamp(12px, 2vw, 16px)",
+      borderRadius: "20px",
+      border: "1px solid #fcd34d",
+      whiteSpace: "nowrap"
     }}>
-      <div>
-        <span style={{ fontSize: "13px", fontWeight: "600", color: "#92400e", letterSpacing: "0.3px" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M12 16v-4M12 8h.01"/>
-            </svg>
-            Total Amount
-          </span>
-        </span>
-        <span style={{ 
-          display: "block",
-          fontSize: "11px", 
-          color: "#b45309",
-          fontWeight: "400",
-          marginTop: "2px"
-        }}>
-          Final price confirmed after inquiry
-        </span>
-      </div>
-      <span style={{ 
-        fontSize: "16px", 
-        fontWeight: "600", 
-        color: "#d97706",
-        backgroundColor: "#fef3c7",
-        padding: "4px 16px",
-        borderRadius: "20px",
-        border: "1px solid #fcd34d"
-      }}>
-        Awaiting Inquiry
-      </span>
-    </div>
-  )}
-
+      Awaiting Inquiry
+    </span>
+  </div>
+)}
   {/* Action Buttons - Premium */}
   <div style={{
     display: "flex",
@@ -1572,48 +1671,60 @@ const handleBooking = async (e) => {
 
   {/* Trust & Features */}
   <div style={{
-    marginTop: "20px",
-    padding: "14px 0 0 0",
-    borderTop: "1px solid #f1f5f9",
-    width: "100%",
-    display: "flex",
-    justifyContent: "center",
-    gap: "24px",
-    flexWrap: "wrap"
-  }}>
-    {[
-      { icon: "✓", text: "Secure Booking" },
-      { icon: "✓", text: "Best Price Guarantee" },
-      { icon: "✓", text: "Instant Confirmation" },
-      { icon: "✓", text: "24/7 Support" }
-    ].map((item, index) => (
-      <div key={index} style={{
-        display: "flex",
+  marginTop: "20px",
+  padding: "14px 0 0 0",
+  borderTop: "1px solid #f1f5f9",
+  width: "100%",
+  display: "flex",
+  justifyContent: "center",
+  gap: "clamp(12px, 3vw, 24px)", // Responsive gap
+  flexWrap: "wrap",
+  paddingLeft: "clamp(10px, 2vw, 0)", // Add some padding on small screens
+  paddingRight: "clamp(10px, 2vw, 0)"
+}}>
+  {[
+    { icon: "✓", text: "Secure Booking" },
+    { icon: "✓", text: "Best Price Guarantee" },
+    { icon: "✓", text: "Instant Confirmation" },
+    { icon: "✓", text: "24/7 Support" }
+  ].map((item, index) => (
+    <div key={index} style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "6px",
+      fontSize: "clamp(10px, 1.2vw, 13px)", // Responsive font size
+      color: "#64748b",
+      fontWeight: "450",
+      letterSpacing: "0.2px",
+      whiteSpace: "nowrap", // Prevents text from wrapping
+      // For very small screens, allow text to wrap
+      "@media (max-width: 480px)": {
+        whiteSpace: "normal"
+      }
+    }}>
+      <span style={{
+        display: "inline-flex",
         alignItems: "center",
-        gap: "6px",
-        fontSize: "11px",
-        color: "#64748b",
-        fontWeight: "450",
-        letterSpacing: "0.2px"
+        justifyContent: "center",
+        width: "clamp(14px, 1.5vw, 18px)", // Responsive size
+        height: "clamp(14px, 1.5vw, 18px)",
+        backgroundColor: "#eef2ff",
+        color: "#6366f1",
+        borderRadius: "50%",
+        fontSize: "clamp(8px, 0.8vw, 10px)", // Responsive icon size
+        fontWeight: "700",
+        flexShrink: 0 // Prevents icon from shrinking
       }}>
-        <span style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "16px",
-          height: "16px",
-          backgroundColor: "#eef2ff",
-          color: "#6366f1",
-          borderRadius: "50%",
-          fontSize: "9px",
-          fontWeight: "700"
-        }}>
-          {item.icon}
-        </span>
+        {item.icon}
+      </span>
+      <span style={{
+        fontSize: "clamp(10px, 1.2vw, 13px)"
+      }}>
         {item.text}
-      </div>
-    ))}
-  </div>
+      </span>
+    </div>
+  ))}
+</div>
 
   {/* Add keyframe animation for pulse */}
   <style>{`
