@@ -832,7 +832,7 @@ const handleBooking = async (e) => {
     <div>
       <Navbar />
 
-      <div style={{ marginTop: '10px', padding: '0 20px' }}>
+      <div style={{ marginTop: '10px' }}>
         <div className="col-md-12 text-left">
           <div className="mb-3 bs">
             <div className="image-carousel position-relative" style={{
