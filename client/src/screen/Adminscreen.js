@@ -1494,454 +1494,595 @@ const BookingBillModal = ({ booking, onClose }) => {
     };
 
     return (
-        <div className="modal-backdrop" onClick={onClose}>
-            <div className="bill-modal" onClick={e => e.stopPropagation()} style={{
-                background: 'white',
-                borderRadius: '12px',
-                padding: '30px',
-                width: '90%',
-                maxWidth: '900px',
-                maxHeight: '90vh',
-                overflowY: 'auto',
-                position: 'relative',
-                boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
+   <div className="modal-backdrop" onClick={onClose}>
+    <div className="bill-modal" onClick={e => e.stopPropagation()} style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '30px',
+        width: '90%',
+        maxWidth: '900px',
+        maxHeight: '90vh',
+        overflowY: 'auto',
+        position: 'relative',
+        boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+        margin: '20px auto',
+        // Responsive padding
+        '@media (maxWidth: 600px)': {
+            padding: '15px',
+            width: '95%',
+            maxHeight: '95vh',
+            borderRadius: '8px',
+            margin: '10px auto'
+        }
+    }}>
+        {/* Header with close button */}
+        <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '25px',
+            borderBottom: '2px solid #f0f0f0',
+            paddingBottom: '15px',
+            position: 'sticky',
+            top: 0,
+            background: 'white',
+            zIndex: 10,
+            flexWrap: 'wrap',
+            gap: '10px',
+            '@media (maxWidth: 600px)': {
+                marginBottom: '15px',
+                paddingBottom: '10px'
+            }
+        }}>
+            <h2 style={{ 
+                margin: 0, 
+                color: '#333',
+                fontSize: 'clamp(1rem, 4vw, 1.5rem)',
+                '@media (maxWidth: 600px)': {
+                    fontSize: '1.1rem'
+                }
             }}>
-                {/* Header with close button */}
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '25px',
-                    borderBottom: '2px solid #f0f0f0',
-                    paddingBottom: '15px',
-                    position: 'sticky',
-                    top: 0,
-                    background: 'white',
-                    zIndex: 10
-                }}>
-                    <h2 style={{ margin: 0, color: '#333' }}>
-                        {booking.bookingType === 'Inquari Booking' ? 'Inquiry Details' : 'Booking Invoice'}
-                    </h2>
-                    <button onClick={onClose} style={{
-                        background: 'none',
-                        border: 'none',
-                        fontSize: '24px',
-                        cursor: 'pointer',
-                        color: '#666',
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }}>&times;</button>
-                </div>
+                {booking.bookingType === 'Inquari Booking' ? 'Inquiry Details' : 'Booking Invoice'}
+            </h2>
+            <button onClick={onClose} style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '24px',
+                cursor: 'pointer',
+                color: '#666',
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                '@media (maxWidth: 600px)': {
+                    width: '32px',
+                    height: '32px',
+                    fontSize: '20px'
+                }
+            }}>&times;</button>
+        </div>
 
-                {/* Invoice Header */}
-                <div style={{
+        {/* Invoice Header */}
+        <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginBottom: '30px',
+            padding: '20px',
+            background: '#f8f9fa',
+            borderRadius: '8px',
+            flexWrap: 'wrap',
+            gap: '20px',
+            '@media (maxWidth: 600px)': {
+                padding: '15px',
+                marginBottom: '20px',
+                flexDirection: 'column',
+                gap: '15px'
+            }
+        }}>
+            <div>
+                <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>Booking Details</h4>
+           
+                <p style={{ 
+                    margin: '5px 0',
+                    fontSize: 'clamp(0.85rem, 2vw, 1rem)',
                     display: 'flex',
-                    justifyContent: 'space-between',
-                    marginBottom: '30px',
-                    padding: '20px',
-                    background: '#f8f9fa',
-                    borderRadius: '8px',
                     flexWrap: 'wrap',
-                    gap: '20px'
+                    alignItems: 'center',
+                    gap: '5px'
                 }}>
-                    <div>
-                        <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>Booking Details</h4>
-                        <p style={{ margin: '5px 0' }}><strong>Booking ID:</strong> #{booking._id}</p>
-                        <p style={{ margin: '5px 0' }}><strong>Booking Type:</strong>
-                            <span style={{
-                                background: booking.bookingType === 'Inquari Booking' ? '#fff3cd' : '#e3f2fd',
-                                color: booking.bookingType === 'Inquari Booking' ? '#856404' : '#1976d2',
-                                padding: '3px 8px',
-                                borderRadius: '4px',
-                                marginLeft: '10px',
-                                fontSize: '0.9em'
-                            }}>
-                                {booking.bookingType}
-                            </span>
-                        </p>
-                        <p style={{ margin: '5px 0' }}><strong>Status:</strong>
-                            <span className={`status-badge status-${booking.status}`} style={{ marginLeft: '10px' }}>
-                                {booking.status}
-                            </span>
-                        </p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                        <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>Date Information</h4>
-                        <p style={{ margin: '5px 0' }}><strong>Booked On:</strong> {formatDate(booking.createdAt)}</p>
-                        <p style={{ margin: '5px 0' }}><strong>Service Date:</strong> {
-                            normalizedSelectedDates.length > 0
-                                ? (normalizedSelectedDates.length > 1
-                                    ? `${formatDateOnly(normalizedSelectedDates[0])} to ${formatDateOnly(normalizedSelectedDates[normalizedSelectedDates.length - 1])}`
-                                    : formatDateOnly(normalizedSelectedDates[0]))
-                                : 'N/A'
-                        }</p>
-                    </div>
-                </div>
-
-                {/* Service Information */}
-                <div style={{ marginBottom: '25px' }}>
-                    <h4 style={{
-                        borderBottom: '1px solid #ddd',
-                        paddingBottom: '8px',
-                        color: '#444',
-                        marginBottom: '15px'
-                    }}>Service Information</h4>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <tbody>
-                            <tr>
-                                <td style={{ padding: '8px 0', width: '150px', fontWeight: 'bold' }}>Service Name:</td>
-                                <td style={{ padding: '8px 0' }}>{booking.service}</td>
-                            </tr>
-                            {booking.unit && (
-                                <tr>
-                                    <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Unit:</td>
-                                    <td style={{ padding: '8px 0' }}>{booking.customUnit || booking.unit}</td>
-                                </tr>
-                            )}
-                            {booking.quantity > 1 && (
-                                <tr>
-                                    <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Quantity:</td>
-                                    <td style={{ padding: '8px 0' }}>{booking.quantity}</td>
-                                </tr>
-                            )}
-                            {booking.daysCount > 1 && (
-                                <tr>
-                                    <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Number of Days:</td>
-                                    <td style={{ padding: '8px 0' }}>{booking.daysCount}</td>
-                                </tr>
-                            )}
-                            {booking.slots && booking.slots.length > 0 && (
-                                <tr>
-                                    <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Number of Slots:</td>
-                                    <td style={{ padding: '8px 0' }}>{booking.slots.length}</td>
-                                </tr>
-                            )}
-                            {booking.description && (
-                                <tr>
-                                    <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Description:</td>
-                                    <td style={{ padding: '8px 0' }}>{booking.description}</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Selected Dates */}
-                {normalizedSelectedDates.length > 0 && (
-                    <div style={{ marginBottom: '25px' }}>
-                        <h4 style={{
-                            borderBottom: '1px solid #ddd',
-                            paddingBottom: '8px',
-                            color: '#444',
-                            marginBottom: '15px'
-                        }}>Selected Dates</h4>
-                        <div style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: '10px',
-                            padding: '10px 0'
-                        }}>
-                            {normalizedSelectedDates.map((date, index) => (
-                                <span key={index} style={{
-                                    background: '#e3f2fd',
-                                    color: '#1976d2',
-                                    padding: '5px 12px',
-                                    borderRadius: '20px',
-                                    fontSize: '14px',
-                                    fontWeight: '500'
-                                }}>
-                                    {formatDateOnly(date)}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Time Slots */}
-                {booking.slots && Array.isArray(booking.slots) && booking.slots.length > 0 && (
-                    <div style={{ marginBottom: '25px' }}>
-                        <h4 style={{
-                            borderBottom: '1px solid #ddd',
-                            paddingBottom: '8px',
-                            color: '#444',
-                            marginBottom: '15px'
-                        }}>Time Slots</h4>
-                        <div style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            padding: '10px 0'
-                        }}>
-                            {formatTimeSlots()}
-                        </div>
-                    </div>
-                )}
-
-                {/* Location Information */}
-                <div style={{ marginBottom: '25px' }}>
-                    <h4 style={{
-                        borderBottom: '1px solid #ddd',
-                        paddingBottom: '8px',
-                        color: '#444',
-                        marginBottom: '15px'
-                    }}>Location Information</h4>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <tbody>
-                            <tr>
-                                <td style={{ padding: '8px 0', width: '150px', fontWeight: 'bold' }}>Location Type:</td>
-                                <td style={{ padding: '8px 0' }}>{booking.locationType}</td>
-                            </tr>
-                            {booking.locationType === 'Simple' && (
-                                <tr>
-                                    <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Address:</td>
-                                    <td style={{ padding: '8px 0' }}>{booking.address}</td>
-                                </tr>
-                            )}
-                            {booking.locationType === 'Rental' && (
-                                <>
-                                    <tr>
-                                        <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Pickup:</td>
-                                        <td style={{ padding: '8px 0' }}>{booking.pickupAddress}</td>
-                                    </tr>
-                                    <tr>
-                                        <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Drop-off:</td>
-                                        <td style={{ padding: '8px 0' }}>{booking.dropAddress}</td>
-                                    </tr>
-                                    {booking.returnTrip && (
-                                        <tr>
-                                            <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Return Trip:</td>
-                                            <td style={{ padding: '8px 0' }}>Yes</td>
-                                        </tr>
-                                    )}
-                                </>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Optional Services - This is the detailed breakdown you want */}
-                {booking.optionalInputs && booking.optionalInputs.length > 0 && booking.bookingType !== 'Inquari Booking' && (
-                    <div style={{ marginBottom: '25px' }}>
-                        <h4 style={{
-                            borderBottom: '1px solid #ddd',
-                            paddingBottom: '8px',
-                            color: '#444',
-                            marginBottom: '15px'
-                        }}>Optional Services</h4>
-                        <div style={{
-                            background: '#f5f5f5',
-                            padding: '15px',
-                            borderRadius: '8px'
-                        }}>
-                            {booking.optionalInputs.map((input, index) => {
-                                const count = input.count || 1;
-                                const price = input.price || 0;
-                                
-                                // Get display unit
-                                const getDisplayUnit = (input) => {
-                                    if (input.customUnit) return input.customUnit;
-                                    const unit = input.unit || 'per item';
-                                    if (unit.startsWith('per-')) {
-                                        return unit.replace('per-', '').replace(/-/g, ' ');
-                                    }
-                                    return unit;
-                                };
-                                
-                                const displayUnit = getDisplayUnit(input);
-                                
-                                // Calculate multiplier based on booking data
-                                let multiplier = 1;
-                                const inputUnit = input.unit || '';
-                                const mainUnit = booking.unit || 'per day';
-                                
-                                if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
-                                    (mainUnit.includes('day') || mainUnit === 'per-day')) {
-                                    multiplier = (booking.daysCount || 1) * (booking.quantity || 1);
-                                } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
-                                    (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
-                                    multiplier = ((booking.slots && booking.slots.length) || 1) * (booking.quantity || 1);
-                                } else {
-                                    multiplier = booking.quantity || 1;
-                                }
-                                
-                                const itemTotal = count * price * multiplier;
-                                
-                                return (
-                                    <div key={index} style={{
-                                        marginTop: '8px',
-                                        padding: '8px',
-                                        background: 'white',
-                                        borderRadius: '5px',
-                                        border: '1px solid #eee'
-                                    }}>
-                                        <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            fontSize: '0.95em'
-                                        }}>
-                                            <span>
-                                                <strong>{input.name || `Option ${index + 1}`}</strong>
-                                                {displayUnit && <span style={{ color: '#666', fontSize: '0.9em', marginLeft: '5px' }}>({displayUnit})</span>}
-                                            </span>
-                                            <span style={{ fontWeight: 'bold', color: '#1976d2' }}>₹{itemTotal.toFixed(2)}</span>
-                                        </div>
-                                        
-                                        <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            fontSize: '0.85em',
-                                            color: '#666',
-                                            marginTop: '4px'
-                                        }}>
-                                            <span>
-                                                {count} × ₹{price}
-                                                {displayUnit && ` /${displayUnit}`}
-                                                {multiplier > 1 && ` × ${multiplier}`}
-                                            </span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {/* Extra Services */}
-                {booking.extraInputs && booking.extraInputs.length > 0 && booking.bookingType !== 'Inquari Booking' && (
-                    <div style={{ marginBottom: '25px' }}>
-                        <h4 style={{
-                            borderBottom: '1px solid #ddd',
-                            paddingBottom: '8px',
-                            color: '#444',
-                            marginBottom: '15px'
-                        }}>Extra Services</h4>
-                        <div style={{
-                            background: '#f5f5f5',
-                            padding: '15px',
-                            borderRadius: '8px'
-                        }}>
-                            {booking.extraInputs.map((input, index) => {
-                                const price = input.price || 0;
-                                
-                                return (
-                                    <div key={index} style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        padding: '8px',
-                                        background: 'white',
-                                        borderRadius: '5px',
-                                        marginTop: '5px',
-                                        border: '1px solid #eee'
-                                    }}>
-                                        <span>{input.name}</span>
-                                        <span style={{ fontWeight: 'bold', color: '#f57c00' }}>₹{price.toFixed(2)}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {/* Customer Information */}
-                <div style={{ marginBottom: '25px' }}>
-                    <h4 style={{
-                        borderBottom: '1px solid #ddd',
-                        paddingBottom: '8px',
-                        color: '#444',
-                        marginBottom: '15px'
-                    }}>Customer Information</h4>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <tbody>
-                            <tr>
-                                <td style={{ padding: '8px 0', width: '120px', fontWeight: 'bold' }}>Name:</td>
-                                <td style={{ padding: '8px 0' }}>{booking.name}</td>
-                            </tr>
-                            <tr>
-                                <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Phone:</td>
-                                <td style={{ padding: '8px 0' }}>{booking.phone}</td>
-                            </tr>
-                            <tr>
-                                <td style={{ padding: '8px 0', fontWeight: 'bold' }}>User ID:</td>
-                                <td style={{ padding: '8px 0' }}>{booking.userid}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Price Summary - Using the renderBasePriceBreakdown function */}
-                <div style={{
-                    marginTop: '30px',
-                    borderTop: '2px solid #f0f0f0',
-                    paddingTop: '20px'
-                }}>
-                    <h4 style={{ marginBottom: '15px', color: '#444' }}>Payment Summary</h4>
-                    {renderBasePriceBreakdown()}
-                </div>
-
-                {/* Footer */}
-                <div style={{
-                    marginTop: '30px',
-                    textAlign: 'center',
-                    color: '#888',
-                    fontSize: '0.9em',
-                    borderTop: '1px solid #f0f0f0',
-                    paddingTop: '20px'
-                }}>
-                    <p>Thank you for choosing our service!</p>
-                    <p>For any queries, please contact our support team.</p>
-                </div>
-
-                {/* Action buttons */}
-                <div style={{
+                    <strong>Booking Type:</strong>
+                    <span style={{
+                        background: booking.bookingType === 'Inquari Booking' ? '#fff3cd' : '#e3f2fd',
+                        color: booking.bookingType === 'Inquari Booking' ? '#856404' : '#1976d2',
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        fontSize: '0.9em',
+                        display: 'inline-block'
+                    }}>
+                        {booking.bookingType}
+                    </span>
+                </p>
+                <p style={{ 
+                    margin: '5px 0',
+                    fontSize: 'clamp(0.85rem, 2vw, 1rem)',
                     display: 'flex',
-                    justifyContent: 'flex-end',
-                    gap: '10px',
-                    marginTop: '20px',
-                    position: 'sticky',
-                    bottom: 0,
-                    background: 'white',
-                    padding: '20px 0 0 0',
-                    borderTop: '1px solid #f0f0f0'
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: '5px'
                 }}>
-                    <button
-                        onClick={() => window.print()}
-                        style={{
-                            padding: '10px 25px',
-                            background: '#1976d2',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '5px',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            fontWeight: '500',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '8px'
-                        }}
-                    >
-                        🖨️ Print Bill
-                    </button>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            padding: '10px 25px',
-                            background: '#f5f5f5',
-                            color: '#333',
-                            border: '1px solid #ddd',
-                            borderRadius: '5px',
-                            cursor: 'pointer',
-                            fontSize: '14px',
-                            fontWeight: '500'
-                        }}
-                    >
-                        Close
-                    </button>
-                </div>
+                    <strong>Status:</strong>
+                    <span className={`status-badge status-${booking.status}`} style={{ marginLeft: '10px' }}>
+                        {booking.status}
+                    </span>
+                </p>
+            </div>
+          <div style={{ 
+    textAlign: 'left',
+  alignSelf: 'flex-start',
+        width: '100%',
+        marginLeft: '0',
+        paddingLeft: '0',
+            '@media (maxWidth: 600px)': {
+        textAlign: 'left',
+        alignSelf: 'flex-start',
+        width: '100%',
+        marginLeft: '0',
+        paddingLeft: '0'
+    }
+}}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#555' }}>Date Information</h4>
+                <p style={{ 
+                    margin: '5px 0',
+                    fontSize: 'clamp(0.85rem, 2vw, 1rem)',
+                    wordBreak: 'break-word'
+                }}>
+                    <strong>Booked On:</strong> {formatDate(booking.createdAt)}
+                </p>
+                <p style={{ 
+                    margin: '5px 0',
+                    fontSize: 'clamp(0.85rem, 2vw, 1rem)',
+                    wordBreak: 'break-word'
+                }}>
+                    <strong>Service Date:</strong> {
+                        normalizedSelectedDates.length > 0
+                            ? (normalizedSelectedDates.length > 1
+                                ? `${formatDateOnly(normalizedSelectedDates[0])} to ${formatDateOnly(normalizedSelectedDates[normalizedSelectedDates.length - 1])}`
+                                : formatDateOnly(normalizedSelectedDates[0]))
+                            : 'N/A'
+                    }
+                </p>
             </div>
         </div>
+
+        {/* Service Information */}
+        <div style={{ marginBottom: '25px' }}>
+            <h4 style={{
+                borderBottom: '1px solid #ddd',
+                paddingBottom: '8px',
+                color: '#444',
+                marginBottom: '15px',
+                fontSize: 'clamp(1rem, 2.5vw, 1.1rem)'
+            }}>Service Information</h4>
+            <table style={{ 
+                width: '100%', 
+                borderCollapse: 'collapse',
+                fontSize: 'clamp(0.85rem, 2vw, 1rem)'
+            }}>
+                <tbody>
+                    <tr>
+                        <td style={{ 
+                            padding: '8px 0', 
+                            width: '150px', 
+                            fontWeight: 'bold',
+                            '@media (maxWidth: 600px)': {
+                                width: '100px'
+                            }
+                        }}>Service Name:</td>
+                        <td style={{ padding: '8px 0', wordBreak: 'break-word' }}>{booking.service}</td>
+                    </tr>
+                    {booking.unit && (
+                        <tr>
+                            <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Unit:</td>
+                            <td style={{ padding: '8px 0', wordBreak: 'break-word' }}>{booking.customUnit || booking.unit}</td>
+                        </tr>
+                    )}
+                    {booking.quantity > 1 && (
+                        <tr>
+                            <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Quantity:</td>
+                            <td style={{ padding: '8px 0' }}>{booking.quantity}</td>
+                        </tr>
+                    )}
+                    {booking.daysCount > 1 && (
+                        <tr>
+                            <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Number of Days:</td>
+                            <td style={{ padding: '8px 0' }}>{booking.daysCount}</td>
+                        </tr>
+                    )}
+                    {booking.slots && booking.slots.length > 0 && (
+                        <tr>
+                            <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Number of Slots:</td>
+                            <td style={{ padding: '8px 0' }}>{booking.slots.length}</td>
+                        </tr>
+                    )}
+                    {booking.description && (
+                        <tr>
+                            <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Description:</td>
+                            <td style={{ padding: '8px 0', wordBreak: 'break-word' }}>{booking.description}</td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
+
+        {/* Selected Dates */}
+        {normalizedSelectedDates.length > 0 && (
+            <div style={{ marginBottom: '25px' }}>
+                <h4 style={{
+                    borderBottom: '1px solid #ddd',
+                    paddingBottom: '8px',
+                    color: '#444',
+                    marginBottom: '15px',
+                    fontSize: 'clamp(1rem, 2.5vw, 1.1rem)'
+                }}>Selected Dates</h4>
+                <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                    padding: '10px 0'
+                }}>
+                    {normalizedSelectedDates.map((date, index) => (
+                        <span key={index} style={{
+                            background: '#e3f2fd',
+                            color: '#1976d2',
+                            padding: '5px 12px',
+                            borderRadius: '20px',
+                            fontSize: 'clamp(12px, 2vw, 14px)',
+                            fontWeight: '500'
+                        }}>
+                            {formatDateOnly(date)}
+                        </span>
+                    ))}
+                </div>
+            </div>
+        )}
+
+        {/* Time Slots */}
+        {booking.slots && Array.isArray(booking.slots) && booking.slots.length > 0 && (
+            <div style={{ marginBottom: '25px' }}>
+                <h4 style={{
+                    borderBottom: '1px solid #ddd',
+                    paddingBottom: '8px',
+                    color: '#444',
+                    marginBottom: '15px',
+                    fontSize: 'clamp(1rem, 2.5vw, 1.1rem)'
+                }}>Time Slots</h4>
+                <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    padding: '10px 0'
+                }}>
+                    {formatTimeSlots()}
+                </div>
+            </div>
+        )}
+
+        {/* Location Information */}
+        <div style={{ marginBottom: '25px' }}>
+            <h4 style={{
+                borderBottom: '1px solid #ddd',
+                paddingBottom: '8px',
+                color: '#444',
+                marginBottom: '15px',
+                fontSize: 'clamp(1rem, 2.5vw, 1.1rem)'
+            }}>Location Information</h4>
+            <table style={{ 
+                width: '100%', 
+                borderCollapse: 'collapse',
+                fontSize: 'clamp(0.85rem, 2vw, 1rem)'
+            }}>
+                <tbody>
+                    <tr>
+                        <td style={{ 
+                            padding: '8px 0', 
+                            width: '150px', 
+                            fontWeight: 'bold',
+                            '@media (maxWidth: 600px)': {
+                                width: '100px'
+                            }
+                        }}>Location Type:</td>
+                        <td style={{ padding: '8px 0' }}>{booking.locationType}</td>
+                    </tr>
+                    {booking.locationType === 'Simple' && (
+                        <tr>
+                            <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Address:</td>
+                            <td style={{ padding: '8px 0', wordBreak: 'break-word' }}>{booking.address}</td>
+                        </tr>
+                    )}
+                    {booking.locationType === 'Rental' && (
+                        <>
+                            <tr>
+                                <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Pickup:</td>
+                                <td style={{ padding: '8px 0', wordBreak: 'break-word' }}>{booking.pickupAddress}</td>
+                            </tr>
+                            <tr>
+                                <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Drop-off:</td>
+                                <td style={{ padding: '8px 0', wordBreak: 'break-word' }}>{booking.dropAddress}</td>
+                            </tr>
+                            {booking.returnTrip && (
+                                <tr>
+                                    <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Return Trip:</td>
+                                    <td style={{ padding: '8px 0' }}>Yes</td>
+                                </tr>
+                            )}
+                        </>
+                    )}
+                </tbody>
+            </table>
+        </div>
+
+        {/* Optional Services */}
+        {booking.optionalInputs && booking.optionalInputs.length > 0 && booking.bookingType !== 'Inquari Booking' && (
+            <div style={{ marginBottom: '25px' }}>
+                <h4 style={{
+                    borderBottom: '1px solid #ddd',
+                    paddingBottom: '8px',
+                    color: '#444',
+                    marginBottom: '15px',
+                    fontSize: 'clamp(1rem, 2.5vw, 1.1rem)'
+                }}>Optional Services</h4>
+                <div style={{
+                    background: '#f5f5f5',
+                    padding: '15px',
+                    borderRadius: '8px',
+                    '@media (maxWidth: 600px)': {
+                        padding: '10px'
+                    }
+                }}>
+                    {booking.optionalInputs.map((input, index) => {
+                        const count = input.count || 1;
+                        const price = input.price || 0;
+                        
+                        const getDisplayUnit = (input) => {
+                            if (input.customUnit) return input.customUnit;
+                            const unit = input.unit || 'per item';
+                            if (unit.startsWith('per-')) {
+                                return unit.replace('per-', '').replace(/-/g, ' ');
+                            }
+                            return unit;
+                        };
+                        
+                        const displayUnit = getDisplayUnit(input);
+                        let multiplier = 1;
+                        const inputUnit = input.unit || '';
+                        const mainUnit = booking.unit || 'per day';
+                        
+                        if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
+                            (mainUnit.includes('day') || mainUnit === 'per-day')) {
+                            multiplier = (booking.daysCount || 1) * (booking.quantity || 1);
+                        } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
+                            (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
+                            multiplier = ((booking.slots && booking.slots.length) || 1) * (booking.quantity || 1);
+                        } else {
+                            multiplier = booking.quantity || 1;
+                        }
+                        
+                        const itemTotal = count * price * multiplier;
+                        
+                        return (
+                            <div key={index} style={{
+                                marginTop: '8px',
+                                padding: '8px',
+                                background: 'white',
+                                borderRadius: '5px',
+                                border: '1px solid #eee'
+                            }}>
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    fontSize: 'clamp(0.85rem, 2vw, 0.95em)',
+                                    flexWrap: 'wrap',
+                                    gap: '5px'
+                                }}>
+                                    <span>
+                                        <strong>{input.name || `Option ${index + 1}`}</strong>
+                                        {displayUnit && <span style={{ color: '#666', fontSize: '0.9em', marginLeft: '5px' }}>({displayUnit})</span>}
+                                    </span>
+                                    <span style={{ fontWeight: 'bold', color: '#1976d2' }}>₹{itemTotal.toFixed(2)}</span>
+                                </div>
+                                
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    fontSize: 'clamp(0.75rem, 1.8vw, 0.85em)',
+                                    color: '#666',
+                                    marginTop: '4px',
+                                    flexWrap: 'wrap',
+                                    gap: '3px'
+                                }}>
+                                    <span>
+                                        {count} × ₹{price}
+                                        {displayUnit && ` /${displayUnit}`}
+                                        {multiplier > 1 && ` × ${multiplier}`}
+                                    </span>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        )}
+
+        {/* Extra Services */}
+        {booking.extraInputs && booking.extraInputs.length > 0 && booking.bookingType !== 'Inquari Booking' && (
+            <div style={{ marginBottom: '25px' }}>
+                <h4 style={{
+                    borderBottom: '1px solid #ddd',
+                    paddingBottom: '8px',
+                    color: '#444',
+                    marginBottom: '15px',
+                    fontSize: 'clamp(1rem, 2.5vw, 1.1rem)'
+                }}>Extra Services</h4>
+                <div style={{
+                    background: '#f5f5f5',
+                    padding: '15px',
+                    borderRadius: '8px',
+                    '@media (maxWidth: 600px)': {
+                        padding: '10px'
+                    }
+                }}>
+                    {booking.extraInputs.map((input, index) => {
+                        const price = input.price || 0;
+                        
+                        return (
+                            <div key={index} style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                padding: '8px',
+                                background: 'white',
+                                borderRadius: '5px',
+                                marginTop: '5px',
+                                border: '1px solid #eee',
+                                fontSize: 'clamp(0.85rem, 2vw, 0.95em)',
+                                flexWrap: 'wrap',
+                                gap: '5px'
+                            }}>
+                                <span>{input.name}</span>
+                                <span style={{ fontWeight: 'bold', color: '#f57c00' }}>₹{price.toFixed(2)}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        )}
+
+        {/* Customer Information */}
+        <div style={{ marginBottom: '25px' }}>
+            <h4 style={{
+                borderBottom: '1px solid #ddd',
+                paddingBottom: '8px',
+                color: '#444',
+                marginBottom: '15px',
+                fontSize: 'clamp(1rem, 2.5vw, 1.1rem)'
+            }}>Customer Information</h4>
+            <table style={{ 
+                width: '100%', 
+                borderCollapse: 'collapse',
+                fontSize: 'clamp(0.85rem, 2vw, 1rem)'
+            }}>
+                <tbody>
+                    <tr>
+                        <td style={{ 
+                            padding: '8px 0', 
+                            width: '120px', 
+                            fontWeight: 'bold',
+                            '@media (maxWidth: 600px)': {
+                                width: '80px'
+                            }
+                        }}>Name:</td>
+                        <td style={{ padding: '8px 0', wordBreak: 'break-word' }}>{booking.name}</td>
+                    </tr>
+                    <tr>
+                        <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Phone:</td>
+                        <td style={{ padding: '8px 0', wordBreak: 'break-word' }}>{booking.phone}</td>
+                    </tr>
+                    
+                </tbody>
+            </table>
+        </div>
+
+        {/* Price Summary */}
+        <div style={{
+            marginTop: '30px',
+            borderTop: '2px solid #f0f0f0',
+            paddingTop: '20px'
+        }}>
+            <h4 style={{ marginBottom: '15px', color: '#444' }}>Payment Summary</h4>
+            {renderBasePriceBreakdown()}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+            marginTop: '30px',
+            textAlign: 'center',
+            color: '#888',
+            fontSize: 'clamp(0.8rem, 2vw, 0.9em)',
+            borderTop: '1px solid #f0f0f0',
+            paddingTop: '20px'
+        }}>
+            <p>Thank you for choosing our service!</p>
+            <p>For any queries, please contact our support team.</p>
+        </div>
+
+        {/* Action buttons */}
+        <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '10px',
+            marginTop: '20px',
+            position: 'sticky',
+            bottom: 0,
+            background: 'white',
+            padding: '20px 0 0 0',
+            borderTop: '1px solid #f0f0f0',
+            flexWrap: 'wrap',
+            '@media (maxWidth: 600px)': {
+                justifyContent: 'center',
+                padding: '15px 0 0 0'
+            }
+        }}>
+            <button
+                onClick={() => window.print()}
+                style={{
+                    padding: '10px 25px',
+                    background: '#1976d2',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    fontWeight: '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    flex: '1 1 auto',
+                    justifyContent: 'center',
+                    minWidth: '120px',
+                    '@media (maxWidth: 600px)': {
+                        padding: '10px 20px',
+                        minWidth: '100px'
+                    }
+                }}
+            >
+                🖨️ Print Bill
+            </button>
+            <button
+                onClick={onClose}
+                style={{
+                    padding: '10px 25px',
+                    background: '#f5f5f5',
+                    color: '#333',
+                    border: '1px solid #ddd',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    fontSize: 'clamp(13px, 2vw, 14px)',
+                    fontWeight: '500',
+                    flex: '1 1 auto',
+                    justifyContent: 'center',
+                    minWidth: '120px',
+                    '@media (maxWidth: 600px)': {
+                        padding: '10px 20px',
+                        minWidth: '100px'
+                    }
+                }}
+            >
+                Close
+            </button>
+        </div>
+    </div>
+</div>
     );
 };
 // Add CSS for the bill modal
