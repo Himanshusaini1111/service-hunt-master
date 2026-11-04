@@ -1,0 +1,292 @@
+/* ==========================================================================
+   Service Hunt - Modern Profile Screen Styles
+   ========================================================================== */
+
+.sh-profile-page {
+    min-height: 100vh;
+    background-color: #f8fafc;
+    color: #1e293b;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding-bottom: 60px;
+}
+
+.sh-profile-container {
+    max-width: 900px;
+    margin: 36px auto 0;
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Profile Hero Banner Card
+   ========================================================================== */
+.sh-profile-hero-card {
+    background: #ffffff;
+    border-radius: 24px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+    padding: 36px 32px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 24px;
+}
+
+.sh-profile-user-intro {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.sh-profile-avatar {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 800;
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.25);
+    flex-shrink: 0;
+}
+
+.sh-profile-names-wrap h1 {
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 4px;
+    letter-spacing: -0.02em;
+}
+
+.sh-profile-email-text {
+    font-size: 0.925rem;
+    color: #64748b;
+    margin: 0 0 10px;
+}
+
+.sh-profile-role-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 12px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.sh-profile-role-tag.superadmin {
+    background-color: #fef3c7;
+    color: #b45309;
+}
+
+.sh-profile-role-tag.admin {
+    background-color: #ede9fe;
+    color: #6d28d9;
+}
+
+.sh-profile-role-tag.vendor {
+    background-color: #d1fae5;
+    color: #047857;
+}
+
+.sh-profile-role-tag.user {
+    background-color: #f1f5f9;
+    color: #475569;
+}
+
+.sh-profile-logout-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 12px;
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sh-profile-logout-btn:hover {
+    background: #fecaca;
+    color: #b91c1c;
+    transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   Account Information Card
+   ========================================================================== */
+.sh-profile-section-card {
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+    padding: 28px 28px;
+    margin-bottom: 24px;
+}
+
+.sh-profile-section-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.sh-profile-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 18px;
+}
+
+.sh-profile-info-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sh-info-label {
+    font-size: 0.775rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sh-info-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    word-break: break-all;
+}
+
+/* ==========================================================================
+   Quick Navigation Shortcuts Grid
+   ========================================================================== */
+.sh-profile-shortcuts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.sh-shortcut-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    text-decoration: none !important;
+    color: #1e293b !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    transition: all 0.25s ease;
+}
+
+.sh-shortcut-card:hover {
+    transform: translateY(-3px);
+    border-color: #cbd5e1;
+    box-shadow: 0 8px 20px rgba(79, 70, 229, 0.08);
+    color: #4f46e5 !important;
+}
+
+.sh-shortcut-content {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.sh-shortcut-icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+
+.sh-shortcut-icon-box.indigo {
+    background-color: #eef2ff;
+    color: #4f46e5;
+}
+
+.sh-shortcut-icon-box.emerald {
+    background-color: #d1fae5;
+    color: #059669;
+}
+
+.sh-shortcut-icon-box.purple {
+    background-color: #ede9fe;
+    color: #7c3aed;
+}
+
+.sh-shortcut-icon-box.amber {
+    background-color: #fef3c7;
+    color: #d97706;
+}
+
+.sh-shortcut-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+}
+
+.sh-shortcut-desc {
+    font-size: 0.775rem;
+    color: #64748b;
+    margin: 2px 0 0;
+}
+
+.sh-shortcut-arrow {
+    color: #94a3b8;
+    font-size: 0.85rem;
+    transition: transform 0.2s ease;
+}
+
+.sh-shortcut-card:hover .sh-shortcut-arrow {
+    transform: translateX(3px);
+    color: #4f46e5;
+}
+
+/* ==========================================================================
+   Responsive Adaptations
+   ========================================================================== */
+@media (max-width: 640px) {
+    .sh-profile-hero-card {
+        padding: 24px 20px;
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .sh-profile-logout-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .sh-profile-section-card {
+        padding: 20px 16px;
+    }
+}

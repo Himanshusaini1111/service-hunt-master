@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Tabs, message, Row, Col, Card, Statistic, Table, Button, Tag } from "antd";
+import { Tabs, message, Card, Statistic, Table, Button } from "antd";
+import Navbar from "../components/Navbar";
 import axios from "axios";
 import Error from "../components/Error";
 import Loader from "../components/Loader";
@@ -8,6 +9,7 @@ import { VendorHelperInfo } from "../components/VendorHelperInfo";
 import Calendar from "react-calendar";
 import { VendorProfile } from "../components/VendorProfile .js";
 import "react-calendar/dist/Calendar.css";
+import "./Adminscreen.css";
 import { Link } from 'react-router-dom';
 import { requestNotificationPermission, onMessageListener } from '../firebase';
 
@@ -214,6 +216,7 @@ function Adminscreen() {
             }
         };
         fetchAllServices();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?._id]);
 
     useEffect(() => {
@@ -238,7 +241,7 @@ function Adminscreen() {
 
     useEffect(() => {
         const handleBookingUpdate = (event) => {
-            const { bookingId, status } = event.detail || {};
+            const { status } = event.detail || {};
             
             if ((status === 'confirmed' || status === 'rejected' || status === 'assigned') && isPlayingSound) {
                 stopSound();
@@ -315,6 +318,7 @@ function Adminscreen() {
                 }
             };
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?._id]);
 
     // Fetch dashboard data
@@ -439,7 +443,9 @@ function Adminscreen() {
     }
 
     return (
-        <div className="admin-container">
+        <div className="admin-page-wrapper">
+            <Navbar />
+            <div className="admin-container">
             {/* AUDIO ELEMENT FOR SOUND */}
             <audio ref={audioRef} preload="auto" style={{ display: 'none' }}>
                 <source src="/sounds/booking.mp3" type="audio/mpeg" />
@@ -482,7 +488,12 @@ function Adminscreen() {
             <header className="admin-header">
                 <div className="header-container">
                     
-                                            <h1 className="admin-title">{getDashboardTitle()}</h1>
+                                            <div className="admin-title-area">
+                        <div className="admin-avatar">
+                            {user?.name ? user.name.slice(0, 2).toUpperCase() : 'AD'}
+                        </div>
+                        <h1 className="admin-title">{getDashboardTitle()}</h1>
+                    </div>
 
                     <div className="user-info-section">
                         <div className="user-details">
@@ -594,103 +605,98 @@ function Adminscreen() {
                 </Tabs>
             </div>
 
-            {/* Add CSS for header styling */}
-            <style jsx>{`
-                .header-container {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    flex-wrap: wrap;
-                    gap: 15px;
-                }
-                .header-left {
-                    display: flex;
-                    align-items: center;
-                    gap: 15px;
-                    flex-wrap: wrap;
-                }
-                .visibility-toggle-btn {
-                    transition: all 0.3s ease;
-                    font-weight: 500;
-                    white-space: nowrap;
-                }
-                .visibility-toggle-btn:hover:not(:disabled) {
-                    transform: translateY(-2px);
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-                }
-                .visibility-toggle-btn:active:not(:disabled) {
-                    transform: translateY(0);
-                }
-                @media (max-width: 768px) {
-                    .header-container {
-                        flex-direction: column;
-                        align-items: stretch;
-                    }
-                    .header-left {
-                        justify-content: space-between;
-                    }
-                    .visibility-toggle-btn {
-                        font-size: 12px;
-                        padding: 4px 8px;
-                    }
-                    .admin-title {
-                        font-size: 1.2rem;
-                    }
-                }
-            `}</style>
+            </div>
         </div>
     );
 }
 // At the end of Adminscreen.js
 export default Adminscreen;
 export function Dashboard({ dashboardData, dashboardLoading, isSuperAdmin, userId }) {
-    // Make sure dashboardData has the expected structure
     const stats = [
-        { title: 'My Bookings', value: dashboardData?.totalBookings || 0, color: '#1890ff' },
-        { title: 'My Services', value: dashboardData?.totalServices || 0, color: '#52c41a' },
+        { title: 'My Bookings', value: dashboardData?.totalBookings || 0, color: '#2563eb', bg: '#eff6ff', icon: '📅' },
+        { title: 'My Services', value: dashboardData?.totalServices || 0, color: '#16a34a', bg: '#ecfdf5', icon: '🛠️' },
     ];
 
     if (isSuperAdmin) {
         stats.push(
-            { title: 'Total Users', value: dashboardData?.totalUsers || 0, color: '#722ed1' },
-            { title: 'Total Vendors', value: dashboardData?.totalVendors || 0, color: '#fa8c16' }
+            { title: 'Total Users', value: dashboardData?.totalUsers || 0, color: '#9333ea', bg: '#faf5ff', icon: '👥' },
+            { title: 'Total Vendors', value: dashboardData?.totalVendors || 0, color: '#ea580c', bg: '#fff7ed', icon: '🏢' }
         );
     }
 
-    stats.push({ title: 'My Revenue', value: `₹${dashboardData?.revenue || 0}`, color: '#f5222d' });
+    stats.push({ title: 'Total Revenue', value: `₹${Number(dashboardData?.revenue || 0).toLocaleString('en-IN')}`, color: '#dc2626', bg: '#fef2f2', icon: '💰' });
 
     const columns = [
-        { title: 'Booking ID', dataIndex: '_id', key: '_id', render: (text) => text?.slice(-6) || 'N/A' },
-        { title: 'Service', dataIndex: 'service', key: 'service', render: (text) => text || 'N/A' },
-        { title: 'Amount', dataIndex: 'totalAmount', key: 'amount', render: (text) => `₹${text || 0}` },
-        { title: 'Status', dataIndex: 'status', key: 'status', render: (text) => text || 'N/A' },
-        { title: 'Date', dataIndex: 'createdAt', key: 'date', render: (text) => text ? new Date(text).toLocaleDateString() : 'N/A' },
+        {
+            title: 'Booking ID',
+            dataIndex: '_id',
+            key: '_id',
+            render: (text) => (
+                <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '3px 8px', borderRadius: 6 }}>
+                    #{text?.slice(-6)?.toUpperCase() || 'N/A'}
+                </span>
+            )
+        },
+        {
+            title: 'Service',
+            dataIndex: 'service',
+            key: 'service',
+            render: (text) => <span style={{ fontWeight: 600, color: '#0f172a' }}>{text || 'N/A'}</span>
+        },
+        {
+            title: 'Amount',
+            dataIndex: 'totalAmount',
+            key: 'amount',
+            render: (text) => <span style={{ fontWeight: 700, color: '#0f172a' }}>₹{Number(text || 0).toLocaleString('en-IN')}</span>
+        },
+        {
+            title: 'Status',
+            dataIndex: 'status',
+            key: 'status',
+            render: (text) => (
+                <span className={`status-badge status-${text || 'pending'}`}>
+                    {text || 'Pending'}
+                </span>
+            )
+        },
+        {
+            title: 'Date',
+            dataIndex: 'createdAt',
+            key: 'date',
+            render: (text) => <span style={{ color: '#64748b' }}>{text ? new Date(text).toLocaleDateString('en-IN') : 'N/A'}</span>
+        },
     ];
 
     return (
         <div className="dashboard-container">
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+            <div className="dash-stats-grid">
                 {stats.map((stat, index) => (
-                    <Col key={index} xs={24} sm={12} md={8} lg={6}>
-                        <Card bordered={false}>
-                            <Statistic
-                                title={stat.title}
-                                value={stat.value}
-                                valueStyle={{ color: stat.color }}
-                                loading={dashboardLoading}
-                            />
-                        </Card>
-                    </Col>
+                    <div key={index} className="dash-stat-card">
+                        <div>
+                            <div className="dash-stat-label">{stat.title}</div>
+                            <div className="dash-stat-val" style={{ color: stat.color }}>
+                                {stat.value}
+                            </div>
+                        </div>
+                        <div className="dash-stat-icon-wrap" style={{ background: stat.bg, color: stat.color }}>
+                            {stat.icon}
+                        </div>
+                    </div>
                 ))}
-            </Row>
+            </div>
 
             <Card
-                title="My Recent Bookings"
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
+                        <span>📋</span> My Recent Bookings
+                    </div>
+                }
                 loading={dashboardLoading}
+                style={{ borderRadius: 18, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}
                 extra={<Link to="#" onClick={() => {
                     const tabElement = document.querySelector('[data-node-key="1"]');
                     if (tabElement) tabElement.click();
-                }}>View All</Link>}
+                }} style={{ fontWeight: 600, color: '#2563eb' }}>View All Bookings →</Link>}
             >
                 <Table
                     columns={columns}
@@ -989,7 +995,7 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
     };
 
     return (
-        <div className="bookings-container" style={{paddingLeft:"10px", paddingRight:"4px"}}>
+        <div className="bookings-container">
             {/* Statistics Section */}
             <div className="stats-header">
                 <h1 className="page-title">Bookings Management</h1>
@@ -1391,12 +1397,12 @@ const BookingBillModal = ({ booking, onClose }) => {
                         fontWeight: '500'
                     }}>
                         <span>
-                            Base Price: ₹{booking.rentperday || 0} 
+                            Base Price: {breakdownText || `₹${booking.rentperday || 0}`} 
                             {booking.unit?.includes('day') && booking.daysCount > 1 && ` × ${booking.daysCount} day${booking.daysCount > 1 ? 's' : ''}`}
                             {booking.isCountable && booking.quantity > 1 && ` × ${booking.quantity} qty`}
                         </span>
                         <span style={{ fontWeight: 'bold', color: '#1976d2' }}>
-                            ₹{(booking.rentperday || 0) * (booking.daysCount || 1) * (booking.isCountable ? (booking.quantity || 1) : 1)}
+                            ₹{baseTotal}
                         </span>
                     </div>
 
@@ -2264,7 +2270,7 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
     // Toggle individual service visibility
     const toggleVisibility = async (id, currentVisibility) => {
         try {
-            const { data } = await axios.put(`/api/service/togglevisibility/${id}`, {
+            await axios.put(`/api/service/togglevisibility/${id}`, {
                 isVisible: !currentVisibility
             });
 
@@ -2407,154 +2413,13 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         }
     };
 
-    // Add CSS for calendar and pricing styling
-    const customStyles = `
-        .availability-calendar .react-calendar__tile {
-            color: white;
-            border-radius: 4px;
-            margin: 2px;
-        }
-        .availability-calendar .react-calendar__tile--active {
-            background-color: #0d6efd;
-        }
-        .fully-unavailable {
-            background-color: #dc3545 !important;
-            color: white !important;
-        }
-        .partially-unavailable {
-            background: linear-gradient(135deg, #dc3545 50%, #6c757d 50%) !important;
-            color: white !important;
-        }
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1050;
-        }
-        .calendar-modal, .helper-modal {
-            width: 90%;
-            max-width: 1200px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        .time-slots-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-        .time-slot-btn {
-            position: relative;
-            transition: all 0.2s;
-        }
-        .time-slot-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-        }
-        .selected-slot {
-            background-color: #dc3545;
-            border-color: #dc3545;
-        }
-        .selected-indicator {
-            position: absolute;
-            top: 2px;
-            right: 5px;
-            font-size: 12px;
-        }
-        
-        /* Pricing Table Styles */
-        .price-cell {
-            min-width: 200px;
-        }
-        .price-summary {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        .base-price {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 5px 0;
-            border-bottom: 1px dashed #555;
-        }
-        .expand-btn {
-            background: none;
-            border: none;
-            color: #0d6efd;
-            cursor: pointer;
-            font-size: 12px;
-            padding: 2px 8px;
-            border-radius: 4px;
-            transition: all 0.2s;
-        }
-        .expand-btn:hover {
-            background-color: #0d6efd;
-            color: white;
-        }
-        .location-pricing-table {
-            margin-top: 10px;
-            background: #2d2d2d;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .location-pricing-table table {
-            width: 100%;
-            font-size: 12px;
-            margin: 0;
-        }
-        .location-pricing-table th {
-            background-color: #1a1a1a;
-            padding: 8px;
-            text-align: left;
-            color: #aaa;
-            font-weight: 500;
-        }
-        .location-pricing-table td {
-            padding: 8px;
-            border-bottom: 1px solid #3d3d3d;
-        }
-        .location-pricing-table tr:last-child td {
-            border-bottom: none;
-        }
-        .location-name {
-            font-weight: 500;
-            color: #fff;
-        }
-        .price-tag {
-            font-family: monospace;
-            font-weight: 600;
-        }
-        .price-tag.base {
-            color: #28a745;
-        }
-        .price-tag.total {
-            color: #17a2b8;
-        }
-        .price-tag.extra {
-            color: #ffc107;
-        }
-        .badge-price {
-            background-color: #28a745;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 11px;
-            margin-left: 5px;
-        }
-    `;
+    // Calendar and pricing styling moved to Adminscreen.css
 
     return (
-        <div className='container-fluid'>
-            <style>{customStyles}</style>
-
-            <div className='row justify-content-center'>
-                <div className='col-md-11'>
-                    <h1 className="mb-4">Services Management</h1>
+        <div className='services-card-wrap'>
+            <div className='d-flex justify-content-between align-items-center mb-4'>
+                <h1 className="mb-0">Services Management</h1>
+            </div>
 
                     {/* Loading State */}
                     {loading && !error && (
@@ -2687,13 +2552,13 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                                                             >
                                                                 <i className="bi bi-calendar-event"></i> Calendar
                                                             </button>
-                                                            {/* <button
+                                                            <button
                                                                 className="btn btn-info btn-sm"
                                                                 onClick={() => handleJobAssignment(service)}
                                                                 disabled={loading}
                                                             >
                                                                 <i className="bi bi-people"></i> Assign
-                                                            </button> */}
+                                                            </button>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -2999,8 +2864,6 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                             </div>
                         </div>
                     )}
-                </div>
-            </div>
         </div>
     );
 }

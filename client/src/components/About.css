@@ -1,0 +1,388 @@
+/* ==========================================================================
+   Service Hunt - Modern About & Footer Styles
+   ========================================================================== */
+
+.sh-about-page {
+    background-color: #0f172a;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    border-top: 1px solid #1e293b;
+}
+
+/* Standalone Page Wrapper */
+.sh-about-standalone {
+    background-color: #f8fafc;
+    min-height: 100vh;
+}
+
+/* ==========================================================================
+   Footer Overview Mode
+   ========================================================================== */
+.sh-footer-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 60px 24px 30px;
+    box-sizing: border-box;
+}
+
+.sh-footer-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr 1.2fr;
+    gap: 36px;
+    margin-bottom: 50px;
+}
+
+@media (max-width: 1024px) {
+    .sh-footer-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 30px;
+    }
+}
+
+.sh-footer-col-brand h3 {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin: 0 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sh-footer-tagline {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    line-height: 1.6;
+    margin: 0 0 20px;
+}
+
+.sh-footer-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #f8fafc;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 18px 0;
+}
+
+.sh-footer-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.sh-footer-link {
+    color: #94a3b8;
+    text-decoration: none !important;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    text-align: left;
+    display: inline-block;
+}
+
+.sh-footer-link:hover {
+    color: #818cf8;
+    transform: translateX(3px);
+}
+
+/* Social & App Links */
+.sh-social-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.sh-social-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    text-decoration: none !important;
+}
+
+.sh-social-btn:hover {
+    background: #4f46e5;
+    border-color: #6366f1;
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+
+.sh-app-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 150px;
+}
+
+.sh-app-badge-img {
+    height: 38px;
+    width: auto;
+    border-radius: 6px;
+    transition: opacity 0.2s ease;
+}
+
+.sh-app-badge-img:hover {
+    opacity: 0.85;
+}
+
+/* Copyright Row */
+.sh-footer-bottom {
+    padding-top: 24px;
+    border-top: 1px solid #1e293b;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+/* ==========================================================================
+   Detail Section View Mode (When a link is clicked)
+   ========================================================================== */
+.sh-detail-wrapper {
+    max-width: 1080px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.sh-detail-card {
+    background: #ffffff;
+    border-radius: 24px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 40px -10px rgba(15, 23, 42, 0.08);
+    padding: 40px 36px;
+    color: #1e293b;
+}
+
+.sh-detail-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.sh-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    color: #475569;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.sh-back-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    transform: translateX(-2px);
+}
+
+.sh-detail-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 14px;
+    letter-spacing: -0.02em;
+}
+
+.sh-hero-media {
+    width: 100%;
+    max-height: 340px;
+    border-radius: 18px;
+    overflow: hidden;
+    margin-bottom: 28px;
+}
+
+.sh-hero-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sh-detail-lead {
+    font-size: 1.05rem;
+    color: #475569;
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+/* Sub-sections grid */
+.sh-subsections-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    margin-bottom: 36px;
+}
+
+.sh-subsection-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 22px;
+}
+
+.sh-subsection-card h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sh-subsection-img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 12px;
+    margin-bottom: 12px;
+}
+
+.sh-checklist {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sh-checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    color: #334155;
+    font-weight: 500;
+}
+
+.sh-check-icon {
+    color: #10b981;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+/* Steps Process Grid (Vendor Onboarding) */
+.sh-steps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 18px;
+    margin: 24px 0 36px;
+}
+
+.sh-step-box {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 20px;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.sh-step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.sh-step-box h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 6px;
+}
+
+.sh-step-box p {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Legal text block */
+.sh-legal-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+}
+
+.sh-legal-card h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 10px;
+}
+
+.sh-legal-card ul {
+    margin: 0;
+    padding-left: 20px;
+    color: #475569;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+/* Bottom CTA */
+.sh-detail-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 36px;
+    padding-top: 20px;
+    border-top: 1px solid #f1f5f9;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+@media (max-width: 768px) {
+    .sh-detail-card {
+        padding: 24px 18px;
+        border-radius: 18px;
+    }
+
+    .sh-detail-title {
+        font-size: 1.5rem;
+    }
+
+    .sh-subsections-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .sh-steps-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import Loader from "../components/Loader";
 import Service from "../components/Service";
@@ -9,6 +9,17 @@ import Swal from 'sweetalert2';
 import AOS from "aos";
 import "aos/dist/aos.css";
 import moment from "moment";
+import "./Homescreen.css";
+
+// Crisp vector icons
+import {
+    FaFilter,
+    FaMapMarkerAlt,
+    FaSearch,
+    FaTimes,
+    FaUndo,
+    FaLayerGroup
+} from "react-icons/fa";
 
 AOS.init();
 
@@ -31,16 +42,14 @@ function Homescreen() {
     const locationState = useLocation();
     const { RangePicker } = DatePicker;
 
-    // ✅ CORRECT - Check if service is available at location using locationPricing
-    const isServiceInLocation = (service, userLocation) => {
+    // Check if service is available at location using locationPricing
+    const isServiceInLocation = useCallback((service, userLocation) => {
         if (!userLocation) return true;
-        
-        // If service has no location pricing configured, it's not available anywhere
+
         if (!service.locationPricing || service.locationPricing.length === 0) {
             return false;
         }
-        
-        // Get user's location string
+
         let userLocationLower = '';
         if (typeof userLocation === 'string') {
             userLocationLower = userLocation.toLowerCase();
@@ -51,35 +60,29 @@ function Homescreen() {
         } else {
             userLocationLower = String(userLocation).toLowerCase();
         }
-        
-        // Extract city name (first part before comma)
+
         const userCity = userLocationLower.split(',')[0].trim();
-        
-        // Check if service's locationPricing includes this location
+
         const isAvailable = service.locationPricing.some(locationPrice => {
             const locationName = (locationPrice.locationName || "").toLowerCase();
             const locationAddress = (locationPrice.locationAddress || "").toLowerCase();
-            
-            return locationName.includes(userCity) || 
-                   userCity.includes(locationName) ||
-                   locationAddress.includes(userCity) ||
-                   userCity.includes(locationAddress);
+
+            return locationName.includes(userCity) ||
+                userCity.includes(locationName) ||
+                locationAddress.includes(userCity) ||
+                userCity.includes(locationAddress);
         });
-        
+
         return isAvailable;
-    };
+    }, []);
 
     // Load location from localStorage or navigation state
     useEffect(() => {
         const loadLocation = () => {
-            console.log("Loading location in Homescreen...");
-            
-            // Check navigation state first
             if (locationState.state?.location) {
                 const passedLocation = locationState.state.location;
-                console.log("Location from navigation state:", passedLocation);
                 setSelectedLocationObject(passedLocation);
-                
+
                 let locationValue = '';
                 if (typeof passedLocation === 'string') {
                     locationValue = passedLocation;
@@ -91,22 +94,20 @@ function Homescreen() {
                 setLocation(locationValue);
                 return;
             }
-            
-            // Check localStorage
+
             const savedLocation = localStorage.getItem("selectedLocation");
             if (savedLocation) {
                 try {
-                    const location = JSON.parse(savedLocation);
-                    console.log("Location from localStorage:", location);
-                    setSelectedLocationObject(location);
-                    
+                    const parsedLocation = JSON.parse(savedLocation);
+                    setSelectedLocationObject(parsedLocation);
+
                     let locationValue = '';
-                    if (typeof location === 'string') {
-                        locationValue = location;
-                    } else if (location.display_name) {
-                        locationValue = location.display_name;
-                    } else if (location.city) {
-                        locationValue = location.city;
+                    if (typeof parsedLocation === 'string') {
+                        locationValue = parsedLocation;
+                    } else if (parsedLocation.display_name) {
+                        locationValue = parsedLocation.display_name;
+                    } else if (parsedLocation.city) {
+                        locationValue = parsedLocation.city;
                     }
                     setLocation(locationValue);
                 } catch (error) {
@@ -114,7 +115,7 @@ function Homescreen() {
                 }
             }
         };
-        
+
         loadLocation();
     }, [locationState.state]);
 
@@ -136,7 +137,6 @@ function Homescreen() {
             try {
                 setLoading(true);
                 const { data } = await axios.get("/api/service/getallservices");
-                console.log(`Fetched ${data.length} services from API`);
                 setAllServices(data);
                 setLoading(false);
             } catch (error) {
@@ -148,85 +148,80 @@ function Homescreen() {
     }, []);
 
     // Check if service is available today
-    const isServiceAvailableToday = (service) => {
+    const isServiceAvailableToday = useCallback((service) => {
         const today = moment().format("YYYY-MM-DD");
         if (!service.unavailableDates || service.unavailableDates.length === 0) return true;
-        
+
         const todayUnavailable = service.unavailableDates.find(d => d.date === today);
         if (!todayUnavailable) return true;
         if (todayUnavailable.fullDay) return false;
         return true;
-    };
+    }, []);
 
     // Filter services based on all criteria
     useEffect(() => {
         if (allServices.length === 0) return;
-        
-        console.log("Filtering services...");
-        console.log("Current location filter:", location);
-        console.log("Total services:", allServices.length);
-        
+
         let filtered = [...allServices];
-        
+
         // Show only visible services
         filtered = filtered.filter(service => service.isVisible !== false);
-        
+
         // Apply location filter using locationPricing
         if (location && location !== "") {
-            const beforeCount = filtered.length;
             filtered = filtered.filter(service => isServiceInLocation(service, location));
-            console.log(`Location filter: ${beforeCount} -> ${filtered.length} services for "${location}"`);
-            
-            if (filtered.length > 0) {
-                console.log("Services found:", filtered.map(s => ({ 
-                    name: s.name, 
-                    availableLocations: s.locationPricing?.map(lp => lp.locationName) 
-                })));
-            }
         }
-        
+
         // Apply availability filter
         if (availability) {
             filtered = filtered.filter(service => isServiceAvailableToday(service));
         }
-        
+
         // Apply category filter
         if (category !== "all") {
             filtered = filtered.filter(s => s.category === category);
         }
-        
+
         // Apply subcategory filter
         if (subCategory) {
             filtered = filtered.filter(s => s.subCategory === subCategory);
         }
-        
+
         // Apply search filter
         if (searchKey) {
             filtered = filtered.filter(s =>
                 s.name.toLowerCase().includes(searchKey.toLowerCase())
             );
         }
-        
+
         // Apply price range filter
         filtered = filtered.filter(
             s => s.rentperday >= priceRange[0] && s.rentperday <= priceRange[1]
         );
-        
+
         // Apply sorting
         if (sortOrder === "priceAsc") {
             filtered.sort((a, b) => a.rentperday - b.rentperday);
         } else if (sortOrder === "priceDesc") {
             filtered.sort((a, b) => b.rentperday - a.rentperday);
         }
-        
-        console.log(`Final filtered services: ${filtered.length}`);
+
         setServices(filtered);
-    }, [allServices, location, category, subCategory, searchKey, availability, priceRange, sortOrder]);
+    }, [allServices, location, category, subCategory, searchKey, availability, priceRange, sortOrder, isServiceInLocation, isServiceAvailableToday]);
+
+    // Dynamic list of categories for the top pill strip
+    const availableCategories = useMemo(() => {
+        const set = new Set();
+        allServices.forEach(s => {
+            if (s.isVisible !== false && s.category) set.add(s.category);
+        });
+        return ["all", ...Array.from(set)];
+    }, [allServices]);
 
     const handleServiceClick = (id) => navigate(`/booking/${id}`);
 
     const applyFilters = () => setIsFilterModalVisible(false);
-    
+
     const resetFilters = () => {
         setSelectedDates([]);
         setPriceRange([0, 10000]);
@@ -243,15 +238,29 @@ function Homescreen() {
         Swal.fire("Info", "Location filter cleared. Showing all services.", "info");
     };
 
+    const handleLocationSelect = (loc) => {
+        setSelectedLocationObject(loc);
+        if (loc) {
+            const locVal = typeof loc === 'string' ? loc : (loc.display_name || loc.city || '');
+            setLocation(locVal);
+        } else {
+            setLocation("");
+        }
+    };
+
     if (loading) {
         return (
-            <div>
-                <Navbar />
+            <div className="hs-page">
+                <Navbar
+                    onLocationSelect={handleLocationSelect}
+                    selectedLocation={selectedLocationObject}
+                    searchService={(key) => setSearchKey(key)}
+                />
                 <div style={{
                     display: 'flex',
                     justifyContent: 'center',
                     alignItems: 'center',
-                    height: '100vh',
+                    height: '80vh',
                     flexDirection: 'column'
                 }}>
                     <Loader />
@@ -260,84 +269,275 @@ function Homescreen() {
         );
     }
 
-    return (
-        <div className="mt-0">
-            <Navbar />
-            
-            {/* Category Header */}
-            {category !== "all" && (
-                <div style={{
-                    backgroundColor: "#f5f5f5",
-                    padding: "12px 16px",
-                    textAlign: "center",
-                    borderBottom: "2px solid #4a54e1"
-                }}>
-                    <h3 style={{ margin: 0, fontSize: "20px", color: "#333" }}>
-                       <b>    {category}
-                        {subCategory && ` - ${subCategory}`} </b> 
-                    </h3>
-                </div>
-            )}
+    const currentCityName = location ? location.split(',')[0].trim() : null;
 
-            {/* Filter Controls */}
-            <div style={{
-                marginTop: "15px",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "0 15px",
-            }}>
-                <Switch
-                    checked={availability}
-                    onChange={() => setAvailability(!availability)}
-                    checkedChildren="Available Today"
-                    unCheckedChildren="All Services"
-                />
-                <Button
-                    type="primary"
-                    onClick={() => setIsFilterModalVisible(true)}
-                    style={{ backgroundColor: "#4a54e1", borderRadius: "8px" }}
-                >
-                    <i className="bi bi-funnel-fill"></i> Filter
-                </Button>
+    return (
+        <div className="hs-page">
+            <Navbar
+                onLocationSelect={handleLocationSelect}
+                selectedLocation={selectedLocationObject}
+                searchService={(key) => setSearchKey(key)}
+            />
+
+            {/* Hero Header Strip */}
+            <div className="hs-header-strip">
+                <div className="hs-header-inner">
+                    <div className="hs-header-text">
+                        <h1>
+                            {category !== "all" ? category : (currentCityName ? `Services in ${currentCityName}` : "Explore Local Services")}
+                            {subCategory && ` — ${subCategory}`}
+                        </h1>
+                        <p>
+                            Connect with verified local professionals and book with instant confirmation
+                        </p>
+                    </div>
+
+                    {currentCityName && (
+                        <div className="hs-header-location-pill">
+                            <FaMapMarkerAlt style={{ color: "#a5b4fc" }} />
+                            <span>{currentCityName}</span>
+                            <button
+                                type="button"
+                                className="clear-btn"
+                                onClick={clearLocationFilter}
+                                title="Clear location filter"
+                                aria-label="Clear location filter"
+                            >
+                                <FaTimes />
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Service Cards */}
-            <div className="row justify-content-center mt-3">
-                {services.length === 0 ? (
-                    <div className="col-12 text-center py-5">
-                        <i className="bi bi-search display-4 text-muted"></i>
-                        <p className="mt-3">No services found matching your criteria</p>
-                        <p className="text-muted" style={{ fontSize: "14px" }}>
-                            {location ? 
-                                `No services available in ${location.split(',')[0]}` : 
-                                "Try selecting a location or clearing filters"}
-                        </p>
-                        <div style={{ display: "flex", gap: "10px", justifyContent: "center", flexWrap: "wrap" }}>
-                            <Button type="primary" onClick={resetFilters}>
-                                Reset Filters
-                            </Button>
-                            {location && (
-                                <Button onClick={clearLocationFilter}>
-                                    Clear Location
-                                </Button>
+            {/* Horizontal Category Nav Strip */}
+            <div className="hs-cat-nav-wrapper">
+                <div className="hs-cat-nav-container">
+                    <button
+                        type="button"
+                        className={`hs-cat-pill ${category === "all" && !subCategory ? "active" : ""}`}
+                        onClick={() => {
+                            setCategory("all");
+                            setSubCategory("");
+                        }}
+                    >
+                        <FaLayerGroup style={{ fontSize: "0.75rem" }} />
+                        <span>All Categories</span>
+                    </button>
+
+                    {availableCategories.filter(c => c !== "all").map((catName) => (
+                        <button
+                            key={catName}
+                            type="button"
+                            className={`hs-cat-pill ${category === catName ? "active" : ""}`}
+                            onClick={() => {
+                                setCategory(catName);
+                                setSubCategory("");
+                            }}
+                        >
+                            <span>{catName}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Main Marketplace Two-Column Layout */}
+            <div className="hs-main-layout">
+                {/* Desktop Filter Sidebar */}
+                <aside className="hs-sidebar">
+                    <div className="hs-sidebar-title">
+                        <span>Filters</span>
+                        <button
+                            type="button"
+                            className="hs-sidebar-reset-link"
+                            onClick={resetFilters}
+                        >
+                            Reset all
+                        </button>
+                    </div>
+
+                    {/* Search inside results */}
+                    <div className="hs-filter-group">
+                        <label className="hs-filter-label">Search</label>
+                        <div className="hs-search-box">
+                            <FaSearch className="hs-search-icon" />
+                            <input
+                                type="text"
+                                className="hs-search-input"
+                                placeholder="Service name..."
+                                value={searchKey}
+                                onChange={(e) => setSearchKey(e.target.value)}
+                            />
+                            {searchKey && (
+                                <button
+                                    type="button"
+                                    className="hs-search-clear"
+                                    onClick={() => setSearchKey("")}
+                                    aria-label="Clear search"
+                                >
+                                    <FaTimes />
+                                </button>
                             )}
                         </div>
                     </div>
-                ) : (
-                    services.map((s) => (
-                        <div className="col-md-8" data-aos="zoom-in" key={s._id}>
-                            <Service
-                                service={s}
-                                onClick={() => handleServiceClick(s._id)}
-                                bookingArea={selectedLocationObject}
+
+                    {/* Availability toggle */}
+                    <div className="hs-filter-group">
+                        <div className="hs-sidebar-switch-row">
+                            <span className="hs-sidebar-switch-label">Available Today</span>
+                            <Switch
+                                checked={availability}
+                                onChange={(checked) => setAvailability(checked)}
+                                size="small"
                             />
                         </div>
-                    ))
-                )}
+                    </div>
+
+                    {/* Price Range */}
+                    <div className="hs-filter-group">
+                        <label className="hs-filter-label">Price Range (₹)</label>
+                        <div className="hs-price-inputs-row">
+                            <InputNumber
+                                min={0}
+                                value={priceRange[0]}
+                                onChange={(v) => setPriceRange([v || 0, priceRange[1]])}
+                                placeholder="Min"
+                                style={{ width: "50%", borderRadius: "10px" }}
+                            />
+                            <InputNumber
+                                min={priceRange[0]}
+                                value={priceRange[1]}
+                                onChange={(v) => setPriceRange([priceRange[0], v || 10000])}
+                                placeholder="Max"
+                                style={{ width: "50%", borderRadius: "10px" }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Sort Order */}
+                    <div className="hs-filter-group" style={{ marginBottom: 0 }}>
+                        <label className="hs-filter-label">Sort By</label>
+                        <Select
+                            value={sortOrder}
+                            onChange={(v) => setSortOrder(v)}
+                            style={{ width: "100%" }}
+                        >
+                            <Select.Option value="default">Recommended</Select.Option>
+                            <Select.Option value="priceAsc">Price: Low to High</Select.Option>
+                            <Select.Option value="priceDesc">Price: High to Low</Select.Option>
+                        </Select>
+                    </div>
+                </aside>
+
+                {/* Right Content Area */}
+                <main className="hs-content-area">
+                    {/* Toolbar / Result stats */}
+                    <div className="hs-content-header">
+                        <div className="hs-results-heading">
+                            <h2>
+                                {category !== "all" ? category : "All Services"}
+                            </h2>
+                            <span className="hs-results-tag-count">
+                                {services.length} {services.length === 1 ? 'service' : 'services'}
+                            </span>
+                        </div>
+
+                        {/* Mobile Filter Trigger Button */}
+                        <button
+                            type="button"
+                            className="hs-mobile-filter-trigger"
+                            onClick={() => setIsFilterModalVisible(true)}
+                        >
+                            <FaFilter style={{ fontSize: "0.8rem", color: "#4f46e5" }} />
+                            <span>Filters & Sort</span>
+                        </button>
+                    </div>
+
+                    {/* Active filter badges */}
+                    {(category !== "all" || subCategory || searchKey || location || priceRange[0] > 0 || priceRange[1] < 10000) && (
+                        <div className="hs-active-filter-chips">
+                            {category !== "all" && (
+                                <span className="hs-chip">
+                                    Category: {category}
+                                    <FaTimes className="hs-chip-clear" onClick={() => setCategory("all")} />
+                                </span>
+                            )}
+                            {subCategory && (
+                                <span className="hs-chip">
+                                    Subcategory: {subCategory}
+                                    <FaTimes className="hs-chip-clear" onClick={() => setSubCategory("")} />
+                                </span>
+                            )}
+                            {searchKey && (
+                                <span className="hs-chip">
+                                    Search: "{searchKey}"
+                                    <FaTimes className="hs-chip-clear" onClick={() => setSearchKey("")} />
+                                </span>
+                            )}
+                            {location && (
+                                <span className="hs-chip">
+                                    Location: {location.split(',')[0]}
+                                    <FaTimes className="hs-chip-clear" onClick={clearLocationFilter} />
+                                </span>
+                            )}
+                            {(priceRange[0] > 0 || priceRange[1] < 10000) && (
+                                <span className="hs-chip">
+                                    ₹{priceRange[0]} - ₹{priceRange[1]}
+                                    <FaTimes className="hs-chip-clear" onClick={() => setPriceRange([0, 10000])} />
+                                </span>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Service Cards Stream */}
+                    {services.length === 0 ? (
+                        <div className="hs-empty-box">
+                            <div className="hs-empty-icon-wrap">
+                                <FaSearch />
+                            </div>
+                            <h3>No Matching Services</h3>
+                            <p>
+                                {location ?
+                                    `We couldn't find any services matching your criteria in ${location.split(',')[0]}. Try adjusting your filters or search terms.` :
+                                    "No services match your active filters. Try clearing your search keyword or resetting filters."}
+                            </p>
+                            <div className="hs-empty-btn-group">
+                                <button
+                                    type="button"
+                                    className="hs-reset-btn"
+                                    onClick={resetFilters}
+                                >
+                                    <FaUndo style={{ fontSize: "0.75rem", marginRight: "6px" }} />
+                                    <span>Reset All Filters</span>
+                                </button>
+                                {location && (
+                                    <button
+                                        type="button"
+                                        className="hs-clear-loc-btn"
+                                        onClick={clearLocationFilter}
+                                    >
+                                        <span>Clear Location</span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="hs-services-stream">
+                            {services.map((s) => (
+                                <div data-aos="fade-up" key={s._id}>
+                                    <Service
+                                        service={s}
+                                        onClick={() => handleServiceClick(s._id)}
+                                        bookingArea={selectedLocationObject}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </main>
             </div>
 
-            {/* Filter Modal */}
+            {/* Mobile Filter Modal */}
             <Modal
                 title="Filter Services"
                 open={isFilterModalVisible}
@@ -348,9 +548,9 @@ function Homescreen() {
                     <Button key="apply" type="primary" onClick={applyFilters}>Apply</Button>,
                 ]}
             >
-                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px" }}>
                     <div>
-                        <label>Select Date Range:</label>
+                        <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Select Date Range:</label>
                         <RangePicker
                             value={selectedDates}
                             onChange={(d) => setSelectedDates(d)}
@@ -358,32 +558,41 @@ function Homescreen() {
                         />
                     </div>
                     <div>
-                        <label>Price Range:</label>
+                        <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Availability:</label>
+                        <Switch
+                            checked={availability}
+                            onChange={(checked) => setAvailability(checked)}
+                            checkedChildren="Available Today"
+                            unCheckedChildren="All Services"
+                        />
+                    </div>
+                    <div>
+                        <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Price Range (₹):</label>
                         <div style={{ display: "flex", gap: "10px" }}>
                             <InputNumber
                                 min={0}
                                 value={priceRange[0]}
-                                onChange={(v) => setPriceRange([v, priceRange[1]])}
+                                onChange={(v) => setPriceRange([v || 0, priceRange[1]])}
                                 placeholder="Min"
                                 style={{ width: "50%" }}
                             />
                             <InputNumber
                                 min={priceRange[0]}
                                 value={priceRange[1]}
-                                onChange={(v) => setPriceRange([priceRange[0], v])}
+                                onChange={(v) => setPriceRange([priceRange[0], v || 10000])}
                                 placeholder="Max"
                                 style={{ width: "50%" }}
                             />
                         </div>
                     </div>
                     <div>
-                        <label>Sort By:</label>
+                        <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Sort By:</label>
                         <Select
                             value={sortOrder}
                             onChange={(v) => setSortOrder(v)}
                             style={{ width: "100%" }}
                         >
-                            <Select.Option value="default">Default</Select.Option>
+                            <Select.Option value="default">Recommended</Select.Option>
                             <Select.Option value="priceAsc">Price: Low to High</Select.Option>
                             <Select.Option value="priceDesc">Price: High to Low</Select.Option>
                         </Select>

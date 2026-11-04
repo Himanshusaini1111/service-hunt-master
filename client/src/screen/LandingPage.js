@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
@@ -9,15 +9,26 @@ import SearchResults from '../components/SearchResults';
 import { Switch, Button, Modal, DatePicker, InputNumber, Select } from 'antd';
 import moment from 'moment';
 import 'antd/dist/reset.css';
+import './LandingPage.css';
 
-const App = () => {
+// Crisp modern icons
+import {
+    FaSearch,
+    FaMapMarkerAlt,
+    FaFilter,
+    FaArrowRight,
+    FaCheckCircle,
+    FaShieldAlt,
+    FaBolt
+} from 'react-icons/fa';
+
+const LandingPage = () => {
     const images = [
         "https://th.bing.com/th/id/OIP.yn6JD0Y-ZbvHNU3gj3gauwHaHa?w=1210&h=1210&rs=1&pid=ImgDetMain",
         "https://th.bing.com/th/id/OIP.yELYmy4neggRJg7LrnCmagHaFS?w=1280&h=914&rs=1&pid=ImgDetMain",
         "https://thumbs.dreamstime.com/z/great-customer-service-words-white-concept-exciting-experience-customers-45526322.jpg"
     ];
 
-    const [currentIndex, setCurrentIndex] = useState(0);
     const [currentServiceIndex, setCurrentServiceIndex] = useState(0);
     const [allServices, setAllServices] = useState([]);
     const [locationBasedServices, setLocationBasedServices] = useState([]);
@@ -29,7 +40,7 @@ const App = () => {
     const [locationSearch, setLocationSearch] = useState('');
     const [selectedLocation, setSelectedLocation] = useState(null);
     const [hasLocation, setHasLocation] = useState(false);
-    
+
     // Filter states
     const [availability, setAvailability] = useState(true);
     const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
@@ -41,9 +52,8 @@ const App = () => {
 
     const navigate = useNavigate();
     const location = useLocation();
-    const isNavigatingFromSearch = useRef(false);
 
-    // ✅ CORRECT - Check if service is available at a location using locationPricing
+    // Check if service is available at a location using locationPricing
     const isServiceInLocation = useCallback((service, location) => {
         if (!location) return true;
 
@@ -83,7 +93,7 @@ const App = () => {
     const isServiceAvailableToday = useCallback((service) => {
         const today = moment().format("YYYY-MM-DD");
         if (!service.unavailableDates || service.unavailableDates.length === 0) return true;
-        
+
         const todayUnavailable = service.unavailableDates.find(d => d.date === today);
         if (!todayUnavailable) return true;
         if (todayUnavailable.fullDay) return false;
@@ -101,24 +111,24 @@ const App = () => {
     // Apply filters to search results
     const applyFiltersToResults = useCallback((results) => {
         let filtered = [...results];
-        
+
         // Apply availability filter
         if (availability) {
             filtered = filtered.filter(service => isServiceAvailableToday(service));
         }
-        
+
         // Apply price range filter
         filtered = filtered.filter(
             s => s.rentperday >= priceRange[0] && s.rentperday <= priceRange[1]
         );
-        
+
         // Apply sorting
         if (sortOrder === "priceAsc") {
             filtered.sort((a, b) => a.rentperday - b.rentperday);
         } else if (sortOrder === "priceDesc") {
             filtered.sort((a, b) => b.rentperday - a.rentperday);
         }
-        
+
         return filtered;
     }, [availability, priceRange, sortOrder, isServiceAvailableToday]);
 
@@ -150,7 +160,7 @@ const App = () => {
         }
     }, [allServices, selectedLocation, getLocationBasedServices, showSearchResults]);
 
-    // Get suggested services (first 10)
+    // Get suggested services
     const getSuggestedServices = () => {
         if (locationBasedServices.length === 0) return [];
         const startIndex = suggestedServiceIndex;
@@ -158,7 +168,7 @@ const App = () => {
         return locationBasedServices.slice(startIndex, endIndex);
     };
 
-    // Get rotating services (4 services that rotate)
+    // Get rotating services
     const getRotatingServices = () => {
         if (locationBasedServices.length === 0) return [];
         const startIndex = currentServiceIndex;
@@ -249,19 +259,19 @@ const App = () => {
     // Handle search from hero section
     const handleSearch = () => {
         console.log("Search triggered, hasLocation:", hasLocation);
-        
+
         if (!hasLocation) {
             alert("Please select a location first");
             return;
         }
-        
+
         if (!searchTerm.trim() && !locationSearch.trim()) {
             alert("Please enter service name or location to search");
             return;
         }
-        
+
         let results = [...locationBasedServices];
-        
+
         if (searchTerm.trim()) {
             const searchTermLower = searchTerm.trim().toLowerCase();
             results = results.filter(service =>
@@ -271,21 +281,21 @@ const App = () => {
                 (service.description && service.description.toLowerCase().includes(searchTermLower))
             );
         }
-        
+
         if (locationSearch.trim()) {
             results = results.filter(service => isServiceInLocation(service, locationSearch.trim()));
         }
-        
+
         console.log(`Search results: ${results.length} services found`);
-        
+
         // Store original search results
         setSearchResults(results);
-        
+
         // Apply filters to results
         const filtered = applyFiltersToResults(results);
         setFilteredServices(filtered);
         setShowSearchResults(true);
-        
+
         // Push state to history for back button handling
         if (!showSearchResults) {
             window.history.pushState({ searchActive: true }, '', window.location.href);
@@ -295,19 +305,19 @@ const App = () => {
     // Filter by search term only (for navbar search)
     const filterBySearch = (term) => {
         console.log("Navbar search triggered, hasLocation:", hasLocation);
-        
+
         if (!hasLocation) {
             alert("Please select a location first");
             return;
         }
-        
+
         if (!term || term.trim() === "") {
             setFilteredServices(locationBasedServices);
             setShowSearchResults(false);
             setSearchResults([]);
             return;
         }
-        
+
         const searchTermLower = term.toLowerCase();
         const results = locationBasedServices.filter(service =>
             (service.name && service.name.toLowerCase().includes(searchTermLower)) ||
@@ -315,18 +325,14 @@ const App = () => {
             (service.subCategory && service.subCategory.toLowerCase().includes(searchTermLower)) ||
             (service.description && service.description.toLowerCase().includes(searchTermLower))
         );
-        
+
         console.log(`Search results: ${results.length} services found for term: ${term}`);
-        
-        // Store original search results
+
         setSearchResults(results);
-        
-        // Apply filters to results
         const filtered = applyFiltersToResults(results);
         setFilteredServices(filtered);
         setShowSearchResults(true);
-        
-        // Push state to history for back button handling
+
         if (!showSearchResults) {
             window.history.pushState({ searchActive: true }, '', window.location.href);
         }
@@ -343,7 +349,7 @@ const App = () => {
         setAvailability(true);
         setPriceRange([0, 10000]);
         setSortOrder("default");
-        
+
         if (window.history.state?.searchActive) {
             window.history.back();
         }
@@ -355,8 +361,7 @@ const App = () => {
         setPriceRange([0, 10000]);
         setSortOrder("default");
         setAvailability(true);
-        
-        // Re-apply filters to search results
+
         if (searchResults.length > 0) {
             const filtered = applyFiltersToResults(searchResults);
             setFilteredServices(filtered);
@@ -402,7 +407,7 @@ const App = () => {
 
     // Handle browser back/forward buttons
     useEffect(() => {
-        const handlePopState = (event) => {
+        const handlePopState = () => {
             if (showSearchResults) {
                 setShowSearchResults(false);
                 setSearchResults([]);
@@ -416,7 +421,6 @@ const App = () => {
         };
 
         window.addEventListener('popstate', handlePopState);
-        
         return () => {
             window.removeEventListener('popstate', handlePopState);
         };
@@ -432,15 +436,7 @@ const App = () => {
             }
         };
         return unlisten;
-    }, [location.pathname]);
-
-    // Image slider for banners
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
-        }, 3000);
-        return () => clearInterval(interval);
-    }, []);
+    }, [location.pathname, showSearchResults, locationBasedServices]);
 
     const buttonLabels = [
         "Home Maintenance & Repair Services",
@@ -475,84 +471,51 @@ const App = () => {
     // Show loading spinner
     if (loading && allServices.length === 0) {
         return (
-            <div>
+            <div className="lp-root">
                 <Navbar
                     onLocationSelect={handleLocationSelect}
                     selectedLocation={selectedLocation}
                     searchService={filterBySearch}
                 />
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    height: '100vh',
-                    flexDirection: 'column'
-                }}>
-                    <div style={{
-                        width: '50px',
-                        height: '50px',
-                        border: '5px solid #f3f3f3',
-                        borderTop: '5px solid #4a54e1',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite'
-                    }} />
-                    <p style={{ marginTop: '20px', color: '#666' }}>Loading services...</p>
-                    <style>{`
-                        @keyframes spin {
-                            0% { transform: rotate(0deg); }
-                            100% { transform: rotate(360deg); }
-                        }
-                    `}</style>
+                <div className="lp-loader-screen">
+                    <div className="lp-spinner" />
+                    <p className="lp-loader-text">Loading verified local services...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div style={{ padding: '0px', fontFamily: 'Arial, sans-serif', backgroundColor: '#F9FAFB' }}>
+        <div className="lp-root">
             <Navbar
                 onLocationSelect={handleLocationSelect}
                 selectedLocation={selectedLocation}
                 searchService={filterBySearch}
             />
-            <br />
 
             {/* Search Results Section with Filters */}
             {showSearchResults && (
                 <>
-                    {/* Filter Controls - Only shown in search results */}
-                    <div style={{
-                        marginTop: "15px",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "0 15px",
-                        maxWidth: "1200px",
-                        marginLeft: "auto",
-                        marginRight: "auto",
-                        backgroundColor: "#FFFFFF",
-                        padding: "15px 20px",
-                        borderRadius: "10px",
-                        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
-                        marginBottom: "15px"
-                    }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+                    {/* Filter Controls Bar */}
+                    <div className="lp-filter-bar">
+                        <div className="lp-filter-controls">
                             <Switch
                                 checked={availability}
                                 onChange={() => setAvailability(!availability)}
                                 checkedChildren="Available Today"
                                 unCheckedChildren="All Services"
                             />
-                            <span style={{ color: "#666", fontSize: "14px" }}>
-                                {filteredServices.length} results found
+                            <span className="lp-results-count">
+                                {filteredServices.length} {filteredServices.length === 1 ? 'service' : 'services'} found
                             </span>
                         </div>
                         <Button
                             type="primary"
                             onClick={() => setIsFilterModalVisible(true)}
-                            style={{ backgroundColor: "#4a54e1", borderRadius: "8px" }}
+                            className="lp-filter-btn"
                         >
-                            <i className="bi bi-funnel-fill"></i> Filter
+                            <FaFilter style={{ fontSize: '0.8rem' }} />
+                            <span>Filter & Sort</span>
                         </Button>
                     </div>
 
@@ -564,482 +527,230 @@ const App = () => {
                 </>
             )}
 
-            {/* Rest of the Content - Only shown when not in search results */}
+            {/* Standard Landing Page Content (when not showing search results) */}
             {!showSearchResults && (
                 <>
-                    {/* Hero Section */}
-                    <div style={{
-                        position: "relative",
-                        height: "500px",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        overflow: "hidden",
-                        background: "linear-gradient(135deg, #6c5ce7 0%, #a29bfe 50%, #fd79a8 100%)"
-                    }}>
-                        <div style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            width: "100%",
-                            height: "100%",
-                            backgroundImage: "radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 50%)",
-                            zIndex: 1
-                        }}></div>
-
-                        <div style={{
-                            position: "relative",
-                            zIndex: 2,
-                            width: "95%",
-                            maxWidth: "800px",
-                            padding: "30px 15px",
-                            background: "rgba(255, 255, 255, 0.95)",
-                            borderRadius: "20px",
-                            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.15)",
-                            backdropFilter: "blur(10px)",
-                            border: "1px solid rgba(255, 255, 255, 0.2)",
-                            textAlign: "center",
-                            margin: "auto"
-                        }}>
-                            <div style={{ marginBottom: "35px" }}>
-                                <h1 style={{
-                                    marginBottom: "12px",
-                                    color: "#2D3748",
-                                    fontSize: "32px",
-                                    fontWeight: "700",
-                                    background: "linear-gradient(135deg, #2D3748 0%, #4A5568 100%)",
-                                    WebkitBackgroundClip: "text",
-                                    WebkitTextFillColor: "transparent",
-                                    backgroundClip: "text"
-                                }}>
-                                    Discover Exceptional Services
-                                </h1>
-                                <p style={{
-                                    color: "#718096",
-                                    fontSize: "16px",
-                                    fontWeight: "400",
-                                    lineHeight: "1.5"
-                                }}>
-                                    Find the perfect service provider for your needs
-                                </p>
+                    {/* Modern Hero Section */}
+                    <section className="lp-hero">
+                        <div className="lp-hero-card">
+                            <div className="lp-hero-badge">
+                                <FaBolt /> Verified Service Network
                             </div>
 
-                            <div style={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: "15px",
-                                alignItems: "stretch",
-                                justifyContent: "center",
-                                width: "100%",
-                                marginTop: "10px"
-                            }}>
-                                <div style={{
-                                    flex: "1 1 100%",
-                                    maxWidth: "350px",
-                                    position: "relative"
-                                }}>
+                            <h1 className="lp-hero-title">
+                                Discover <span className="lp-hero-title-gradient">Exceptional Services</span>
+                            </h1>
+                            <p className="lp-hero-subtitle">
+                                Connect with top-rated local professionals and book services instantly
+                            </p>
+
+                            {/* Hero Search Box */}
+                            <div className="lp-search-container">
+                                <div className="lp-search-input-box">
+                                    <FaSearch className="lp-search-icon" />
                                     <input
-                                        style={{
-                                            width: "100%",
-                                            height: "56px",
-                                            padding: "0 50px 0 20px",
-                                            border: "2px solid #E2E8F0",
-                                            borderRadius: "12px",
-                                            fontSize: "16px",
-                                            fontWeight: "400",
-                                            outline: "none",
-                                            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                                            backgroundColor: "#FFFFFF",
-                                            boxSizing: "border-box",
-                                            color: "#2D3748"
-                                        }}
+                                        className="lp-search-input"
                                         type="text"
-                                        placeholder="Service name or category..."
+                                        placeholder="Service name, trade, or category..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        onFocus={(e) => {
+                                        onFocus={() => {
                                             if (!hasLocation) {
                                                 alert("Please select a location first");
                                             }
-                                            e.target.style.borderColor = "#4299E1";
-                                            e.target.style.boxShadow = "0 0 0 3px rgba(66, 153, 225, 0.1)";
-                                            e.target.style.backgroundColor = "#F7FAFC";
                                         }}
-                                        onBlur={(e) => {
-                                            e.target.style.borderColor = "#E2E8F0";
-                                            e.target.style.boxShadow = "none";
-                                            e.target.style.backgroundColor = "#FFFFFF";
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleSearch();
                                         }}
                                     />
-                                    <div style={{
-                                        position: "absolute",
-                                        right: "20px",
-                                        top: "50%",
-                                        transform: "translateY(-50%)",
-                                        color: "#A0AEC0",
-                                        fontSize: "18px"
-                                    }}>
-                                        🔍
-                                    </div>
                                 </div>
 
-                                <div style={{
-                                    flex: "1 1 250px",
-                                    minWidth: "250px",
-                                    position: "relative"
-                                }}>
+                                <div className="lp-search-location-box">
                                     <LocationSearch
                                         onLocationSelect={(location) => {
                                             if (!hasLocation) {
                                                 alert("Please select a location first");
                                                 return;
                                             }
-                                            setLocationSearch(location.display_name || location);
+                                            setLocationSearch(location?.display_name || location || '');
                                         }}
-                                        placeholder="City, state or zip code..."
+                                        placeholder="City, area or pin code..."
                                     />
                                 </div>
 
                                 <button
+                                    type="button"
+                                    className="lp-search-btn"
                                     onClick={handleSearch}
-                                    style={{
-                                        height: "56px",
-                                        flex: "0 1 160px",
-                                        minWidth: "160px",
-                                        backgroundColor: "#4299E1",
-                                        color: "white",
-                                        border: "none",
-                                        borderRadius: "12px",
-                                        fontSize: "16px",
-                                        fontWeight: "600",
-                                        cursor: "pointer",
-                                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                                        boxShadow: "0 4px 14px rgba(66, 153, 225, 0.4)",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        gap: "8px"
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.target.style.backgroundColor = "#3182CE";
-                                        e.target.style.transform = "translateY(-2px)";
-                                        e.target.style.boxShadow = "0 8px 20px rgba(66, 153, 225, 0.5)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.target.style.backgroundColor = "#4299E1";
-                                        e.target.style.transform = "translateY(0)";
-                                        e.target.style.boxShadow = "0 4px 14px rgba(66, 153, 225, 0.4)";
-                                    }}
                                 >
                                     <span>Search</span>
-                                    <span style={{ fontSize: "18px" }}>&rarr;</span>
+                                    <FaArrowRight style={{ fontSize: '0.85rem' }} />
                                 </button>
                             </div>
 
-                            <div style={{
-                                marginTop: "25px",
-                                display: "flex",
-                                justifyContent: "center",
-                                gap: "20px",
-                                flexWrap: "wrap"
-                            }}>
-                                <div style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "6px",
-                                    fontSize: "13px",
-                                    color: "#718096",
-                                    fontWeight: "500"
-                                }}>
-                                    <div style={{
-                                        width: "6px",
-                                        height: "6px",
-                                        backgroundColor: "#48BB78",
-                                        borderRadius: "50%"
-                                    }}></div>
-                                    Search by name, category, or location
+                            {/* Trust badges */}
+                            <div className="lp-hero-features">
+                                <div className="lp-hero-feature-item">
+                                    <FaCheckCircle className="lp-hero-feature-icon green" />
+                                    <span>Verified Providers</span>
                                 </div>
-                                <div style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "6px",
-                                    fontSize: "13px",
-                                    color: "#718096",
-                                    fontWeight: "500"
-                                }}>
-                                    <div style={{
-                                        width: "6px",
-                                        height: "6px",
-                                        backgroundColor: "#ED8936",
-                                        borderRadius: "50%"
-                                    }}></div>
-                                    Verified service providers
+                                <div className="lp-hero-feature-item">
+                                    <FaShieldAlt className="lp-hero-feature-icon amber" />
+                                    <span>Guaranteed Quality</span>
                                 </div>
-                                <div style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: "6px",
-                                    fontSize: "13px",
-                                    color: "#718096",
-                                    fontWeight: "500"
-                                }}>
-                                    <div style={{
-                                        width: "6px",
-                                        height: "6px",
-                                        backgroundColor: "#9F7AEA",
-                                        borderRadius: "50%"
-                                    }}></div>
-                                    Instant results
+                                <div className="lp-hero-feature-item">
+                                    <FaBolt className="lp-hero-feature-icon indigo" />
+                                    <span>Instant Availability</span>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    {/* Show content only when location is selected */}
+                    {/* Content Section: Depends on location selection */}
                     {hasLocation ? (
                         <>
                             {locationBasedServices.length === 0 ? (
-                                <div style={{
-                                    marginTop: '40px',
-                                    padding: '60px 20px',
-                                    textAlign: 'center',
-                                    backgroundColor: '#FFFFFF',
-                                    borderRadius: '10px',
-                                    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)'
-                                }}>
-                                    <i className="fa fa-map-marker" style={{ fontSize: "48px", color: "#ff4444", marginBottom: "20px" }}></i>
-                                    <h3 style={{ color: "#333", marginBottom: "10px" }}>No Services Available in This Location</h3>
-                                    <p style={{ color: "#666", marginBottom: "20px" }}>
-                                        We're sorry, but there are currently no service providers available in {selectedLocation?.display_name?.split(',')[0] || selectedLocation?.city || 'your selected location'}.
-                                        Please try a different location or check back later.
+                                /* No services in this location */
+                                <div className="lp-empty-state">
+                                    <div className="lp-empty-icon-wrap red">
+                                        <FaMapMarkerAlt />
+                                    </div>
+                                    <h3 className="lp-empty-title">No Services in This Area Yet</h3>
+                                    <p className="lp-empty-desc">
+                                        We currently don't have registered providers in{" "}
+                                        <strong>
+                                            {selectedLocation?.display_name?.split(',')[0] || selectedLocation?.city || 'this location'}
+                                        </strong>
+                                        . Please select a neighboring area or check back soon.
                                     </p>
                                     <button
+                                        type="button"
+                                        className="lp-empty-btn primary"
                                         onClick={() => handleLocationSelect(null)}
-                                        style={{
-                                            padding: "10px 20px",
-                                            backgroundColor: "#4a54e1",
-                                            color: "white",
-                                            border: "none",
-                                            borderRadius: "8px",
-                                            cursor: "pointer",
-                                            fontSize: "16px"
-                                        }}
                                     >
-                                        Select Different Location
+                                        <FaMapMarkerAlt />
+                                        <span>Change Location</span>
                                     </button>
                                 </div>
                             ) : (
                                 <>
-                                    {/* Suggested Services Section */}
+                                    {/* Suggested Services Carousel */}
                                     {locationBasedServices.length > 0 && (
-                                        <div style={{ marginTop: '40px', padding: '20px', backgroundColor: '#FFFFFF', borderRadius: '10px', boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)' }}>
-                                            <h2 style={{ fontSize: "26px", fontWeight: "700", color: "#333", marginBottom: "25px", letterSpacing: "0.5px" }}>
-                                                Suggested Services
-                                            </h2>
-                                            <div style={{
-                                                display: 'flex',
-                                                gap: '20px',
-                                                whiteSpace: "nowrap",
-                                                scrollbarWidth: "none",
-                                                msOverflowStyle: "none",
-                                                overflowX: 'auto',
-                                                padding: '10px',
-                                                WebkitOverflowScrolling: 'touch'
-                                            }}>
-                                                {getSuggestedServices().map((service) => (
-                                                    <div key={service._id} style={{ minWidth: "250px", flexShrink: 0 }}>
-                                                        <Service service={service} isLandingPage={true} bookingArea={selectedLocation} />
+                                        <div className="lp-section-container">
+                                            <div className="lp-service-carousel-card">
+                                                <div className="lp-section-header">
+                                                    <div>
+                                                        <h2 className="lp-section-title">
+                                                            Suggested Services
+                                                        </h2>
+                                                        <p className="lp-section-sub">
+                                                            Popular and top-rated offerings in your area
+                                                        </p>
                                                     </div>
-                                                ))}
+                                                </div>
+                                                <div className="lp-horizontal-scroll">
+                                                    {getSuggestedServices().map((service) => (
+                                                        <div key={service._id} className="lp-service-card-item">
+                                                            <Service service={service} isLandingPage={true} bookingArea={selectedLocation} />
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
 
                                     {/* Categories Section */}
-                                    <div
-                                        style={{
-                                            backgroundColor: "#f5f7fa",
-                                            padding: "40px 20px",
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            alignItems: "center",
-                                            gap: "10px",
-                                        }}
-                                    >
-                                        <h2
-                                            style={{
-                                                fontSize: "26px",
-                                                fontWeight: "700",
-                                                color: "#333",
-                                                marginBottom: "25px",
-                                                letterSpacing: "0.5px",
-                                            }}
-                                        >
-                                            Categories of Services
-                                        </h2>
-
-                                        <div
-                                            style={{
-                                                display: "grid",
-                                                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                                                gap: "30px",
-                                                width: "100%",
-                                                maxWidth: "1200px",
-                                            }}
-                                        >
-                                            {Array.from({ length: buttonLabels.length }).map((_, index) => {
-                                                const buttonText = buttonLabels[index] || `Button ${index + 1}`;
-                                                const imageUrl = imageUrls[index] || "https://via.placeholder.com/150";
-
-                                                return (
-                                                    <div
-                                                        key={index}
-                                                        style={{
-                                                            backgroundColor: "#fff",
-                                                            padding: "30px 20px",
-                                                            borderRadius: "15px",
-                                                            boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-                                                            textAlign: "center",
-                                                            transition: "transform 0.3s, box-shadow 0.3s",
-                                                            cursor: "pointer",
-                                                        }}
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.transform = "translateY(-5px)";
-                                                            e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.15)";
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.transform = "translateY(0)";
-                                                            e.currentTarget.style.boxShadow = "0 4px 10px rgba(0,0,0,0.1)";
-                                                        }}
-                                                        onClick={() => handleCategoryClick(buttonText)}
-                                                    >
-                                                        <div style={{ marginBottom: "15px" }}>
-                                                            <img
-                                                                src={imageUrl}
-                                                                alt={buttonText}
-                                                                style={{ width: "60px", height: "200px", objectFit: "cover" }}
-                                                            />
-                                                        </div>
-                                                        <button
-                                                            style={{
-                                                                padding: "10px 20px",
-                                                                borderRadius: "8px",
-                                                                border: "none",
-                                                                background: "linear-gradient(135deg, #e1d9d9ff 0%, #fafafa 100%)",
-                                                                color: "#201f1fff",
-                                                                fontWeight: "600",
-                                                                cursor: "pointer",
-                                                                transition: "background-color 0.3s",
-                                                            }}
-                                                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#e55b00")}
-                                                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#FF6600")}
-                                                        >
-                                                            {buttonText}
-                                                        </button>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-
-                                    {/* Rotating Services Section */}
-                                    {locationBasedServices.length > 0 && (
-                                        <div style={{
-                                            display: 'flex',
-                                            overflowX: 'auto',
-                                            gap: '20px',
-                                            padding: '20px',
-                                            whiteSpace: 'nowrap',
-                                            backgroundColor: '#FFFFFF',
-                                            borderRadius: '10px',
-                                            scrollbarWidth: "none",
-                                            msOverflowStyle: "none",
-                                            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-                                            WebkitOverflowScrolling: 'touch'
-                                        }}>
-                                            {getRotatingServices().map((service) => (
-                                                <div key={service._id} style={{ minWidth: "250px", flexShrink: 0 }}>
-                                                    <Service service={service} isLandingPage={true} bookingArea={selectedLocation} />
+                                    <section className="lp-categories-section">
+                                        <div className="lp-section-container" style={{ padding: "0 0 30px" }}>
+                                            <div className="lp-section-header" style={{ justifyContent: "center", textAlign: "center" }}>
+                                                <div>
+                                                    <h2 className="lp-section-title" style={{ justifyContent: "center" }}>
+                                                        Browse By Category
+                                                    </h2>
+                                                    <p className="lp-section-sub">
+                                                        Find specialized experts tailored for your home and lifestyle
+                                                    </p>
                                                 </div>
-                                            ))}
+                                            </div>
+
+                                            <div className="lp-categories-grid">
+                                                {Array.from({ length: buttonLabels.length }).map((_, index) => {
+                                                    const buttonText = buttonLabels[index] || `Service ${index + 1}`;
+                                                    const imageUrl = imageUrls[index] || images[0];
+
+                                                    return (
+                                                        <div
+                                                            key={index}
+                                                            className="lp-category-card"
+                                                            onClick={() => handleCategoryClick(buttonText)}
+                                                        >
+                                                            <div className="lp-category-img-wrap">
+                                                                <img
+                                                                    src={imageUrl}
+                                                                    alt={buttonText}
+                                                                    className="lp-category-img"
+                                                                />
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                className="lp-category-btn"
+                                                            >
+                                                                {buttonText}
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    {/* Rotating Services Carousel */}
+                                    {locationBasedServices.length > 0 && (
+                                        <div className="lp-section-container">
+                                            <div className="lp-service-carousel-card">
+                                                <div className="lp-section-header">
+                                                    <div>
+                                                        <h2 className="lp-section-title">
+                                                            Featured Providers
+                                                        </h2>
+                                                        <p className="lp-section-sub">
+                                                            Handpicked and actively taking bookings today
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="lp-horizontal-scroll">
+                                                    {getRotatingServices().map((service) => (
+                                                        <div key={service._id} className="lp-service-card-item">
+                                                            <Service service={service} isLandingPage={true} bookingArea={selectedLocation} />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
 
-                                    {/* Event & Ticket Services Section */}
-                                    <div
-                                        style={{
-                                            backgroundColor: "#f5f7fa",
-                                            padding: "60px 0",
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            alignItems: "center",
-                                            gap: "60px",
-                                        }}
-                                    >
-                                        <div style={{ width: "100%", textAlign: "center" }}>
-                                            <h2
-                                                style={{
-                                                    fontSize: "26px",
-                                                    fontWeight: "700",
-                                                    color: "#333",
-                                                    marginBottom: "25px",
-                                                    letterSpacing: "0.5px",
-                                                }}
-                                            >
-                                                Event & Ticket Services
-                                            </h2>
-                                            <div
-                                                style={{
-                                                    display: "flex",
-                                                    justifyContent: "center",
-                                                    flexWrap: "wrap",
-                                                    gap: "40px",
-                                                }}
-                                            >
+                                    {/* Event & Ticket Services */}
+                                    <section className="lp-events-section">
+                                        <div className="lp-section-container" style={{ padding: "0" }}>
+                                            <div className="lp-section-header" style={{ justifyContent: "center", textAlign: "center", marginBottom: "35px" }}>
+                                                <div>
+                                                    <h2 className="lp-section-title" style={{ justifyContent: "center" }}>
+                                                        Event & Ticket Services
+                                                    </h2>
+                                                    <p className="lp-section-sub">
+                                                        Make every occasion unforgettable with hassle-free planning
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="lp-events-grid">
                                                 {Array.from({ length: 3 }).map((_, boxIndex) => (
-                                                    <div
-                                                        key={boxIndex}
-                                                        style={{
-                                                            width: "340px",
-                                                            borderRadius: "16px",
-                                                            backgroundColor: "#fff",
-                                                            boxShadow: "0 6px 16px rgba(0,0,0,0.1)",
-                                                            overflow: "hidden",
-                                                            transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                                                        }}
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.transform = "translateY(-8px)";
-                                                            e.currentTarget.style.boxShadow =
-                                                                "0 10px 25px rgba(0,0,0,0.15)";
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.transform = "translateY(0)";
-                                                            e.currentTarget.style.boxShadow =
-                                                                "0 6px 16px rgba(0,0,0,0.1)";
-                                                        }}
-                                                    >
-                                                        <div
-                                                            style={{
-                                                                background: "linear-gradient(135deg, #a0a4f0ff, #b7a6e5ff)",
-                                                                color: "#fff",
-                                                                textAlign: "center",
-                                                                fontWeight: "600",
-                                                                fontSize: "17px",
-                                                                padding: "14px 0",
-                                                            }}
-                                                        >
+                                                    <div key={boxIndex} className="lp-event-column-card">
+                                                        <div className="lp-event-header-ribbon">
                                                             {["Event Planning", "Decor & Photography", "Ticketing Services"][boxIndex]}
                                                         </div>
 
-                                                        <div
-                                                            style={{
-                                                                display: "grid",
-                                                                gridTemplateColumns: "1fr 1fr",
-                                                                gap: "15px",
-                                                                padding: "20px",
-                                                                backgroundColor: "#fafafa",
-                                                            }}
-                                                        >
+                                                        <div className="lp-event-subitems-grid">
                                                             {[
                                                                 "Wedding Planning",
                                                                 "Birthday Planning",
@@ -1055,70 +766,21 @@ const App = () => {
                                                                 "Amusement Park Passes",
                                                             ]
                                                                 .slice(boxIndex * 4, boxIndex * 4 + 4)
-                                                                .map((buttonText, innerIndex) => (
-                                                                    <div
-                                                                        key={innerIndex}
-                                                                        style={{
-                                                                            borderRadius: "10px",
-                                                                            overflow: "hidden",
-                                                                            backgroundColor: "#fff",
-                                                                            boxShadow: "0 2px 6px rgba(0, 0, 0, 0.08)",
-                                                                            transition:
-                                                                                "transform 0.25s ease, box-shadow 0.25s ease",
-                                                                        }}
-                                                                        onMouseEnter={(e) => {
-                                                                            e.currentTarget.style.transform = "scale(1.04)";
-                                                                            e.currentTarget.style.boxShadow =
-                                                                                "0 6px 12px rgba(0,0,0,0.15)";
-                                                                        }}
-                                                                        onMouseLeave={(e) => {
-                                                                            e.currentTarget.style.transform = "scale(1)";
-                                                                            e.currentTarget.style.boxShadow =
-                                                                                "0 2px 6px rgba(0,0,0,0.08)";
-                                                                        }}
-                                                                    >
-                                                                        <div
-                                                                            style={{
-                                                                                height: "90px",
-                                                                                width: "100%",
-                                                                                overflow: "hidden",
-                                                                            }}
-                                                                        >
+                                                                .map((subText, innerIndex) => (
+                                                                    <div key={innerIndex} className="lp-subitem-card">
+                                                                        <div className="lp-subitem-thumb">
                                                                             <img
                                                                                 src={imageUrls[(boxIndex * 4 + innerIndex) % imageUrls.length]}
-                                                                                alt={buttonText}
-                                                                                style={{
-                                                                                    width: "100%",
-                                                                                    height: "100%",
-                                                                                    objectFit: "cover",
-                                                                                    transition: "transform 0.4s ease",
-                                                                                }}
-                                                                                onMouseEnter={(e) =>
-                                                                                    (e.currentTarget.style.transform = "scale(1.1)")
-                                                                                }
-                                                                                onMouseLeave={(e) =>
-                                                                                    (e.currentTarget.style.transform = "scale(1)")
-                                                                                }
+                                                                                alt={subText}
+                                                                                className="lp-subitem-img"
                                                                             />
                                                                         </div>
                                                                         <button
-                                                                            style={{
-                                                                                color: "#6b7280",
-                                                                                background: "linear-gradient(135deg, #e1d9d9ff 0%, #fafafa 100%)",
-                                                                                border: "1px solid #f5f5f5",
-                                                                                color: "black",
-                                                                                border: "none",
-                                                                                cursor: "pointer",
-                                                                                padding: "10px 5px",
-                                                                                fontSize: "13px",
-                                                                                fontWeight: "600",
-                                                                                width: "100%",
-                                                                                borderRadius: "0 0 10px 10px",
-                                                                                transition: "background-color 0.3s ease",
-                                                                            }}
-                                                                            onClick={() => handleSubCategoryClick(buttonText)}
+                                                                            type="button"
+                                                                            className="lp-subitem-btn"
+                                                                            onClick={() => handleSubCategoryClick(subText)}
                                                                         >
-                                                                            {buttonText}
+                                                                            {subText}
                                                                         </button>
                                                                     </div>
                                                                 ))}
@@ -1127,146 +789,83 @@ const App = () => {
                                                 ))}
                                             </div>
                                         </div>
+                                    </section>
 
-                                        {/* Travel & Transport Services Section */}
-                                        <div style={{ width: "100%", textAlign: "center" }}>
-                                            <h2
-                                                style={{
-                                                    fontSize: "26px",
-                                                    fontWeight: "700",
-                                                    color: "#333",
-                                                    marginBottom: "25px",
-                                                    letterSpacing: "0.5px",
-                                                }}
-                                            >
-                                                Travel & Transport Services
-                                            </h2>
-                                            <div
-                                                style={{
-                                                    display: "flex",
-                                                    flexWrap: "wrap",
-                                                    justifyContent: "center",
-                                                    gap: "25px",
-                                                    padding: "0 20px",
-                                                }}
-                                            >
+                                    {/* Travel & Transport Section */}
+                                    <section className="lp-travel-section">
+                                        <div className="lp-section-container" style={{ padding: "0" }}>
+                                            <div className="lp-section-header" style={{ justifyContent: "center", textAlign: "center", marginBottom: "35px" }}>
+                                                <div>
+                                                    <h2 className="lp-section-title" style={{ justifyContent: "center" }}>
+                                                        Travel & Transport Services
+                                                    </h2>
+                                                    <p className="lp-section-sub">
+                                                        Reliable rentals, cab services, and travel booking at your fingertips
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="lp-travel-grid">
                                                 {[
                                                     "Cab and Taxi Services",
                                                     "Car Rental",
                                                     "Airport Transfers",
                                                     "Flight Ticket Booking",
-                                                ].map((buttonText, index) => (
+                                                ].map((travelTitle, index) => (
                                                     <div
                                                         key={index}
-                                                        style={{
-                                                            width: "260px",
-                                                            borderRadius: "14px",
-                                                            overflow: "hidden",
-                                                            backgroundColor: "rgba(255, 255, 255, 1)",
-                                                            boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-                                                            transition: "transform 0.3s ease, box-shadow 0.3s ease",
-                                                            cursor: "pointer",
-                                                        }}
-                                                        onClick={() => handleCategoryClick(buttonText)}
-                                                        onMouseEnter={(e) => {
-                                                            e.currentTarget.style.transform = "translateY(-5px)";
-                                                            e.currentTarget.style.boxShadow =
-                                                                "0 6px 12px rgba(0, 0, 0, 0.2)";
-                                                        }}
-                                                        onMouseLeave={(e) => {
-                                                            e.currentTarget.style.transform = "translateY(0)";
-                                                            e.currentTarget.style.boxShadow =
-                                                                "0 4px 8px rgba(0, 0, 0, 0.1)";
-                                                        }}
+                                                        className="lp-travel-card"
+                                                        onClick={() => handleCategoryClick(travelTitle)}
                                                     >
-                                                        <div style={{ height: "130px", overflow: "hidden" }}>
+                                                        <div className="lp-travel-thumb">
                                                             <img
                                                                 src={imageUrls[index % imageUrls.length]}
-                                                                alt={buttonText}
-                                                                style={{
-                                                                    width: "100%",
-                                                                    height: "100%",
-                                                                    objectFit: "cover",
-                                                                    transition: "transform 0.4s ease",
-                                                                }}
-                                                                onMouseEnter={(e) =>
-                                                                    (e.currentTarget.style.transform = "scale(1.1)")
-                                                                }
-                                                                onMouseLeave={(e) =>
-                                                                    (e.currentTarget.style.transform = "scale(1)")
-                                                                }
+                                                                alt={travelTitle}
+                                                                className="lp-travel-img"
                                                             />
                                                         </div>
-                                                        <div
-                                                            style={{
-                                                                padding: "15px 22px",
-                                                                textAlign: "center",
-                                                                fontWeight: "600",
-                                                                fontSize: "14px",
-                                                                color: "#6b7280",
-                                                                background: "linear-gradient(135deg, #e1d9d9ff 0%, #fafafa 100%)",
-                                                                border: "1px solid #f5f5f5",
-                                                                cursor: "pointer",
-                                                                transition: "all 0.3s ease",
-                                                                borderRadius: "8px",
-                                                                boxShadow: "0 1px 3px rgba(0, 0, 0, 0.02)",
-                                                            }}
-
-                                                        >
-                                                            {buttonText}
+                                                        <div className="lp-travel-title-box">
+                                                            {travelTitle}
                                                         </div>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
-                                    </div>
+                                    </section>
 
-                                    {/* About Section */}
+                                    {/* About Component */}
                                     <About />
                                 </>
                             )}
                         </>
                     ) : (
-                        /* Prompt to select location */
-                        <div style={{
-                            marginTop: '40px',
-                            padding: '60px 20px',
-                            textAlign: 'center',
-                            backgroundColor: '#FFFFFF',
-                            borderRadius: '10px',
-                            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)'
-                        }}>
-                            <i className="fa fa-map-marker" style={{ fontSize: "48px", color: "#ff9800", marginBottom: "20px" }}></i>
-                            <h3 style={{ color: "#333", marginBottom: "10px" }}>Select Your Location</h3>
-                            <p style={{ color: "#666", marginBottom: "20px", maxWidth: "500px", margin: "0 auto" }}>
-                                Please select your location from the navbar to discover services available in your area.
-                                This helps us show you the most relevant service providers near you.
+                        /* Prompt to select location when not chosen */
+                        <div className="lp-empty-state">
+                            <div className="lp-empty-icon-wrap orange">
+                                <FaMapMarkerAlt />
+                            </div>
+                            <h3 className="lp-empty-title">Select Your Location</h3>
+                            <p className="lp-empty-desc">
+                                Please choose your location to discover verified services and professionals near you.
                             </p>
                             <button
+                                type="button"
+                                className="lp-empty-btn orange"
                                 onClick={() => {
-                                    const locationBtn = document.querySelector('.location-toggle-btn');
+                                    const locationBtn = document.querySelector('.sh-location-pill') || document.querySelector('.location-toggle-btn');
                                     if (locationBtn) {
                                         locationBtn.click();
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
                                     } else {
                                         window.scrollTo({ top: 0, behavior: 'smooth' });
                                         setTimeout(() => {
                                             alert("Please click on the location button in the top navbar to select your location");
-                                        }, 500);
+                                        }, 400);
                                     }
                                 }}
-                                style={{
-                                    padding: "12px 24px",
-                                    backgroundColor: "#ff9800",
-                                    color: "white",
-                                    border: "none",
-                                    borderRadius: "8px",
-                                    cursor: "pointer",
-                                    fontSize: "16px",
-                                    fontWeight: "500",
-                                    marginTop: "20px"
-                                }}
                             >
-                                Select Location
+                                <FaMapMarkerAlt />
+                                <span>Choose Location</span>
                             </button>
                         </div>
                     )}
@@ -1284,9 +883,9 @@ const App = () => {
                     <Button key="apply" type="primary" onClick={applyFiltersModal}>Apply</Button>,
                 ]}
             >
-                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px" }}>
                     <div>
-                        <label>Select Date Range:</label>
+                        <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Select Date Range:</label>
                         <RangePicker
                             value={selectedDates}
                             onChange={(d) => setSelectedDates(d)}
@@ -1294,7 +893,7 @@ const App = () => {
                         />
                     </div>
                     <div>
-                        <label>Price Range:</label>
+                        <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Price Range (₹):</label>
                         <div style={{ display: "flex", gap: "10px" }}>
                             <InputNumber
                                 min={0}
@@ -1313,7 +912,7 @@ const App = () => {
                         </div>
                     </div>
                     <div>
-                        <label>Sort By:</label>
+                        <label style={{ display: "block", marginBottom: "6px", fontWeight: 600 }}>Sort By:</label>
                         <Select
                             value={sortOrder}
                             onChange={(v) => setSortOrder(v)}
@@ -1330,4 +929,4 @@ const App = () => {
     );
 };
 
-export default App;
+export default LandingPage;

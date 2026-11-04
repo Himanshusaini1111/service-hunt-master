@@ -1,45 +1,65 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
-import { Tabs, Table, Button, Form, Input, Select, message, Tag } from "antd";
+import { Tabs, Table, message, Select } from "antd";
+import "./VendorHelperInfo.css";
 
 const { TabPane } = Tabs;
 const { Option } = Select;
 
+export function VendorHelperInfo({ bookingId, userId }) {
+    const [currentBookingId, setCurrentBookingId] = useState(bookingId);
 
-export function VendorHelperInfo({ bookingId, userId }) {  // Added userId prop
-    const [activeBookingId, setActiveBookingId] = useState(bookingId);
+    useEffect(() => {
+        setCurrentBookingId(bookingId);
+    }, [bookingId]);
 
     return (
-        <div className="col-md-8 helper-management-section">
-            <div className="helper-header">
-                <h2 className="section-title">Helper Management</h2>
-                {bookingId && (
-                    <div className="booking-id-badge">
-                        Assigning helpers for Booking ID: <span className="id-number">{bookingId}</span>
+        <div className="vhi-wrapper">
+            {/* Header Surface */}
+            <div className="vhi-header-card">
+                <div className="vhi-header-main">
+                    <div className="vhi-header-icon">👷</div>
+                    <div className="vhi-header-text-wrap">
+                        <h2 className="vhi-header-title">Helper Management Studio</h2>
+                        <p className="vhi-header-subtitle">
+                            Monitor field technicians, verify real-time status, and dispatch crew to jobs
+                        </p>
                     </div>
-                )}
+                </div>
+
+                <div className="vhi-header-badges">
+                    {currentBookingId ? (
+                        <div className="vhi-booking-pill">
+                            <span>🎯 Target Booking:</span>
+                            <span className="vhi-bid-mono">#{currentBookingId}</span>
+                        </div>
+                    ) : (
+                        <div className="vhi-booking-pill no-booking">
+                            <span>ℹ️ Select a booking to dispatch crew</span>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <div className="helper-tabs-container">
-                <Tabs
-                    defaultActiveKey="1"
-                    className="custom-helper-tabs"
-                    tabBarGutter={20}
-                >
-                     <TabPane
-                        tab={<span className="tab-label">👥 View Helpers</span>}
+            {/* Main Tabs Container */}
+            <div className="vhi-tabs-wrap">
+                <Tabs defaultActiveKey="1" tabBarGutter={8}>
+                    <TabPane
+                        tab={<span>👥 View &amp; Assign Helpers</span>}
                         key="1"
-                        className="tab-content"
                     >
-                        <ViewHelpers bookingId={activeBookingId} userId={userId} />  {/* Pass userId */}
+                        <div className="vhi-tab-pane-content">
+                            <ViewHelpers bookingId={currentBookingId} userId={userId} />
+                        </div>
                     </TabPane>
 
                     <TabPane
-                        tab={<span className="tab-label">➕ Add New Helper</span>}
+                        tab={<span>➕ Register New Helper</span>}
                         key="2"
-                        className="tab-content"
                     >
-                        <AddHelper userId={userId} />  {/* Pass userId */}
+                        <div className="vhi-tab-pane-content">
+                            <AddHelper userId={userId} />
+                        </div>
                     </TabPane>
                 </Tabs>
             </div>
@@ -53,44 +73,49 @@ function ViewHelpers({ bookingId, userId }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [assigning, setAssigning] = useState(false);
-    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all"); // 'all' | 'online' | 'offline'
 
-    useEffect(() => {
-        fetchHelperDetails();
-        
-        // Add resize listener for responsive design
-        const handleResize = () => {
-            setIsMobile(window.innerWidth <= 768);
-        };
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, [userId]);
-
-    const fetchHelperDetails = async () => {
+    const fetchHelperDetails = useCallback(async () => {
+        if (!userId) return;
         setLoading(true);
         try {
             const response = await axios.get(`/api/vendor/helpers?userid=${userId}`);
-            setHelperDetails(response.data);
+            setHelperDetails(Array.isArray(response.data) ? response.data : []);
             setError(null);
-        } catch (error) {
+        } catch (err) {
             setError("Failed to fetch helper details. Please try again.");
-            console.error("Error fetching helper details:", error);
+            console.error("Error fetching helper details:", err);
         } finally {
             setLoading(false);
         }
-    };
+    }, [userId]);
+
+    useEffect(() => {
+        fetchHelperDetails();
+    }, [fetchHelperDetails]);
 
     const handleHelperSelection = (helperId) => {
-        setSelectedHelpers(prev => 
+        setSelectedHelpers((prev) =>
             prev.includes(helperId)
-                ? prev.filter(id => id !== helperId)
+                ? prev.filter((id) => id !== helperId)
                 : [...prev, helperId]
         );
     };
 
+    const handleSelectAll = (filteredList) => {
+        const ids = filteredList.map((h) => h._id);
+        const allSelected = ids.every((id) => selectedHelpers.includes(id));
+        if (allSelected) {
+            setSelectedHelpers((prev) => prev.filter((id) => !ids.includes(id)));
+        } else {
+            setSelectedHelpers((prev) => Array.from(new Set([...prev, ...ids])));
+        }
+    };
+
     const assignHelpersToBooking = async () => {
         if (!bookingId) {
-            message.error("Invalid Booking ID. Please try again.");
+            message.error("No Booking ID specified. Please select a booking first.");
             return;
         }
         if (selectedHelpers.length === 0) {
@@ -100,369 +125,410 @@ function ViewHelpers({ bookingId, userId }) {
 
         setAssigning(true);
         try {
-            const response = await axios.post("/api/bookings/assign-helpers", {
+            await axios.post("/api/bookings/assign-helpers", {
                 bookingId,
-                helperIds: selectedHelpers
+                helperIds: selectedHelpers,
             });
-            
-            message.success(`Helpers assigned successfully to booking!`);
+
+            message.success(`Successfully assigned ${selectedHelpers.length} helper(s) to Booking #${bookingId}!`);
             setSelectedHelpers([]);
-        } catch (error) {
-            console.error("Error assigning helpers:", error);
-            message.error(error.response?.data?.message || "Failed to assign helpers.");
+        } catch (err) {
+            console.error("Error assigning helpers:", err);
+            message.error(err.response?.data?.message || "Failed to assign helpers.");
         } finally {
             setAssigning(false);
         }
     };
 
-    // Mobile Card View Render
-    const renderMobileCardView = () => {
-        return (
-            <div className="mobile-helpers-list">
-                {helperDetails.map((helper, index) => (
-                    <div key={helper._id} className="helper-card" style={{
-                        background: "white",
-                        borderRadius: "12px",
-                        marginBottom: "12px",
-                        padding: "16px",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                        border: selectedHelpers.includes(helper._id) ? "2px solid #1890ff" : "1px solid #e8e8e8",
-                        position: "relative"
-                    }}>
-                        {/* Selection Checkbox */}
-                        <div style={{
-                            position: "absolute",
-                            top: "12px",
-                            right: "12px"
-                        }}>
-                            <input
-                                type="checkbox"
-                                checked={selectedHelpers.includes(helper._id)}
-                                onChange={() => handleHelperSelection(helper._id)}
-                                disabled={!bookingId || assigning}
-                                style={{
-                                    width: "20px",
-                                    height: "20px",
-                                    cursor: "pointer"
-                                }}
-                            />
-                        </div>
+    // Filter helpers based on search and status
+    const filteredHelpers = helperDetails.filter((helper) => {
+        const matchesSearch =
+            !searchTerm ||
+            helper.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            helper.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            helper.skills?.toLowerCase().includes(searchTerm.toLowerCase());
 
-                        {/* Helper Info */}
-                        <div style={{ marginBottom: "12px", paddingRight: "32px" }}>
-                            <div style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                marginBottom: "8px"
-                            }}>
-                                <h4 style={{
-                                    margin: 0,
-                                    fontSize: "16px",
-                                    fontWeight: "bold",
-                                    color: "#333"
-                                }}>
-                                    {helper.name}
-                                </h4>
-                                <Tag color={helper.isConnected ? "green" : "red"} style={{ margin: 0 }}>
-                                    {helper.isConnected ? "Online" : "Offline"}
-                                </Tag>
-                            </div>
-                            
-                            <div style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: "8px",
-                                marginTop: "12px"
-                            }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                    <span style={{ fontSize: "12px", color: "#666", minWidth: "60px" }}>📞 Phone:</span>
-                                    <span style={{ fontSize: "14px", color: "#333" }}>{helper.phone}</span>
-                                </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                    <span style={{ fontSize: "12px", color: "#666", minWidth: "60px" }}>✉️ Email:</span>
-                                    <span style={{ fontSize: "13px", color: "#333", wordBreak: "break-all" }}>{helper.email}</span>
-                                </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                    <span style={{ fontSize: "12px", color: "#666", minWidth: "60px" }}>🔢 Code:</span>
-                                    <span style={{ fontSize: "14px", color: "#333" }}>{helper.code}</span>
-                                </div>
-                                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                                    <span style={{ fontSize: "12px", color: "#666", minWidth: "60px" }}>💼 Experience:</span>
-                                    <span style={{ fontSize: "14px", color: "#333" }}>{helper.experience} years</span>
-                                </div>
-                                <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
-                                    <span style={{ fontSize: "12px", color: "#666", minWidth: "60px" }}>⚡ Skills:</span>
-                                    <span style={{ fontSize: "14px", color: "#333", flex: 1 }}>{helper.skills}</span>
-                                </div>
-                            </div>
-                        </div>
+        const matchesStatus =
+            statusFilter === "all" ||
+            (statusFilter === "online" && helper.isConnected) ||
+            (statusFilter === "offline" && !helper.isConnected);
 
-                        {/* Selection Indicator */}
-                        {selectedHelpers.includes(helper._id) && (
-                            <div style={{
-                                position: "absolute",
-                                top: "8px",
-                                left: "8px",
-                                background: "#1890ff",
-                                color: "white",
-                                padding: "2px 8px",
-                                borderRadius: "12px",
-                                fontSize: "10px",
-                                fontWeight: "bold"
-                            }}>
-                                Selected
-                            </div>
-                        )}
-                    </div>
-                ))}
-            </div>
-        );
-    };
+        return matchesSearch && matchesStatus;
+    });
+
+    const onlineCount = helperDetails.filter((h) => h.isConnected).length;
+    const offlineCount = helperDetails.length - onlineCount;
 
     // Table Columns Configuration
     const columns = [
         {
             title: "#",
             key: "index",
-            width: 60,
-            render: (text, record, index) => index + 1
+            width: 50,
+            align: "center",
+            render: (_text, _record, index) => index + 1,
         },
         {
             title: "Select",
             key: "select",
             width: 70,
+            align: "center",
             render: (_, helper) => (
                 <input
                     type="checkbox"
+                    className="vhi-custom-checkbox"
                     checked={selectedHelpers.includes(helper._id)}
                     onChange={() => handleHelperSelection(helper._id)}
-                    disabled={!bookingId || assigning}
-                    style={{ cursor: "pointer", width: "18px", height: "18px" }}
+                    aria-label={`Select helper ${helper.name}`}
                 />
-            )
+            ),
         },
         {
-            title: "Name",
-            dataIndex: "name",
-            key: "name",
-            ellipsis: true
-        },
-        {
-            title: "Phone",
-            dataIndex: "phone",
-            key: "phone",
-            responsive: ['md'] // Hide on mobile
-        },
-        {
-            title: "Email",
-            dataIndex: "email",
-            key: "email",
-            ellipsis: true,
-            responsive: ['lg'] // Hide on tablet
-        },
-        {
-            title: "Code",
-            dataIndex: "code",
-            key: "code",
-            responsive: ['sm'] // Hide on very small screens
+            title: "Helper Details",
+            key: "helperDetails",
+            render: (_, helper) => {
+                const initials = helper.name
+                    ? helper.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+                    : "H";
+                return (
+                    <div className="vhi-helper-user-cell">
+                        <div className="vhi-avatar">{initials}</div>
+                        <div className="vhi-user-info-text">
+                            <span className="vhi-user-name">{helper.name}</span>
+                            <span className="vhi-code-badge">ID: {helper.code || "N/A"}</span>
+                        </div>
+                    </div>
+                );
+            },
         },
         {
             title: "Status",
             key: "status",
-            width: 100,
+            width: 120,
             render: (_, helper) => (
-                <Tag color={helper.isConnected ? "green" : "red"}>
+                <span className={`vhi-status-pill ${helper.isConnected ? "online" : "offline"}`}>
                     {helper.isConnected ? "Online" : "Offline"}
-                </Tag>
-            )
+                </span>
+            ),
+        },
+        {
+            title: "Contact",
+            key: "contact",
+            render: (_, helper) => (
+                <div style={{ fontSize: "13px", lineHeight: "1.5" }}>
+                    <div>
+                        📞 <a href={`tel:${helper.phone}`} className="vhi-contact-link">{helper.phone || "—"}</a>
+                    </div>
+                    <div style={{ color: "#64748b", fontSize: "12px" }}>
+                        ✉️ {helper.email || "—"}
+                    </div>
+                </div>
+            ),
+            responsive: ["md"],
         },
         {
             title: "Experience",
             dataIndex: "experience",
             key: "experience",
-            responsive: ['md'] // Hide on mobile
+            width: 120,
+            render: (exp) => (
+                <span style={{ fontWeight: 600, color: "#2563eb", background: "#eff6ff", padding: "3px 8px", borderRadius: "6px" }}>
+                    ⭐ {exp ? `${exp} yrs` : "N/A"}
+                </span>
+            ),
+            responsive: ["md"],
         },
         {
-            title: "Skills",
+            title: "Skills / Services",
             dataIndex: "skills",
             key: "skills",
-            ellipsis: true,
-            responsive: ['lg'] // Hide on tablet
-        }
+            render: (skills) => {
+                if (!skills) return <span style={{ color: "#94a3b8" }}>—</span>;
+                const items = typeof skills === "string" ? skills.split(",") : [skills];
+                return (
+                    <div className="vhi-skills-badge-list">
+                        {items.slice(0, 3).map((s, idx) => (
+                            <span key={idx} className="vhi-skill-chip">{s.trim()}</span>
+                        ))}
+                        {items.length > 3 && (
+                            <span className="vhi-skill-chip" style={{ background: "#e2e8f0" }}>+{items.length - 3}</span>
+                        )}
+                    </div>
+                );
+            },
+            responsive: ["lg"],
+        },
     ];
 
     return (
-        <div style={{
-            padding: isMobile ? "12px" : "20px",
-            maxWidth: "1400px",
-            margin: "0 auto",
-            width: "100%"
-        }}>
-            {/* Header Section */}
-            <div style={{
-                display: "flex",
-                flexDirection: isMobile ? "column" : "row",
-                justifyContent: "space-between",
-                alignItems: isMobile ? "flex-start" : "center",
-                marginBottom: "20px",
-                gap: isMobile ? "12px" : "0"
-            }}>
-                <h3 style={{
-                    margin: 0,
-                    fontSize: isMobile ? "18px" : "20px",
-                    fontWeight: "bold",
-                    color: "#333"
-                }}>
-                    Helper Management
-                </h3>
-                <div style={{
-                    background: "#f0f0f0",
-                    padding: "8px 16px",
-                    borderRadius: "8px",
-                    fontSize: isMobile ? "13px" : "14px",
-                    width: isMobile ? "100%" : "auto"
-                }}>
-                    Booking ID: <strong style={{ color: "#1890ff" }}>{bookingId || "Not Selected"}</strong>
+        <div>
+            {/* Quick Metrics Ribbon (2x2 on mobile, 4 on desktop) */}
+            <div className="vhi-stats-ribbon">
+                <div className="vhi-stat-card total">
+                    <div className="vhi-stat-icon">👥</div>
+                    <div className="vhi-stat-info">
+                        <div className="vhi-stat-val">{helperDetails.length}</div>
+                        <div className="vhi-stat-lbl">Total Helpers</div>
+                    </div>
+                </div>
+
+                <div className="vhi-stat-card online">
+                    <div className="vhi-stat-icon">🟢</div>
+                    <div className="vhi-stat-info">
+                        <div className="vhi-stat-val">{onlineCount}</div>
+                        <div className="vhi-stat-lbl">Online Ready</div>
+                    </div>
+                </div>
+
+                <div className="vhi-stat-card offline">
+                    <div className="vhi-stat-icon">⚪</div>
+                    <div className="vhi-stat-info">
+                        <div className="vhi-stat-val">{offlineCount}</div>
+                        <div className="vhi-stat-lbl">Offline</div>
+                    </div>
+                </div>
+
+                <div className="vhi-stat-card selected">
+                    <div className="vhi-stat-icon">✓</div>
+                    <div className="vhi-stat-info">
+                        <div className="vhi-stat-val">{selectedHelpers.length}</div>
+                        <div className="vhi-stat-lbl">Selected for Job</div>
+                    </div>
                 </div>
             </div>
 
-            {/* Status Messages */}
-            {loading && (
-                <div style={{
-                    textAlign: "center",
-                    padding: "40px 20px",
-                    background: "#fafafa",
-                    borderRadius: "8px"
-                }}>
-                    <div style={{
-                        display: "inline-block",
-                        width: "30px",
-                        height: "30px",
-                        border: "3px solid #f3f3f3",
-                        borderTop: "3px solid #1890ff",
-                        borderRadius: "50%",
-                        animation: "spin 1s linear infinite"
-                    }}></div>
-                    <p style={{ marginTop: "12px", color: "#666" }}>Loading helpers...</p>
+            {/* Controls & Filter Bar */}
+            <div className="vhi-controls-bar">
+                <div className="vhi-search-input-wrap">
+                    <span className="vhi-search-icon">🔍</span>
+                    <input
+                        type="text"
+                        className="vhi-search-input"
+                        placeholder="Search helpers by name, code, or skill..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
-            )}
 
+                <div className="vhi-filter-pills">
+                    <button
+                        type="button"
+                        className={`vhi-filter-pill-btn ${statusFilter === "all" ? "active" : ""}`}
+                        onClick={() => setStatusFilter("all")}
+                    >
+                        All ({helperDetails.length})
+                    </button>
+                    <button
+                        type="button"
+                        className={`vhi-filter-pill-btn ${statusFilter === "online" ? "active" : ""}`}
+                        onClick={() => setStatusFilter("online")}
+                    >
+                        Online ({onlineCount})
+                    </button>
+                    <button
+                        type="button"
+                        className={`vhi-filter-pill-btn ${statusFilter === "offline" ? "active" : ""}`}
+                        onClick={() => setStatusFilter("offline")}
+                    >
+                        Offline ({offlineCount})
+                    </button>
+                </div>
+
+                {filteredHelpers.length > 0 && (
+                    <div className="vhi-selection-actions">
+                        <button
+                            type="button"
+                            className="vhi-select-toggle-btn"
+                            onClick={() => handleSelectAll(filteredHelpers)}
+                        >
+                            {filteredHelpers.every((h) => selectedHelpers.includes(h._id))
+                                ? "Deselect All"
+                                : "Select All Filtered"}
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Error Message */}
             {error && (
                 <div style={{
-                    background: "#fff2f0",
-                    border: "1px solid #ffccc7",
+                    background: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    color: "#dc2626",
                     padding: "12px 16px",
-                    borderRadius: "8px",
-                    color: "#ff4d4f",
+                    borderRadius: "10px",
                     marginBottom: "16px",
-                    fontSize: "14px"
+                    fontSize: "14px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
                 }}>
-                    ⚠️ {error}
+                    <span>⚠️</span>
+                    <span>{error}</span>
                 </div>
             )}
 
-            {/* Helpers List */}
-            {helperDetails.length > 0 ? (
+            {/* Loading State */}
+            {loading && (
+                <div className="vhi-loading-wrap">
+                    <div className="vhi-spinner"></div>
+                    <p style={{ marginTop: "12px", color: "#64748b", fontSize: "14px" }}>
+                        Loading technician profiles...
+                    </p>
+                </div>
+            )}
+
+            {/* Content Display: Desktop Table View */}
+            {!loading && filteredHelpers.length > 0 && (
                 <>
-                    {/* Responsive View Switcher */}
-                    {isMobile ? (
-                        renderMobileCardView()
-                    ) : (
-                        <div className="table-wrapper" style={{
-                            overflowX: "auto",
-                            WebkitOverflowScrolling: "touch"
-                        }}>
+                    <div className="vhi-desktop-table-view">
+                        <div className="vhi-table-container">
                             <Table
-                                dataSource={helperDetails}
+                                dataSource={filteredHelpers}
                                 rowKey="_id"
                                 columns={columns}
-                                pagination={{ 
-                                    pageSize: isMobile ? 5 : 10,
-                                    responsive: true,
-                                    showSizeChanger: !isMobile,
-                                    showTotal: (total, range) => isMobile ? 
-                                        `${range[0]}-${range[1]} of ${total}` : 
-                                        `Showing ${range[0]}-${range[1]} of ${total} helpers`
+                                rowClassName={(record) =>
+                                    selectedHelpers.includes(record._id) ? "vhi-row-selected" : ""
+                                }
+                                pagination={{
+                                    pageSize: 10,
+                                    showTotal: (total, range) =>
+                                        `Showing ${range[0]}-${range[1]} of ${total} helpers`,
                                 }}
-                                scroll={{ x: isMobile ? undefined : 800 }}
-                                size={isMobile ? "small" : "middle"}
                             />
                         </div>
-                    )}
-                    
-                    {/* Action Bar */}
-                    {selectedHelpers.length > 0 && bookingId && (
-                        <div style={{
-                            position: isMobile ? "fixed" : "sticky",
-                            bottom: isMobile ? "0" : "auto",
-                            left: isMobile ? "0" : "auto",
-                            right: isMobile ? "0" : "auto",
-                            background: isMobile ? "white" : "transparent",
-                            padding: isMobile ? "12px 16px" : "20px 0 0",
-                            boxShadow: isMobile ? "0 -2px 10px rgba(0,0,0,0.1)" : "none",
-                            zIndex: isMobile ? 100 : "auto",
-                            borderTop: isMobile ? "1px solid #e8e8e8" : "none",
-                            textAlign: "right"
-                        }}>
-                            <Button
-                                type="primary"
+                    </div>
+
+                    {/* Content Display: Mobile/Tablet Cards View */}
+                    <div className="vhi-mobile-cards-view">
+                        <div className="vhi-mobile-grid">
+                            {filteredHelpers.map((helper) => {
+                                const isSelected = selectedHelpers.includes(helper._id);
+                                const initials = helper.name
+                                    ? helper.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+                                    : "H";
+
+                                return (
+                                    <div
+                                        key={helper._id}
+                                        className={`vhi-mobile-card ${isSelected ? "is-selected" : ""}`}
+                                        onClick={() => handleHelperSelection(helper._id)}
+                                    >
+                                        <div className="vhi-mcard-top">
+                                            <div className="vhi-mcard-user">
+                                                <div className="vhi-avatar">{initials}</div>
+                                                <div className="vhi-mcard-user-info">
+                                                    <div className="vhi-mcard-name">{helper.name}</div>
+                                                    <span className="vhi-code-badge">ID: {helper.code || "N/A"}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="vhi-mcard-actions">
+                                                <span className={`vhi-status-pill ${helper.isConnected ? "online" : "offline"}`}>
+                                                    {helper.isConnected ? "Online" : "Offline"}
+                                                </span>
+                                                <input
+                                                    type="checkbox"
+                                                    className="vhi-custom-checkbox"
+                                                    checked={isSelected}
+                                                    onChange={(e) => {
+                                                        e.stopPropagation();
+                                                        handleHelperSelection(helper._id);
+                                                    }}
+                                                    aria-label={`Select helper ${helper.name}`}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="vhi-mcard-details">
+                                            <div className="vhi-mdetail-row">
+                                                <span className="lbl">📞 Phone:</span>
+                                                <span className="val">
+                                                    <a href={`tel:${helper.phone}`} className="vhi-contact-link" onClick={(e) => e.stopPropagation()}>
+                                                        {helper.phone || "—"}
+                                                    </a>
+                                                </span>
+                                            </div>
+                                            <div className="vhi-mdetail-row">
+                                                <span className="lbl">✉️ Email:</span>
+                                                <span className="val">
+                                                    <a href={`mailto:${helper.email}`} className="vhi-contact-link" onClick={(e) => e.stopPropagation()}>
+                                                        {helper.email || "—"}
+                                                    </a>
+                                                </span>
+                                            </div>
+                                            <div className="vhi-mdetail-row">
+                                                <span className="lbl">💼 Experience:</span>
+                                                <span className="val">{helper.experience ? `${helper.experience} years` : "—"}</span>
+                                            </div>
+                                            {helper.skills && (
+                                                <div className="vhi-mdetail-row" style={{ alignItems: "flex-start" }}>
+                                                    <span className="lbl">⚡ Skills:</span>
+                                                    <span className="val" style={{ textAlign: "right", flex: 1 }}>{helper.skills}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Elevated Action Dock for Helper Assignment */}
+                    {selectedHelpers.length > 0 && (
+                        <div className="vhi-assign-dock">
+                            <div className="vhi-assign-dock-info">
+                                <span className="vhi-assign-icon">🚀</span>
+                                <div>
+                                    <p className="vhi-assign-text-main">
+                                        {selectedHelpers.length} Helper{selectedHelpers.length > 1 ? "s" : ""} Selected
+                                    </p>
+                                    <p className="vhi-assign-text-sub">
+                                        {bookingId
+                                            ? `Ready to dispatch to Booking #${bookingId}`
+                                            : "Notice: No booking active. Open from Bookings to assign."}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                className="vhi-assign-confirm-btn"
                                 onClick={assignHelpersToBooking}
-                                loading={assigning}
-                                disabled={assigning}
-                                size={isMobile ? "large" : "middle"}
-                                style={{
-                                    width: isMobile ? "100%" : "auto",
-                                    height: isMobile ? "44px" : "auto",
-                                    fontSize: isMobile ? "16px" : "14px"
-                                }}
+                                disabled={!bookingId || assigning}
                             >
-                                {assigning ? 'Assigning...' : `Assign ${selectedHelpers.length} Helper${selectedHelpers.length > 1 ? 's' : ''}`}
-                            </Button>
+                                {assigning ? (
+                                    <>
+                                        <span className="vhi-spinner" style={{ width: "16px", height: "16px", borderWidth: "2px" }}></span>
+                                        <span>Dispatching...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>⚡ Assign to Booking</span>
+                                    </>
+                                )}
+                            </button>
                         </div>
                     )}
                 </>
-            ) : (
-                !loading && (
-                    <div style={{
-                        textAlign: "center",
-                        padding: "60px 20px",
-                        background: "#fafafa",
-                        borderRadius: "8px",
-                        color: "#999"
-                    }}>
-                        <div style={{ fontSize: "48px", marginBottom: "16px" }}>👥</div>
-                        <p style={{ margin: 0 }}>No helpers available. Add helpers first.</p>
-                    </div>
-                )
             )}
 
-            {/* Add CSS for animations */}
-            <style jsx>{`
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-                
-                /* For mobile card view */
-                .mobile-helpers-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                    margin-bottom: 80px;
-                }
-                
-                /* Responsive table adjustments */
-                @media (max-width: 768px) {
-                    .ant-table {
-                        font-size: 12px;
-                    }
-                    .ant-table-thead > tr > th,
-                    .ant-table-tbody > tr > td {
-                        padding: 8px 4px;
-                    }
-                }
-            `}</style>
+            {/* Empty State */}
+            {!loading && filteredHelpers.length === 0 && (
+                <div className="vhi-empty-state">
+                    <div className="vhi-empty-icon">👷‍♂️</div>
+                    <h3 className="vhi-empty-title">
+                        {helperDetails.length === 0
+                            ? "No helpers registered yet"
+                            : "No matching helpers found"}
+                    </h3>
+                    <p className="vhi-empty-desc">
+                        {helperDetails.length === 0
+                            ? "Register your field technicians and helpers using the 'Register New Helper' tab to start assigning them to customer bookings."
+                            : "Try adjusting your search criteria or switching status filter tabs."}
+                    </p>
+                </div>
+            )}
         </div>
     );
 }
@@ -482,23 +548,63 @@ function AddHelper({ userId }) {
         pastWorkPhotos: [],
     });
     const [loading, setLoading] = useState(false);
-    
+
     // Add refs for file inputs
     const idProofRef = useRef(null);
     const pastWorkPhotosRef = useRef(null);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setInputHelperInfo(prev => ({ ...prev, [name]: value }));
+        setInputHelperInfo((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleIdProofChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setInputHelperInfo((prev) => ({
+                ...prev,
+                idProof: file,
+            }));
+        }
+    };
+
+    const handlePastWorkPhotosChange = (e) => {
+        const files = Array.from(e.target.files);
+        setInputHelperInfo((prev) => ({
+            ...prev,
+            pastWorkPhotos: files,
+        }));
+    };
+
+    const handleResetForm = () => {
+        setInputHelperInfo({
+            name: "",
+            phone: "",
+            email: "",
+            address: "",
+            age: "",
+            idProof: null,
+            experience: "",
+            skills: "",
+            availability: "Full-time",
+            policeVerification: false,
+            pastWorkPhotos: [],
+        });
+        if (idProofRef.current) idProofRef.current.value = "";
+        if (pastWorkPhotosRef.current) pastWorkPhotosRef.current.value = "";
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         // Basic validation
-        if (!inputHelperInfo.name || !inputHelperInfo.phone || !inputHelperInfo.email || 
-            !inputHelperInfo.idProof) {
-            message.error("Please fill all required fields");
+        if (
+            !inputHelperInfo.name ||
+            !inputHelperInfo.phone ||
+            !inputHelperInfo.email ||
+            !inputHelperInfo.idProof
+        ) {
+            message.error("Please fill all required fields including Government ID Proof.");
             return;
         }
 
@@ -508,9 +614,9 @@ function AddHelper({ userId }) {
         if (inputHelperInfo.idProof) {
             formData.append("idProof", inputHelperInfo.idProof);
         }
-        
+
         if (inputHelperInfo.pastWorkPhotos && inputHelperInfo.pastWorkPhotos.length > 0) {
-            inputHelperInfo.pastWorkPhotos.forEach(photo => {
+            inputHelperInfo.pastWorkPhotos.forEach((photo) => {
                 formData.append("pastWorkPhotos", photo);
             });
         }
@@ -527,44 +633,25 @@ function AddHelper({ userId }) {
 
         try {
             setLoading(true);
-            const response = await axios.post("/api/vendor/add", formData, {
-                headers: { 
+            const res = await axios.post("/api/vendor/add", formData, {
+                headers: {
                     "Content-Type": "multipart/form-data",
-                }
+                },
             });
-            
-            if (response.data.success) {
-                message.success(response.data.message);
-                // Reset form
-                setInputHelperInfo({
-                    name: "",
-                    phone: "",
-                    email: "",
-                    address: "",
-                    age: "",
-                    idProof: null,
-                    experience: "",
-                    skills: "",
-                    availability: "Full-time",
-                    policeVerification: false,
-                    pastWorkPhotos: [],
-                });
-                
-                // ✅ CORRECT WAY: Clear file inputs using refs
-                if (idProofRef.current) {
-                    idProofRef.current.value = '';
-                }
-                if (pastWorkPhotosRef.current) {
-                    pastWorkPhotosRef.current.value = '';
-                }
+
+            if (res.data.success) {
+                message.success(res.data.message || "Helper registered successfully!");
+                handleResetForm();
+            } else {
+                message.warning(res.data.message || "Helper could not be added.");
             }
-        } catch (error) {
-            console.error("Submission error:", error);
+        } catch (err) {
+            console.error("Submission error:", err);
             let errorMessage = "Failed to add helper";
-            if (error.response) {
-                errorMessage = error.response.data.message || errorMessage;
-                console.error("Server response:", error.response.data);
-            } else if (error.request) {
+            if (err.response) {
+                errorMessage = err.response.data?.message || errorMessage;
+                console.error("Server response:", err.response.data);
+            } else if (err.request) {
                 errorMessage = "No response from server";
             }
             message.error(errorMessage);
@@ -573,134 +660,268 @@ function AddHelper({ userId }) {
         }
     };
 
-    const handleIdProofChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setInputHelperInfo(prev => ({
-                ...prev,
-                idProof: file
-            }));
-        }
-    };
-
-    const handlePastWorkPhotosChange = (e) => {
-        const files = Array.from(e.target.files);
-        setInputHelperInfo(prev => ({
-            ...prev,
-            pastWorkPhotos: files
-        }));
-    };
-
     return (
-        <Form onSubmit={handleSubmit} layout="vertical">
-            <Form.Item label="Full Name" required>
-                <Input
-                    name="name"
-                    value={inputHelperInfo.name}
-                    onChange={handleChange}
-                    placeholder="Enter helper's full name"
-                />
-            </Form.Item>
+        <div className="vhi-add-form-container">
+            <div className="vhi-form-header-callout">
+                <span className="vhi-callout-icon">💡</span>
+                <div className="vhi-callout-text">
+                    <h4>Register a Field Technician</h4>
+                    <p>
+                        Onboarding helpers allows you to assign specific staff to incoming bookings and lets them log into their Helper Station with their unique credentials.
+                    </p>
+                </div>
+            </div>
 
-            <Form.Item label="Phone Number" required>
-                <Input
-                    name="phone"
-                    value={inputHelperInfo.phone}
-                    onChange={handleChange}
-                    placeholder="Enter helper's phone number"
-                />
-            </Form.Item>
+            <form onSubmit={handleSubmit}>
+                {/* Section 1: Personal Details */}
+                <div className="vhi-form-card-section">
+                    <div className="vhi-section-legend">
+                        <span className="legend-icon">👤</span>
+                        <span>Personal Information</span>
+                    </div>
 
-            <Form.Item label="Email" required>
-                <Input 
-                    name="email" 
-                    type="email" 
-                    value={inputHelperInfo.email} 
-                    onChange={handleChange} 
-                />
-            </Form.Item>
+                    <div className="vhi-grid-2col">
+                        <div className="vhi-field-group">
+                            <label className="vhi-field-label">
+                                Full Name <span className="req">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                className="vhi-input-styled"
+                                name="name"
+                                value={inputHelperInfo.name}
+                                onChange={handleChange}
+                                placeholder="e.g. John Doe"
+                                required
+                            />
+                        </div>
 
-            <Form.Item label="Address" required>
-                <Input 
-                    name="address" 
-                    value={inputHelperInfo.address} 
-                    onChange={handleChange} 
-                />
-            </Form.Item>
+                        <div className="vhi-field-group">
+                            <label className="vhi-field-label">
+                                Phone Number <span className="req">*</span>
+                            </label>
+                            <input
+                                type="tel"
+                                className="vhi-input-styled"
+                                name="phone"
+                                value={inputHelperInfo.phone}
+                                onChange={handleChange}
+                                placeholder="e.g. +91 9876543210"
+                                required
+                            />
+                        </div>
 
-            <Form.Item label="Age" required>
-                <Input 
-                    name="age" 
-                    type="number" 
-                    value={inputHelperInfo.age} 
-                    onChange={handleChange} 
-                />
-            </Form.Item>
+                        <div className="vhi-field-group">
+                            <label className="vhi-field-label">
+                                Email Address <span className="req">*</span>
+                            </label>
+                            <input
+                                type="email"
+                                className="vhi-input-styled"
+                                name="email"
+                                value={inputHelperInfo.email}
+                                onChange={handleChange}
+                                placeholder="e.g. helper@domain.com"
+                                required
+                            />
+                        </div>
 
-            <Form.Item label="ID Proof" required>
-                <Input
-                    type="file"
-                    ref={idProofRef}  // ✅ Add ref here
-                    onChange={handleIdProofChange}
-                    accept=".pdf,.jpg,.png,.jpeg"
-                />
-            </Form.Item>
+                        <div className="vhi-field-group">
+                            <label className="vhi-field-label">
+                                Age
+                            </label>
+                            <input
+                                type="number"
+                                className="vhi-input-styled"
+                                name="age"
+                                min="18"
+                                max="70"
+                                value={inputHelperInfo.age}
+                                onChange={handleChange}
+                                placeholder="e.g. 28"
+                            />
+                        </div>
+                    </div>
 
-            <Form.Item label="Past Work Photos">
-                <Input
-                    type="file"
-                    multiple
-                    ref={pastWorkPhotosRef}  // ✅ Add ref here
-                    onChange={handlePastWorkPhotosChange}
-                    accept=".jpg,.png,.jpeg"
-                />
-            </Form.Item>
+                    <div style={{ marginTop: "14px" }} className="vhi-field-group">
+                        <label className="vhi-field-label">
+                            Residential Address <span className="req">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            className="vhi-input-styled"
+                            name="address"
+                            value={inputHelperInfo.address}
+                            onChange={handleChange}
+                            placeholder="Full street address, city, and postal code"
+                            required
+                        />
+                    </div>
+                </div>
 
-            <Form.Item label="Experience (Years)" required>
-                <Input 
-                    name="experience" 
-                    value={inputHelperInfo.experience} 
-                    onChange={handleChange} 
-                />
-            </Form.Item>
+                {/* Section 2: Professional Details */}
+                <div className="vhi-form-card-section">
+                    <div className="vhi-section-legend">
+                        <span className="legend-icon">💼</span>
+                        <span>Professional Qualifications</span>
+                    </div>
 
-            <Form.Item label="Skills/Services" required>
-                <Input 
-                    name="skills" 
-                    value={inputHelperInfo.skills} 
-                    onChange={handleChange} 
-                />
-            </Form.Item>
+                    <div className="vhi-grid-2col">
+                        <div className="vhi-field-group">
+                            <label className="vhi-field-label">
+                                Experience (Years) <span className="req">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                className="vhi-input-styled"
+                                name="experience"
+                                value={inputHelperInfo.experience}
+                                onChange={handleChange}
+                                placeholder="e.g. 3"
+                                required
+                            />
+                        </div>
 
-            <Form.Item label="Availability" required>
-                <Select
-                    value={inputHelperInfo.availability}
-                    onChange={value => setInputHelperInfo(prev => ({ ...prev, availability: value }))}
-                >
-                    <Option value="Full-time">Full-time</Option>
-                    <Option value="Part-time">Part-time</Option>
-                </Select>
-            </Form.Item>
+                        <div className="vhi-field-group">
+                            <label className="vhi-field-label">
+                                Availability <span className="req">*</span>
+                            </label>
+                            <Select
+                                value={inputHelperInfo.availability}
+                                onChange={(value) =>
+                                    setInputHelperInfo((prev) => ({ ...prev, availability: value }))
+                                }
+                                style={{ width: "100%", height: "42px" }}
+                            >
+                                <Option value="Full-time">Full-time (Standard)</Option>
+                                <Option value="Part-time">Part-time (On-demand)</Option>
+                            </Select>
+                        </div>
+                    </div>
 
-            <Form.Item label="Police Verification" required>
-                <Select
-                    value={inputHelperInfo.policeVerification}
-                    onChange={value => setInputHelperInfo(prev => ({ ...prev, policeVerification: value }))}
-                >
-                    <Option value={true}>Verified</Option>
-                    <Option value={false}>Not Verified</Option>
-                </Select>
-            </Form.Item>
+                    <div style={{ marginTop: "14px" }} className="vhi-field-group">
+                        <label className="vhi-field-label">
+                            Skills &amp; Specializations <span className="req">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            className="vhi-input-styled"
+                            name="skills"
+                            value={inputHelperInfo.skills}
+                            onChange={handleChange}
+                            placeholder="e.g. Electrical wiring, AC servicing, Pipe fitting"
+                            required
+                        />
+                    </div>
 
-            <Button 
-                type="primary" 
-                htmlType="submit"
-                onClick={handleSubmit} 
-                loading={loading}
-                disabled={loading}
-            >
-                {loading ? 'Adding Helper...' : 'Add Helper'}
-            </Button>
-        </Form>
+                    <div style={{ marginTop: "14px" }} className="vhi-field-group">
+                        <label className="vhi-field-label">
+                            Police Background Verification <span className="req">*</span>
+                        </label>
+                        <Select
+                            value={inputHelperInfo.policeVerification}
+                            onChange={(value) =>
+                                setInputHelperInfo((prev) => ({ ...prev, policeVerification: value }))
+                            }
+                            style={{ width: "100%", height: "42px" }}
+                        >
+                            <Option value={true}>✅ Verified by Local Authorities</Option>
+                            <Option value={false}>⏳ Pending / Not Verified</Option>
+                        </Select>
+                    </div>
+                </div>
+
+                {/* Section 3: Verification & Documentation */}
+                <div className="vhi-form-card-section">
+                    <div className="vhi-section-legend">
+                        <span className="legend-icon">📄</span>
+                        <span>Verification &amp; Proof of Work</span>
+                    </div>
+
+                    <div className="vhi-grid-2col">
+                        <div className="vhi-field-group">
+                            <label className="vhi-field-label">
+                                Government ID Proof <span className="req">*</span>
+                            </label>
+                            <div className="vhi-file-dropzone">
+                                <input
+                                    type="file"
+                                    ref={idProofRef}
+                                    onChange={handleIdProofChange}
+                                    accept=".pdf,.jpg,.png,.jpeg"
+                                    required
+                                />
+                                <div className="vhi-dropzone-content">
+                                    <span className="vhi-dropzone-icon">📁</span>
+                                    <p className="vhi-dropzone-title">Upload Official ID Proof</p>
+                                    <p className="vhi-dropzone-hint">PDF, JPG, PNG up to 10MB</p>
+                                    {inputHelperInfo.idProof && (
+                                        <div className="vhi-file-selected-tag">
+                                            📄 {inputHelperInfo.idProof.name}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="vhi-field-group">
+                            <label className="vhi-field-label">
+                                Past Work Photos (Optional)
+                            </label>
+                            <div className="vhi-file-dropzone">
+                                <input
+                                    type="file"
+                                    multiple
+                                    ref={pastWorkPhotosRef}
+                                    onChange={handlePastWorkPhotosChange}
+                                    accept=".jpg,.png,.jpeg"
+                                />
+                                <div className="vhi-dropzone-content">
+                                    <span className="vhi-dropzone-icon">📸</span>
+                                    <p className="vhi-dropzone-title">Upload Work Showcase</p>
+                                    <p className="vhi-dropzone-hint">Multiple photos allowed</p>
+                                    {inputHelperInfo.pastWorkPhotos && inputHelperInfo.pastWorkPhotos.length > 0 && (
+                                        <div className="vhi-file-selected-tag">
+                                            🖼️ {inputHelperInfo.pastWorkPhotos.length} photo(s) selected
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Form Action Buttons */}
+                <div className="vhi-form-actions-bar">
+                    <button
+                        type="button"
+                        className="vhi-reset-btn"
+                        onClick={handleResetForm}
+                        disabled={loading}
+                    >
+                        Reset Form
+                    </button>
+
+                    <button
+                        type="submit"
+                        className="vhi-submit-btn"
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <>
+                                <span className="vhi-spinner" style={{ width: "16px", height: "16px", borderWidth: "2px" }}></span>
+                                <span>Registering Helper...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span>➕ Complete Helper Registration</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+            </form>
+        </div>
     );
 }
+
+export default VendorHelperInfo;

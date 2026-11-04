@@ -1,1042 +1,1059 @@
-/* General container settings */
-.container {
-    margin-top: 50px;
+/* ==========================================================================
+   Bookingscreen Stylesheet - Modern, Scoped & Responsive
+   ========================================================================== */
+
+/* Root Page Container */
+.bookingscreen-page {
+  background-color: #f8fafc;
+  min-height: 100vh;
+  padding-bottom: 60px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #1e293b;
 }
 
-/* Style for the booking card */
-.bs {
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    padding: 20px;
-    background-color: #fff;
-    box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.1);
+.bookingscreen-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 20px 16px;
 }
 
-/* Service image */
-.bs img {
+/* Breadcrumbs */
+.bs-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.bs-breadcrumb a {
+  color: #64748b;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.bs-breadcrumb a:hover {
+  color: #2563eb;
+}
+
+.bs-breadcrumb-separator {
+  color: #cbd5e1;
+}
+
+.bs-breadcrumb-current {
+  color: #0f172a;
+  font-weight: 500;
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 2-Column Responsive Grid Layout */
+.bs-layout-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .bs-layout-grid {
+    grid-template-columns: minmax(0, 1fr) 350px;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 900px) {
+  .bs-layout-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+}
+
+/* Left Content Column */
+.bs-main-column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Right Sticky Sidebar Column */
+.bs-sidebar-column {
+  position: sticky;
+  top: 86px;
+  z-index: 10;
+}
+
+@media (max-width: 900px) {
+  .bs-sidebar-column {
+    position: static;
     width: 100%;
-    max-height: 400px;
-    object-fit: cover;
-    border-radius: 10px;
+  }
 }
 
-/* Adjustments for section titles */
-h1 {
-    font-size: 1.8rem;
-    font-weight: bold;
+/* Card Surface Utility */
+.bs-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 25px -5px rgba(0, 0, 0, 0.03);
+  padding: 24px;
+  overflow: hidden;
+  transition: box-shadow 0.25s ease;
 }
 
-/* Booking details section */
-.booking-details {
-    margin-top: 20px;
+.bs-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 14px 30px -4px rgba(0, 0, 0, 0.06);
 }
 
-.booking-details p {
-    font-size: 1.2rem;
+@media (max-width: 640px) {
+  .bs-card {
+    padding: 16px;
+    border-radius: 14px;
+  }
 }
 
-.booking-details .amount-section {
-    margin-top: 20px;
+/* Image Carousel Card */
+.bs-carousel-card {
+  background: #0f172a;
+  border-radius: 18px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.25);
 }
 
-.booking-details .amount-section h1 {
-    font-size: 1.8rem;
-    color: #333;
-}
-
-.booking-details .amount-section p {
-    font-size: 1.2rem;
-    color: #555;
-}
-
-/* Button for "Book Service" */
-.book-service-btn {
-    width: 25%;
-    background-color: #d3e8ff;
-    /* Light blue */
-    color: #333;
-    padding: 10px 20px;
-    text-align: center;
-    font-size: 1.2rem;
-    border-radius: 5px;
-    text-decoration: none;
-}
-
-.book-service-btn:hover {
-    background-color: #a1c7ff;
-    /* Lighter shade of blue on hover */
-}
-
-/* Contact and WhatsApp buttons */
-.contact-buttons a {
-    background-color: transparent;
-    color: inherit;
-    border: 2px solid;
-    padding: 10px 20px;
-    border-radius: 5px;
-    font-size: 1.2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.contact-buttons .btn-phone {
-    color: blue;
-    border-color: blue;
-}
-
-.contact-buttons .btn-whatsapp {
-    color: green;
-    border-color: green;
-}
-
-.contact-buttons a:hover {
-    opacity: 0.8;
-}
-
-/* Review and Comments Section */
-.review-comments-section {
-    box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 10px;
-    padding: 20px;
-    margin-top: 20px;
-}
-
-/* Spacer between sections */
-.hr {
-    margin-top: 20px;
-    margin-bottom: 20px;
-}
-
-/* Custom button for submit */
-button.btn-submit {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    font-size: 1.2rem;
-    border-radius: 5px;
-}
-
-button.btn-submit:hover {
-    background-color: #0056b3;
-}
-
-/* Adjustments for responsive design */
-@media (max-width: 768px) {
-    .bs img {
-        height: 250px;
-        object-fit: cover;
-    }
-
-    .booking-details .amount-section h1 {
-        font-size: 1.4rem;
-    }
-
-    .book-service-btn {
-        width: 100%;
-        font-size: 1.1rem;
-    }
-
-    .contact-buttons a {
-        font-size: 1.1rem;
-        padding: 8px 15px;
-    }
-}
-
-/* Container for the contact buttons */
-.contact-buttons {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 10px;
-    width: 100%;
-    /* Ensure the buttons take up the full width */
-}
-
-/* Style for phone button */
-.btn-phone,
-.btn-whatsapp {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 15px 20px;
-    /* Increased padding for larger buttons */
-    border-radius: 50%;
-    font-size: 1.5rem;
-    /* Larger icon size */
-    transition: transform 0.3s ease;
-    /* Smooth transition for hover effect */
-    border: 2px solid transparent;
-    cursor: pointer;
-    width: 60px;
-    /* Set a fixed width */
-    height: 60px;
-    /* Set a fixed height */
-}
-
-/* Icon color and styling */
-.btn-phone {
-    background-color: white;
-    color: blue;
-    border-color: blue;
-}
-
-.btn-whatsapp {
-    background-color: white;
-    color: green;
-    border-color: green;
-}
-
-/* Hover effect for buttons */
-.btn-phone:hover,
-.btn-whatsapp:hover {
-    transform: scale(1.1);
-    /* Slightly enlarge on hover */
-}
-
-/* Optional: Add some margin to space the buttons out */
-.btn-phone {
-    margin-right: 10px;
-}
-
-.btn-whatsapp {
-    margin-right: 10px;
-}
-
-.contact-buttons {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    /* Aligns buttons to the right */
-}
-
-.btn-whatsapp {
-    color: #25d366;
-    /* WhatsApp green color */
-    font-size: 18px;
-    cursor: pointer;
-    margin-right: 5px;
-    /* Small margin between WhatsApp and phone button */
-}
-
-.btn-phone {
-    color: #007bff;
-    /* Phone button color */
-    font-size: 18px;
-    /* Adjust size */
-    cursor: pointer;
-}
-
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.modal-content {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    width: 300px;
-    text-align: center;
-}
-
-.modal-content input {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-.modal-content button {
-    margin: 10px 5px;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-/* Modal Styling */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.modal-content {
-    background: white;
-    padding: 2rem;
-    border-radius: 12px;
-    width: 90%;
-    max-width: 600px;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
-.modal-title {
-    font-size: 1.5rem;
-    margin-bottom: 1.5rem;
-    color: #333;
-    text-align: center;
-}
-
-/* Form Sections */
-.form-section {
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.section-title {
-    padding: 0 0.5rem;
-    font-weight: 600;
-    color: #444;
-}
-
-.form-group {
-    margin-bottom: 1rem;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #555;
-}
-
-input[type="text"],
-input[type="tel"],
-input[type="time"],
-textarea {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 1rem;
-}
-
-/* Rental Location Styling */
-.rental-location {
-    margin-top: 1rem;
-}
-
-.address-toggle {
-    width: 100%;
-    padding: 0.75rem;
-    background: #f8f9fa;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    margin: 0.5rem 0;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.address-toggle:hover {
-    background: #e9ecef;
-}
-
-.address-fields {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #eee;
-}
-
-/* Checkbox Styling */
-.return-trip-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-}
-
-/* Modal Actions */
-.modal-actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: flex-end;
-    margin-top: 2rem;
-}
-
-.btn-primary {
-    background: #007bff;
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.btn-secondary {
-    background: #6c757d;
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.btn-primary:hover {
-    background: #0056b3;
-}
-
-.btn-secondary:hover {
-    background: #5a6268;
-}
-
-/* Responsive Design */
-@media (max-width: 480px) {
-    .modal-content {
-        padding: 1rem;
-    }
-
-    .modal-actions {
-        flex-direction: column;
-    }
-
-    .btn-primary,
-    .btn-secondary {
-        width: 100%;
-    }
-}
-
-/* Validation Styles */
-.form-group {
-    position: relative;
-}
-
-
-/* Ensure section visibility */
-.personal-info-section {
-    display: block !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-}
-
-/* Fieldset defaults */
-.form-section {
-    border: 1px solid #e0e0e0;
-    margin: 1rem 0;
-    padding: 1rem;
-}
-
-/* Input styling */
-.form-group input {
-    display: block;
-    width: 100%;
-    padding: 8px;
-    margin-top: 4px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-.description-text p {
-    margin-bottom: 1rem;
-    line-height: 1.6;
-    white-space: pre-wrap;
-}
-
-.facility-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
-}
-
-.facility-box {
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 1.2rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.facility-box:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.facility-content {
-    display: flex;
-    align-items: flex-start;
-    line-height: 1.5;
-    color: #333333;
-}
-
-.bullet {
-    color: #007bff;
-    margin-right: 0.8rem;
-    font-weight: bold;
-}
-
-/* Optional: Add responsive adjustments */
-@media (max-width: 768px) {
-    .facility-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .facility-box {
-        padding: 1rem;
-    }
-}
-
-.date-range-picker {
-    max-width: 600px;
-    margin: 1rem 0;
-}
-
-.date-inputs-container {
-    display: flex;
-    gap: 1rem;
-    align-items: flex-end;
-}
-
-.date-input-group {
-    display: flex;
-    gap: 1rem;
-}
-
-.form-group {
-    position: relative;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-}
-
-input[type="date"] {
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 1rem;
-}
-
-.date-display {
-    flex-grow: 1;
-    padding: 0.5rem 1rem;
-    background: #f5f5f5;
-    border-radius: 4px;
-    min-height: 38px;
-}
-
-.single-date {
-    font-weight: 500;
-    color: #333;
-}
-
-.date-range {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.separator {
-    color: #666;
-    margin: 0 0.25rem;
-}
-
-.days-count {
-    margin-left: 0.5rem;
-    color: #666;
-    font-size: 0.9em;
-}
-
-/* Show end date input only when dates differ */
-.date-input-group .form-group:nth-child(2) {
-    transition: opacity 0.2s ease;
-}
-
-@media (max-width: 480px) {
-    .date-inputs-container {
-        flex-direction: column;
-    }
-
-    .date-input-group {
-        width: 100%;
-    }
-
-    .form-group {
-        flex: 1;
-    }
-}
-
-/* Calendar styles */
-.react-calendar__tile--unavailable-full {
-    background-color: #ffcccc !important;
-    text-decoration: line-through;
-}
-
-.react-calendar__tile--unavailable-partial {
-    background-color: #fff3cd !important;
-}
-
-/* Time slot styling */
-.btn-slot {
-    margin: 4px;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: #f8f9fa;
-}
-
-.btn-slot.selected {
-    background: #007bff;
-    color: white;
-    border-color: #007bff;
-}
-
-.time-slots-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-}
-
-.selected-date {
-    background: #4CAF50 !important;
-    color: white !important;
-}
-
-.unavailable-date {
-    background: #ffcccc !important;
-    cursor: not-allowed !important;
-}
-
-.time-slot {
-    transition: all 0.2s;
-    border: 2px solid transparent;
-}
-
-.time-slot.selected {
-    background: #4CAF50;
-    color: white;
-    border-color: #388E3C;
-}
-
-.time-slot.booked {
-    background: #ffcccc;
-    color: #666;
-    cursor: not-allowed;
-}
-
-
-.react-calendar__tile--active.selected-date {
-    background: #007bff !important;
-    color: white;
-}
-
-.date-picker-trigger {
-  min-width: 280px;
+.bs-carousel-wrapper {
+  position: relative;
   width: 100%;
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(0, 123, 255, 0.25);
-  border-radius: 10px;
-  padding: 12px 16px;
-  cursor: pointer;
+  aspect-ratio: 16 / 10;
+  min-height: 260px;
+  max-height: 480px;
+  background-color: #1e293b;
+  overflow: hidden;
+}
 
+@media (max-width: 640px) {
+  .bs-carousel-wrapper {
+    aspect-ratio: 4 / 3;
+    min-height: 220px;
+  }
+}
+
+.bs-carousel-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.3s ease, transform 0.4s ease;
+}
+
+.bs-carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(15, 23, 42, 0.7);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 600;
+  width: 42px;
+  height: 42px;
+  z-index: 2;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.bs-carousel-btn:hover {
+  background: rgba(15, 23, 42, 0.95);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.bs-carousel-prev {
+  left: 16px;
+}
+
+.bs-carousel-next {
+  right: 16px;
+}
+
+.bs-carousel-counter {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(15, 23, 42, 0.75);
+  color: #ffffff;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+  z-index: 2;
+  letter-spacing: 0.5px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.bs-carousel-dots {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 7px;
+  z-index: 2;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(8px);
+}
+
+.bs-carousel-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  padding: 0;
+}
+
+.bs-carousel-dot.active {
+  width: 22px;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+/* Service Title & Metadata Header */
+.bs-header-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bs-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bs-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.bs-pill-category {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #dbeafe;
+}
+
+.bs-pill-verified {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #d1fae5;
+}
+
+.bs-pill-location {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.bs-service-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 640px) {
+  .bs-service-title {
+    font-size: 22px;
+  }
+}
+
+.bs-company-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bs-company-subtitle b {
+  color: #334155;
+}
+
+/* Section Titles */
+.bs-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.bs-section-icon {
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+}
+
+.bs-section-heading {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+/* Description Points */
+.bs-description-content {
+  color: #334155;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.bs-desc-point {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+  transition: background 0.2s;
+}
+
+.bs-desc-point:hover {
+  background: #f1f5f9;
+}
+
+.bs-desc-bullet {
+  color: #2563eb;
+  font-weight: bold;
+  font-size: 16px;
+  margin-top: 1px;
+}
+
+/* Facilities Grid */
+.bs-facilities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 500px) {
+  .bs-facilities-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bs-facility-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #334155;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.bs-facility-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateX(3px);
+}
+
+.bs-facility-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+/* Addons / Optional Inputs Cards Grid */
+.bs-addons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 500px) {
+  .bs-addons-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+.bs-addon-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.bs-addon-card:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+}
+
+.bs-addon-img {
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  background: #f1f5f9;
+}
+
+.bs-addon-name {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.bs-addon-price {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.bs-addon-unit {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.bs-addon-stepper {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 2px;
+  margin-top: auto;
+}
 
-  transition: all 0.25s ease;
+.bs-addon-step-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: none;
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.bs-addon-step-btn:hover:not(:disabled) {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.bs-addon-step-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bs-addon-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  padding: 0 8px;
+}
+
+.bs-addon-toggle-btn {
+  width: 100%;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  margin-top: auto;
+}
+
+.bs-addon-toggle-btn.btn-add {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.bs-addon-toggle-btn.btn-add:hover {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.bs-addon-toggle-btn.btn-remove {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.bs-addon-toggle-btn.btn-remove:hover {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Right Sticky Booking / Checkout Card
+   ========================================================================== */
+.bs-checkout-card {
+  background: #ffffff;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 20px 35px -5px rgba(0, 0, 0, 0.08);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bs-checkout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.bs-checkout-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #64748b;
+}
+
+.bs-avail-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #059669;
+}
+
+.bs-avail-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #10b981;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  animation: bsPulse 2s infinite;
+}
+
+@keyframes bsPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.85); opacity: 0.6; }
+}
+
+/* Pricing Plan Selector */
+.bs-plan-select-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bs-plan-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bs-select {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.bs-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* Date Picker Trigger */
+.date-picker-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  cursor: pointer;
+  background: #ffffff;
+  width: 100% !important;
+  max-width: 100% !important;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .date-picker-trigger:hover {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: #0d6efd;
+  border-color: #2563eb;
+  background: #f8fafc;
 }
 
 .date-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .date-icon {
-  font-size: 22px;
+  font-size: 18px;
+}
+
+.date-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
 }
 
 .date-text small {
-  display: block;
-  color: #6c757d;
-  font-size: 12px;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
 .date-text strong {
-  font-size: 15px;
+  font-size: 14px;
+  color: #0f172a;
   font-weight: 600;
-  color: #212529;
+  margin-top: 2px;
 }
 
 .date-arrow {
-  font-size: 18px;
-  color: #0d6efd;
+  color: #64748b;
+  font-size: 12px;
 }
 
-/* Bookingscreen.css */
-/* Calendar Styles */
-.react-calendar {
-  width: 100%;
-  border: none;
-  font-family: inherit;
-}
-
-.react-calendar__tile {
-  padding: 15px;
-}
-
-.react-calendar__tile--active {
-  background: #007bff;
-  color: white;
-}
-
-.react-calendar__tile--now {
-  background: #f0f0f0;
-}
-
-.unavailable-date {
-  background-color: #ffcccc !important;
-  color: #999 !important;
-  text-decoration: line-through;
-  cursor: not-allowed !important;
-}
-
-.selected-date {
-  background-color: #007bff !important;
-  color: white !important;
-}
-
-/* Time Slot Styles */
+/* Time Slots Grid */
 .time-slots-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+  gap: 8px;
   margin-top: 10px;
 }
 
-.time-slot {
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  background: white;
+.time-slot,
+.btn-slot {
+  padding: 9px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.9em;
+  transition: all 0.15s ease;
   text-align: center;
 }
 
-.time-slot:hover {
-  border-color: #007bff;
-  background: #f0f7ff;
+.time-slot:hover:not(:disabled),
+.btn-slot:hover:not(:disabled) {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
 }
 
-.time-slot.selected {
-  background: #007bff;
-  color: white;
-  border-color: #007bff;
+.time-slot.selected,
+.btn-slot.selected {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 600;
 }
 
-.time-slot.booked {
-  background: #f8f9fa;
-  color: #999;
+.time-slot.booked,
+.time-slot:disabled,
+.btn-slot:disabled {
+  background: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  border-color: #e2e8f0 !important;
   cursor: not-allowed;
   text-decoration: line-through;
+  opacity: 0.7;
 }
 
-/* Modal Styles */
+/* Price Box */
+.bs-price-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.bs-price-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bs-price-val {
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.bs-price-unit {
+  font-size: 13px;
+  font-weight: 400;
+  color: #64748b;
+  margin-left: 4px;
+}
+
+/* Quantity Control */
+.bs-qty-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.bs-qty-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.bs-qty-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bs-qty-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.bs-qty-btn:hover:not(:disabled) {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+.bs-qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bs-qty-val {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Total Box */
+.bs-total-box {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bs-total-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.bs-total-val {
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+/* Primary CTA and Contact Buttons */
+.bs-cta-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bs-btn-book {
+  flex: 1;
+  padding: 13px 20px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+.bs-btn-book:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+}
+
+.bs-btn-book:active {
+  transform: translateY(0);
+}
+
+.bs-btn-icon-action {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-whatsapp {
+  background: #25D366;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+}
+
+.btn-whatsapp:hover {
+  background: #20ba59;
+  transform: translateY(-1px) scale(1.05);
+}
+
+.btn-phone {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.1);
+}
+
+.btn-phone:hover {
+  background: #2563eb;
+  color: #ffffff;
+  transform: translateY(-1px) scale(1.05);
+}
+
+/* Trust Badges */
+.bs-trust-strip {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.bs-trust-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.bs-trust-icon {
+  color: #10b981;
+  font-weight: bold;
+}
+
+/* ==========================================================================
+   Modals & Overlays
+   ========================================================================== */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background: rgba(15, 23, 42, 0.65);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 1050;
+  backdrop-filter: blur(4px);
+  animation: bsFadeIn 0.25s ease;
+  padding: 16px;
 }
 
 .modal-content {
-  background: white;
-  border-radius: 8px;
-  padding: 30px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.modal-title {
-  margin-bottom: 20px;
-  color: #333;
-}
-
-/* Form Styles */
-.form-section {
-  border: 1px solid #eee;
-  border-radius: 5px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.section-title {
-  font-size: 1.1em;
-  font-weight: bold;
-  margin-bottom: 15px;
-  color: #333;
-  padding-bottom: 5px;
-  border-bottom: 2px solid #007bff;
-}
-
-.form-group {
-  margin-bottom: 15px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: 500;
-}
-
-.form-group input,
-.form-group textarea,
-.form-group select {
+  background: #ffffff;
+  border-radius: 18px;
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  font-size: 1em;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: bsSlideUp 0.25s ease;
+  border: 1px solid #e2e8f0;
 }
 
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+@keyframes bsFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* Bill Summary Styles */
-.bill-summary {
-  background: #f8f9fa;
-  border-radius: 5px;
-  padding: 20px;
+@keyframes bsSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.bill-section {
-  margin-bottom: 20px;
+/* Calendar styling overrides */
+.react-calendar {
+  width: 100% !important;
+  background: #ffffff;
+  border: none !important;
+  font-family: inherit;
 }
 
-.bill-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid #eee;
+.react-calendar__navigation {
+  background: #f8fafc;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  height: 48px;
 }
 
-.bill-row.total-row {
-  border-top: 2px solid #333;
-  border-bottom: none;
-  margin-top: 10px;
-  padding-top: 15px;
-  font-weight: bold;
-  font-size: 1.1em;
-}
-
-.bill-label {
-  color: #555;
-}
-
-.bill-value {
-  font-weight: 500;
-}
-
-/* Button Styles */
-.btn-primary {
-  background: #007bff;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 1em;
-  transition: background 0.2s;
-}
-
-.btn-primary:hover {
-  background: #0056b3;
-}
-
-.btn-secondary {
-  background: #6c757d;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 1em;
-  transition: background 0.2s;
-}
-
-.btn-secondary:hover {
-  background: #545b62;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
-}
-
-/* Contact Button Styles */
-.btn-whatsapp {
-  background: #25D366;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 45px;
-  height: 45px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-whatsapp:hover {
-  background: #1da851;
-}
-
-.btn-phone {
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 45px;
-  height: 45px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.btn-phone:hover {
-  background: #0056b3;
-}
-
-/* Calendar Trigger */
-.date-picker-trigger {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 15px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  cursor: pointer;
-  background: white;
-  transition: all 0.3s;
-}
-
-.date-picker-trigger:hover {
-  border-color: #007bff;
-  box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.25);
-}
-
-.date-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.date-icon {
-  font-size: 1.2em;
-}
-
-.date-text {
-  display: flex;
-  flex-direction: column;
-}
-
-.date-text small {
-  font-size: 0.8em;
-  color: #666;
-}
-
-.date-text strong {
-  font-size: 1em;
-  color: #333;
+.react-calendar__navigation button {
+  color: #2563eb;
   font-weight: 600;
+  font-size: 14px;
 }
 
-.date-arrow {
-  color: #666;
+.react-calendar__navigation button:enabled:hover,
+.react-calendar__navigation button:enabled:focus {
+  background-color: #eff6ff;
+  border-radius: 8px;
 }
 
-/* Responsive Styles */
-@media (max-width: 768px) {
-  .modal-content {
-    width: 95%;
-    padding: 20px;
-  }
-  
-  .time-slots-grid {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  }
-  
-  .date-picker-trigger {
-    width: 100% !important;
-  }
+.react-calendar__tile {
+  padding: 12px 6px;
+  border-radius: 8px;
+  font-size: 13px;
+  transition: all 0.15s ease;
 }
 
-@media (max-width: 480px) {
-  .modal-actions {
-    flex-direction: column;
-  }
-  
-  .modal-actions button {
-    width: 100%;
-  }
+.selected-date,
+.react-calendar__tile--active {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  border-radius: 8px;
 }
-
-
-
 
 .unavailable-date {
-  background-color: #f8d7da !important;
-  color: #721c24 !important;
+  background-color: #f1f5f9 !important;
+  color: #cbd5e1 !important;
   text-decoration: line-through;
   cursor: not-allowed !important;
-}
-
-.selected-date {
-  background-color: #007bff !important;
-  color: white !important;
+  opacity: 0.6;
 }
 
 .react-calendar__tile--now {
-  background-color: #e6f7ff !important;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  font-weight: 700;
 }
 
-
+/* Backwards compatibility classes */
+.bs {
+  background-color: #ffffff;
+}
+.booking-details {
+  margin-top: 15px;
+}
+.amount-section {
+  margin-top: 15px;
+}

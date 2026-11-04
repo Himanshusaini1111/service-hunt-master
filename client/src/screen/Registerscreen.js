@@ -4,6 +4,9 @@ import Error from '../components/Error';
 import Loader from '../components/Loader';
 import Success from '../components/Success';
 import { GoogleLogin } from '@react-oauth/google';
+import Navbar from '../components/Navbar';
+import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaUserPlus } from 'react-icons/fa';
+import './Auth.css';
 
 function RegisterScreen() {
   const [formData, setFormData] = useState({
@@ -15,6 +18,8 @@ function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showCpassword, setShowCpassword] = useState(false);
   const [touched, setTouched] = useState({
     name: false,
     email: false,
@@ -101,7 +106,7 @@ function RegisterScreen() {
         cpassword: false
       });
 
-      // Optional: Redirect to login after delay
+      // Redirect to login after delay
       setTimeout(() => {
         window.location.href = '/login';
       }, 2000);
@@ -134,7 +139,6 @@ function RegisterScreen() {
       setLoading(true);
       setError(null);
       
-      // Send the Google credential to your backend
       const result = await axios.post('/api/users/google-login', {
         credential: credentialResponse.credential
       });
@@ -142,7 +146,6 @@ function RegisterScreen() {
       console.log('Google registration successful:', result.data);
       setSuccess(true);
       
-      // Show success message and redirect to login
       setTimeout(() => {
         window.location.href = '/login';
       }, 2000);
@@ -172,240 +175,211 @@ function RegisterScreen() {
     }
   };
 
-  const getInputClassName = (field) => {
-    const isInvalid = touched[field] && !formData[field];
-    return `form-control form-control-lg ${isInvalid ? 'is-invalid' : ''}`;
-  };
-
   return (
-    <div className="min-vh-100 bg-light">
-      {/* Navigation */}
-      <nav className="navbar navbar-expand-lg custom-navbar">
-        <div className="navbar-brand-section">
-          <a className="navbar-brand d-flex align-items-center" href="/home">
-            <h2 className="brand-title mb-0">
-              Service Hunt
-            </h2>
-          </a>
-        </div>
-      </nav>
+    <div className="auth-page">
+      <Navbar />
+      <div className="auth-bg-ambient" />
 
-      {/* Main Content */}
-      <div className="container">
-        <div className="row justify-content-center align-items-center min-vh-75 py-1">
-          <div className="col-md-6 col-lg-5">
-            {/* Registration Card */}
-            <div className="card shadow-lg border-0 rounded-3">
-              <div className="card-body p-5">
-                {/* Header */}
-                <div className="text-center mb-4">
-                  <h2 className="card-title fw-bold text-primary mb-2">
-                    Create Account
-                  </h2>
-                  <p className="text-muted">Join us today</p>
-                </div>
+      <div className="auth-container">
+        <div className="auth-card">
+          <div className="auth-card-top-accent" />
 
-                {/* Status Messages */}
-                {loading && (
-                  <div className="mb-3">
-                    <Loader />
-                  </div>
-                )}
-                {error && (
-                  <div className="mb-3">
-                    <Error error={error} />
-                  </div>
-                )}
-                {success && (
-                  <div className="mb-3">
-                    <Success success="Registration successful! Redirecting to login..." />
-                  </div>
-                )}
-
-                {/* Registration Form */}
-                <form onSubmit={handleRegister}>
-                  <div className="mb-3">
-                    <label htmlFor="name" className="form-label fw-semibold">
-                      Full Name
-                    </label>
-                    <input
-                      id="name"
-                      name="name"
-                      type="text"
-                      className={getInputClassName('name')}
-                      placeholder="Enter your full name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      onBlur={() => handleBlur('name')}
-                      onKeyPress={handleKeyPress}
-                      disabled={loading}
-                      required
-                    />
-                    {touched.name && !formData.name && (
-                      <div className="invalid-feedback">
-                        Name is required
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mb-3">
-                    <label htmlFor="email" className="form-label fw-semibold">
-                      Email Address
-                    </label>
-                    <input
-                      id="email"
-                      name="email"
-                      type="email"
-                      className={getInputClassName('email')}
-                      placeholder="Enter your email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      onBlur={() => handleBlur('email')}
-                      onKeyPress={handleKeyPress}
-                      disabled={loading}
-                      required
-                    />
-                    {touched.email && !formData.email && (
-                      <div className="invalid-feedback">
-                        Email is required
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mb-3">
-                    <label htmlFor="password" className="form-label fw-semibold">
-                      Password
-                    </label>
-                    <input
-                      id="password"
-                      name="password"
-                      type="password"
-                      className={getInputClassName('password')}
-                      placeholder="Create a password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      onBlur={() => handleBlur('password')}
-                      onKeyPress={handleKeyPress}
-                      disabled={loading}
-                      required
-                    />
-                    {touched.password && formData.password.length < 6 && (
-                      <div className="text-warning small mt-1">
-                        Password must be at least 6 characters
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mb-4">
-                    <label htmlFor="cpassword" className="form-label fw-semibold">
-                      Confirm Password
-                    </label>
-                    <input
-                      id="cpassword"
-                      name="cpassword"
-                      type="password"
-                      className={getInputClassName('cpassword')}
-                      placeholder="Confirm your password"
-                      value={formData.cpassword}
-                      onChange={handleInputChange}
-                      onBlur={() => handleBlur('cpassword')}
-                      onKeyPress={handleKeyPress}
-                      disabled={loading}
-                      required
-                    />
-                    {formData.cpassword && formData.password !== formData.cpassword && (
-                      <div className="text-danger small mt-1">
-                        Passwords do not match
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="btn btn-primary btn-lg w-100 py-3 fw-semibold"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" />
-                        Creating Account...
-                      </>
-                    ) : (
-                      'Create Account'
-                    )}
-                  </button>
-                </form>
-
-                {/* Divider */}
-                <div className="position-relative my-4">
-                  <hr className="border-1" />
-                  <span className="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted">
-                    OR
-                  </span>
-                </div>
-
-                {/* Google Registration Button */}
-                <div className="d-flex justify-content-center">
-                  <GoogleLogin
-                    onSuccess={handleGoogleRegister}
-                    onError={handleGoogleError}
-                    useOneTap={false}
-                    theme="outline"
-                    size="large"
-                    text="signup_with"
-                    shape="rectangular"
-                    width="100%"
-                  />
-                </div>
-
-                {/* Footer Links */}
-                <div className="text-center mt-4 pt-3 border-top">
-                  <p className="text-muted mb-0">
-                    Already have an account?{' '}
-                    <a 
-                      href="/login" 
-                      className="text-primary fw-semibold text-decoration-none"
-                    >
-                      Sign In
-                    </a>
-                  </p>
-                </div>
-              </div>
+          <div className="auth-header">
+            <div className="auth-header-icon">
+              <FaUserPlus />
             </div>
+            <h1 className="auth-title">Create Account</h1>
+            <p className="auth-subtitle">Join Service Hunt to book verified specialists</p>
+          </div>
+
+          {/* Status Feedback */}
+          {loading && (
+            <div style={{ marginBottom: '16px' }}>
+              <Loader />
+            </div>
+          )}
+          {error && (
+            <div style={{ marginBottom: '16px' }}>
+              <Error error={error} />
+            </div>
+          )}
+          {success && (
+            <div style={{ marginBottom: '16px', color: '#059669' }}>
+              <Success success="Registration successful! Redirecting to login..." />
+            </div>
+          )}
+
+          {/* Registration Form */}
+          <form className="auth-form" onSubmit={handleRegister}>
+            {/* Full Name */}
+            <div className="auth-field-group">
+              <label className="auth-label" htmlFor="name">
+                Full Name
+              </label>
+              <div className="auth-input-wrap">
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  className={`auth-input ${touched.name && !formData.name ? 'is-invalid' : ''}`}
+                  placeholder="Enter your full name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  onBlur={() => handleBlur('name')}
+                  onKeyPress={handleKeyPress}
+                  disabled={loading}
+                  required
+                />
+                <FaUser className="auth-input-icon" />
+              </div>
+              {touched.name && !formData.name && (
+                <span className="auth-field-error">Name is required</span>
+              )}
+            </div>
+
+            {/* Email Address */}
+            <div className="auth-field-group">
+              <label className="auth-label" htmlFor="email">
+                Email Address
+              </label>
+              <div className="auth-input-wrap">
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  className={`auth-input ${touched.email && !formData.email ? 'is-invalid' : ''}`}
+                  placeholder="name@example.com"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  onBlur={() => handleBlur('email')}
+                  onKeyPress={handleKeyPress}
+                  disabled={loading}
+                  required
+                />
+                <FaEnvelope className="auth-input-icon" />
+              </div>
+              {touched.email && !formData.email && (
+                <span className="auth-field-error">Email is required</span>
+              )}
+            </div>
+
+            {/* Password */}
+            <div className="auth-field-group">
+              <label className="auth-label" htmlFor="password">
+                Password
+              </label>
+              <div className="auth-input-wrap">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  className="auth-input has-toggle"
+                  placeholder="At least 6 characters"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  onBlur={() => handleBlur('password')}
+                  onKeyPress={handleKeyPress}
+                  disabled={loading}
+                  required
+                />
+                <FaLock className="auth-input-icon" />
+                <button
+                  type="button"
+                  className="auth-toggle-pwd"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
+              {touched.password && formData.password.length > 0 && formData.password.length < 6 && (
+                <span className="auth-field-hint">Password must be at least 6 characters</span>
+              )}
+            </div>
+
+            {/* Confirm Password */}
+            <div className="auth-field-group">
+              <label className="auth-label" htmlFor="cpassword">
+                Confirm Password
+              </label>
+              <div className="auth-input-wrap">
+                <input
+                  id="cpassword"
+                  name="cpassword"
+                  type={showCpassword ? "text" : "password"}
+                  className="auth-input has-toggle"
+                  placeholder="Re-enter your password"
+                  value={formData.cpassword}
+                  onChange={handleInputChange}
+                  onBlur={() => handleBlur('cpassword')}
+                  onKeyPress={handleKeyPress}
+                  disabled={loading}
+                  required
+                />
+                <FaLock className="auth-input-icon" />
+                <button
+                  type="button"
+                  className="auth-toggle-pwd"
+                  onClick={() => setShowCpassword(!showCpassword)}
+                  aria-label={showCpassword ? "Hide password" : "Show password"}
+                >
+                  {showCpassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
+              {formData.cpassword && formData.password !== formData.cpassword && (
+                <span className="auth-field-error">Passwords do not match</span>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="auth-submit-btn"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <div className="auth-btn-spinner" />
+                  <span>Creating Account...</span>
+                </>
+              ) : (
+                <>
+                  <FaUserPlus />
+                  <span>Create Account</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Divider */}
+          <div className="auth-divider">
+            <span className="auth-divider-text">OR CONTINUE WITH</span>
+          </div>
+
+          {/* Google OAuth Register */}
+          <div className="auth-google-wrap">
+            <GoogleLogin
+              onSuccess={handleGoogleRegister}
+              onError={handleGoogleError}
+              useOneTap={false}
+              theme="outline"
+              size="large"
+              text="signup_with"
+              shape="rectangular"
+              width="100%"
+            />
+          </div>
+
+          {/* Footer Switch Links */}
+          <div className="auth-footer">
+            <span>
+              Already have an account?{' '}
+              <a href="/login" className="auth-link">
+                Sign In
+              </a>
+            </span>
           </div>
         </div>
       </div>
-
-      {/* Additional CSS */}
-      <style jsx>{`
-        .min-vh-100 {
-          min-height: 100vh;
-        }
-        .min-vh-75 {
-          min-height: 75vh;
-        }
-        .card {
-          backdrop-filter: blur(10px);
-          background: rgba(255, 255, 255, 0.95);
-        }
-        .btn-primary {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border: none;
-          transition: all 0.3s ease;
-        }
-        .btn-primary:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-        .form-control {
-          border: 1px solid #e1e5e9;
-          transition: all 0.3s ease;
-        }
-        .form-control:focus {
-          border-color: #667eea;
-          box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-      `}</style>
     </div>
   );
 }

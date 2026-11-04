@@ -59,7 +59,6 @@ function Bookingscreen() {
   const [selectedServiceArea, setSelectedServiceArea] = useState(null);
   const [selectedUnitIndex, setSelectedUnitIndex] = useState(0);
   const [availableUnits, setAvailableUnits] = useState([]);
-  const [currentBookingType, setCurrentBookingType] = useState("Automatic Booking");
 
   // Time slots
   const timeSlots = [
@@ -150,7 +149,6 @@ function Bookingscreen() {
         }
 
         setBookingType(data.bookingType || "Automatic Booking");
-        setCurrentBookingType(data.bookingType || "Automatic Booking");
 
         const today = moment().format('YYYY-MM-DD');
         setFromDate(today);
@@ -635,7 +633,6 @@ const handleBooking = async (e) => {
 
     const currentUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
     const unit = currentUnit?.unit || service.unit || 'per day';
-    const displayUnit = unit === "Other" ? (currentUnit?.customUnit || service.customUnit) : unit;
 
     if (unit.includes('day') || unit.includes('week') || unit.includes('month')) {
       return (
@@ -825,941 +822,138 @@ const handleBooking = async (e) => {
 
   const currentUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
   const displayUnit = currentUnit?.unit === "Other" ? currentUnit.customUnit : currentUnit?.unit || service.unit || 'per day';
-  const coverageAreas = normalizeLocationPricing(service.locationPricing);
   const effectiveRate = effectiveBaseRent(service, selectedServiceArea);
 
   return (
-    <div>
+    <div className="bookingscreen-page">
       <Navbar />
 
-      <div style={{ marginTop: '10px' }}>
-        <div className="col-md-12 text-left">
-          <div className="mb-3 bs">
-            <div className="image-carousel position-relative" style={{
-              height: "auto",
-              width: "100%",
-              overflow: "hidden",
-              borderRadius: "12px",
-              position: "relative",
-              backgroundColor: "#f5f5f5",
-              aspectRatio: window.innerWidth >= 1024 ? "21/9" : window.innerWidth >= 768 ? "16/9" : "4/3",
-              maxHeight: "70vh",
-              minHeight: "250px"
-            }}>
-              <img
-                src={service.imageurls[currentIndex]}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                  transition: "opacity 0.3s ease"
-                }}
-                alt={`Service ${currentIndex + 1}`}
-                loading="lazy"
-              />
+      <div className="bookingscreen-container">
+        {/* Breadcrumb Navigation */}
+        <div className="bs-breadcrumb">
+          <span style={{ cursor: "pointer" }} onClick={() => navigate("/home")}>Home</span>
+          <span className="bs-breadcrumb-separator">/</span>
+          <span>Services</span>
+          <span className="bs-breadcrumb-separator">/</span>
+          <span className="bs-breadcrumb-current">{service.name}</span>
+        </div>
 
-              <button
-                className="carousel-control-prev"
-                onClick={handlePrevious}
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "20px",
-                  transform: "translateY(-50%)",
-                  background: "rgba(0, 0, 0, 0.7)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "50%",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: "bold",
-                  zIndex: 2,
-                  backdropFilter: "blur(4px)",
-                  transition: "all 0.3s ease",
-                  width: "clamp(32px, 5vw, 48px)",
-                  height: "clamp(32px, 5vw, 48px)",
-                  fontSize: "clamp(20px, 4vw, 28px)",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.2)"
-                }}
-              >
-                ‹
-              </button>
+        <div className="bs-layout-grid">
+          {/* Main Column */}
+          <div className="bs-main-column">
+            {/* Carousel Card */}
+            <div className="bs-carousel-card">
+              <div className="bs-carousel-wrapper">
+                <img
+                  src={service.imageurls[currentIndex]}
+                  className="bs-carousel-image"
+                  alt={`Service ${currentIndex + 1}`}
+                  loading="lazy"
+                />
 
-              <button
-                className="carousel-control-next"
-                onClick={handleNext}
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  right: "20px",
-                  transform: "translateY(-50%)",
-                  background: "rgba(0, 0, 0, 0.7)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "50%",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: "bold",
-                  zIndex: 2,
-                  backdropFilter: "blur(4px)",
-                  transition: "all 0.3s ease",
-                  width: "clamp(32px, 5vw, 48px)",
-                  height: "clamp(32px, 5vw, 48px)",
-                  fontSize: "clamp(20px, 4vw, 28px)",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.2)"
-                }}
-              >
-                ›
-              </button>
-
-              {service.imageurls && service.imageurls.length > 1 && (
-                <div style={{
-                  position: "absolute",
-                  bottom: "clamp(10px, 2vh, 20px)",
-                  right: "clamp(10px, 2vw, 20px)",
-                  background: "rgba(0, 0, 0, 0.7)",
-                  color: "#fff",
-                  padding: "clamp(4px, 1.5vw, 8px) clamp(8px, 2vw, 12px)",
-                  borderRadius: "20px",
-                  fontSize: "clamp(11px, 2.5vw, 14px)",
-                  fontWeight: "500",
-                  backdropFilter: "blur(4px)",
-                  zIndex: 2,
-                  fontFamily: "monospace",
-                  letterSpacing: "0.5px"
-                }}>
-                  {currentIndex + 1} / {service.imageurls.length}
-                </div>
-              )}
-
-              {service.imageurls && service.imageurls.length > 1 && (
-                <div style={{
-                  position: "absolute",
-                  bottom: "clamp(10px, 2vh, 20px)",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  display: "flex",
-                  gap: "clamp(6px, 1.5vw, 10px)",
-                  zIndex: 2,
-                  padding: "6px 12px",
-                  borderRadius: "20px",
-                  background: "rgba(0, 0, 0, 0.5)",
-                  backdropFilter: "blur(4px)"
-                }}>
-                  {service.imageurls.map((_, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setCurrentIndex(idx)}
-                      style={{
-                        width: idx === currentIndex ? "clamp(20px, 3vw, 24px)" : "clamp(8px, 2vw, 10px)",
-                        height: "clamp(8px, 2vw, 10px)",
-                        borderRadius: "50%",
-                        background: idx === currentIndex ? "#fff" : "rgba(255, 255, 255, 0.6)",
-                        border: "none",
-                        cursor: "pointer",
-                        transition: "all 0.3s ease",
-                        padding: 0
-                      }}
-                      aria-label={`Go to image ${idx + 1}`}
-                    />
-                  ))}
-                </div>
-              )}
+                {service.imageurls && service.imageurls.length > 1 && (
+                  <>
+                    <button className="bs-carousel-btn bs-carousel-prev" onClick={handlePrevious} aria-label="Previous image">‹</button>
+                    <button className="bs-carousel-btn bs-carousel-next" onClick={handleNext} aria-label="Next image">›</button>
+                    <div className="bs-carousel-counter">{currentIndex + 1} / {service.imageurls.length}</div>
+                    <div className="bs-carousel-dots">
+                      {service.imageurls.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setCurrentIndex(idx)}
+                          className={`bs-carousel-dot ${idx === currentIndex ? "active" : ""}`}
+                          aria-label={`Go to image ${idx + 1}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
-           <h1 style={{
-  textAlign: "left",
-  width: "100%",
-  marginTop: "clamp(12px, 2vh, 24px)",
-  marginBottom: "clamp(6px, 1vh, 12px)",
-  padding: "0 clamp(16px, 4vw, 32px)",
-  fontSize: "clamp(18px, 5vw, 36px)",
-  fontWeight: "bold",
-  lineHeight: "1.2",
-  wordBreak: "break-word",
-  hyphens: "auto",
-  color: "#1a1a1a",
-  letterSpacing: "-0.02em"
-}}>
-  <b>{service.name}</b>
-</h1>
+            {/* Service Header Info */}
+            <div className="bs-card">
+              <div className="bs-header-info">
+                <div className="bs-tags-row">
+                  <span className="bs-pill bs-pill-category">{service.category || "Service"}</span>
+                  <span className="bs-pill bs-pill-verified">✓ Verified Specialist</span>
+                  {selectedServiceArea && (
+                    <span className="bs-pill bs-pill-location">📍 {selectedServiceArea.locationName}</span>
+                  )}
+                </div>
+                <h1 className="bs-service-title">{service.name}</h1>
+                <p className="bs-company-subtitle">
+                  Provided by <b>{service.companyname || "Independent Specialist"}</b>
+                </p>
+              </div>
+            </div>
 
-<p style={{
-  color: "#666",
-  marginTop: "0",
-  marginBottom: "clamp(12px, 2vh, 24px)",
-  padding: "0 clamp(16px, 4vw, 32px)",
-  fontSize: "clamp(13px, 2.5vw, 18px)",
-  lineHeight: "1.6",
-  wordBreak: "break-word",
-  hyphens: "auto",
-  opacity: "0.85"
-}}>
-  {service.companyname || "N/A"}
-</p>
-          </div>
+            {/* Description Section */}
+            <div className="bs-card">
+              <div className="bs-section-title-wrap">
+                <span className="bs-section-icon">📋</span>
+                <h3 className="bs-section-heading">About This Service</h3>
+              </div>
+              <div className="bs-description-content">
+                {typeof service.description === 'string' ? (
+                  service.description.split('\n').map((point, idx) => {
+                    const trimmedPoint = point.trim();
+                    if (!trimmedPoint) return null;
+                    const hasBullet = trimmedPoint.startsWith('→') || trimmedPoint.startsWith('•') || trimmedPoint.startsWith('-');
+                    return (
+                      <div key={idx} className="bs-desc-point">
+                        <span className="bs-desc-bullet">{hasBullet ? "▹" : "•"}</span>
+                        <span>{hasBullet ? trimmedPoint.slice(1).trim() : trimmedPoint}</span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p>{service.description}</p>
+                )}
+              </div>
+            </div>
 
-         <div style={{
-  backgroundColor: "#ffffff",
-  borderRadius: "16px",
-  boxShadow: "0 8px 40px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.03)",
-  padding: "28px",
-  border: "1px solid #eef2f6",
-  width: "100%",
-  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  transition: "all 0.3s ease"
-}}>
-  
-  {/* Header with subtle indicator */}
-  <div style={{
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: "20px",
-    paddingBottom: "16px",
-    borderBottom: "2px solid #f1f5f9",
-    width: "100%"
-  }}>
-    <span style={{
-      fontSize: "12px",
-      fontWeight: "600",
-      color: "#64748b",
-      textTransform: "uppercase",
-      letterSpacing: "0.8px"
-    }}>
-      Booking Details
-    </span>
-    <span style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "6px",
-      fontSize: "11px",
-      color: "#22c55e",
-      fontWeight: "500"
-    }}>
-      <span style={{
-        display: "inline-block",
-        width: "6px",
-        height: "6px",
-        backgroundColor: "#22c55e",
-        borderRadius: "50%",
-        animation: "pulse 2s infinite"
-      }}></span>
-      Available
-    </span>
-  </div>
+            {/* Facilities Section */}
+            <div className="bs-card">
+              <div className="bs-section-title-wrap">
+                <span className="bs-section-icon">✨</span>
+                <h3 className="bs-section-heading">What We Offer</h3>
+              </div>
+              <div className="bs-facilities-grid">
+                {(() => {
+                  let facilityArray = service.facility;
+                  if (typeof service.facility === 'string') {
+                    facilityArray = service.facility
+                      .split('\n')
+                      .filter(line => line.trim() !== '')
+                      .map(line => line.replace(/^[→•-]\s*/, '').trim());
+                  }
+                  if (Array.isArray(facilityArray)) {
+                    return facilityArray.map((item, index) => (
+                      <div key={index} className="bs-facility-item">
+                        <span className="bs-facility-check">✓</span>
+                        <span>{item}</span>
+                      </div>
+                    ));
+                  }
+                  return (
+                    <div className="bs-facility-item">
+                      <span className="bs-facility-check">✓</span>
+                      <span>{service.facility}</span>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
 
-{/* Unit Controls */}
-<div style={{ marginBottom: "20px", width: "100%" }}>
-  {renderUnitBasedControls()}
-</div>
-
-{/* Unit Selector - Premium & Responsive */}
-{availableUnits.length > 1 && (
-  <div style={{ 
-    margin: "0 0 20px 0",
-    padding: "clamp(10px, 2vw, 16px)",
-    backgroundColor: "#f8fafc",
-    borderRadius: "10px",
-    border: "1px solid #e8edf4",
-    display: "flex",
-    alignItems: "center",
-    gap: "clamp(10px, 1.5vw, 14px)",
-    flexWrap: "wrap",
-    width: "100%",
-    transition: "all 0.2s ease"
-  }}>
-    <div style={{ 
-      display: "flex", 
-      alignItems: "center", 
-      gap: "8px",
-      flexShrink: 0
-    }}>
-      <svg width="clamp(14px, 1.5vw, 16px)" height="clamp(14px, 1.5vw, 16px)" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-      </svg>
-      <label style={{ 
-        fontWeight: "500", 
-        fontSize: "clamp(12px, 1.2vw, 13px)",
-        color: "#475569",
-        margin: 0,
-        letterSpacing: "0.2px"
-      }}>
-        Pricing Plan
-      </label>
-    </div>
-    <select
-      value={selectedUnitIndex}
-      onChange={(e) => {
-        const index = parseInt(e.target.value);
-        setSelectedUnitIndex(index);
-      }}
-      style={{
-        padding: "clamp(6px, 1vw, 8px) clamp(32px, 4vw, 40px) clamp(6px, 1vw, 8px) clamp(10px, 1.5vw, 14px)",
-        borderRadius: "8px",
-        border: "1px solid #d1d9e6",
-        backgroundColor: "white",
-        fontSize: "clamp(12px, 1.2vw, 13px)",
-        fontWeight: "500",
-        flex: "1 1 auto",
-        minWidth: "clamp(140px, 20vw, 180px)",
-        maxWidth: "100%",
-        cursor: "pointer",
-        color: "#0f172a",
-        outline: "none",
-        appearance: "none",
-        backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E\")",
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "right clamp(10px, 1.5vw, 14px) center",
-        backgroundSize: "clamp(8px, 0.8vw, 10px)",
-        transition: "all 0.2s ease",
-        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-        width: "100%",
-        maxWidth: "100%",
-        boxSizing: "border-box",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-        overflow: "hidden"
-      }}
-      onFocus={(e) => {
-        e.target.style.borderColor = "#6366f1";
-        e.target.style.boxShadow = "0 0 0 4px rgba(99,102,241,0.1)";
-      }}
-      onBlur={(e) => {
-        e.target.style.borderColor = "#d1d9e6";
-        e.target.style.boxShadow = "0 1px 2px rgba(0,0,0,0.05)";
-      }}
-    >
-      {availableUnits.map((unit, index) => (
-        <option key={index} value={index} style={{ 
-          fontSize: "clamp(12px, 1.2vw, 13px)",
-          padding: "4px 8px"
-        }}>
-          {unit.unit === 'Other' ? unit.customUnit : unit.unit} — ₹{unit.price}
-          {unit.isDefault && " ✦"}
-        </option>
-      ))}
-    </select>
-    {availableUnits.some(u => u.isDefault) && (
-      <span style={{
-        fontSize: "clamp(9px, 0.9vw, 10px)",
-        fontWeight: "600",
-        color: "#6366f1",
-        backgroundColor: "#eef2ff",
-        padding: "2px clamp(6px, 1vw, 10px)",
-        borderRadius: "12px",
-        letterSpacing: "0.3px",
-        textTransform: "uppercase",
-        flexShrink: 0,
-        whiteSpace: "nowrap"
-      }}>
-        Best Value
-      </span>
-    )}
-  </div>
-)}
-
-{/* Price Display - Premium Card & Responsive */}
-<div style={{
-  padding: "clamp(12px, 2vw, 16px) clamp(14px, 2.5vw, 20px)",
-  backgroundColor: "#fafbfc",
-  borderRadius: "10px",
-  border: "1px solid #eef2f6",
-  marginBottom: "16px",
-  width: "100%",
-  position: "relative",
-  overflow: "hidden"
-}}>
-  {/* Subtle background pattern */}
-  <div style={{
-    position: "absolute",
-    top: "-50%",
-    right: "-20%",
-    width: "clamp(120px, 20vw, 200px)",
-    height: "clamp(120px, 20vw, 200px)",
-    background: "radial-gradient(circle, rgba(99,102,241,0.03) 0%, transparent 70%)",
-    borderRadius: "50%",
-    pointerEvents: "none"
-  }}></div>
-  
-  {bookingType !== 'Inquari Booking' ? (
-    <div style={{ 
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      flexWrap: "wrap",
-      gap: "clamp(6px, 1vw, 8px)",
-      position: "relative",
-      zIndex: 1
-    }}>
-      <div style={{ 
-        display: "flex", 
-        alignItems: "baseline", 
-        gap: "clamp(4px, 0.8vw, 6px)",
-        flexWrap: "wrap"
-      }}>
-        <span style={{ 
-          fontSize: "clamp(12px, 1.2vw, 13px)", 
-          color: "#64748b", 
-          fontWeight: "450" 
-        }}>
-          Price
-        </span>
-        <span style={{ 
-          fontSize: "clamp(22px, 4vw, 28px)", 
-          fontWeight: "700", 
-          color: "#0f172a",
-          letterSpacing: "-0.5px",
-          lineHeight: 1.2
-        }}>
-          ₹{effectiveRate}
-        </span>
-        {displayUnit && (
-          <span style={{ 
-            color: "#64748b", 
-            fontSize: "clamp(12px, 1.2vw, 14px)", 
-            fontWeight: "400" 
-          }}>
-            <span style={{ margin: "0 4px" }}>/</span> {displayUnit}
-          </span>
-        )}
-      </div>
-      {coverageAreas.length === 0 && (
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-          backgroundColor: "#f1f5f9",
-          padding: "2px clamp(6px, 1vw, 10px)",
-          borderRadius: "12px",
-          flexShrink: 0
-        }}>
-          <svg width="clamp(10px, 1vw, 12px)" height="clamp(10px, 1vw, 12px)" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 8v8M8 12h8"/>
-          </svg>
-          <span style={{ 
-            fontSize: "clamp(10px, 1vw, 11px)", 
-            color: "#64748b", 
-            fontWeight: "400",
-            whiteSpace: "nowrap"
-          }}>
-            All Locations
-          </span>
-        </div>
-      )}
-    </div>
-  ) : (
-    <div style={{ 
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      flexWrap: "wrap",
-      gap: "clamp(6px, 1vw, 8px)",
-      position: "relative",
-      zIndex: 1
-    }}>
-      <div style={{ 
-        display: "flex", 
-        alignItems: "center", 
-        gap: "clamp(6px, 1vw, 10px)",
-        flexWrap: "wrap"
-      }}>
-        <span style={{ 
-          fontSize: "clamp(12px, 1.2vw, 13px)", 
-          color: "#64748b", 
-          fontWeight: "450" 
-        }}>
-          Status
-        </span>
-        <span style={{ 
-          fontWeight: "600",
-          color: "#d97706",
-          fontSize: "clamp(12px, 1.2vw, 13px)",
-          backgroundColor: "#fef3c7",
-          padding: "clamp(3px, 0.5vw, 4px) clamp(10px, 1.5vw, 14px)",
-          borderRadius: "20px",
-          border: "1px solid #fcd34d",
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-          whiteSpace: "nowrap"
-        }}>
-          <span style={{
-            display: "inline-block",
-            width: "4px",
-            height: "4px",
-            backgroundColor: "#d97706",
-            borderRadius: "50%",
-            animation: "pulse 1.5s infinite"
-          }}></span>
-          On Inquiry
-        </span>
-      </div>
-      <span style={{ 
-        fontSize: "clamp(10px, 1vw, 11px)", 
-        color: "#94a3b8",
-        fontWeight: "400",
-        backgroundColor: "#f8fafc",
-        padding: "2px clamp(6px, 1vw, 10px)",
-        borderRadius: "12px",
-        whiteSpace: "nowrap"
-      }}>
-        Ref: ₹{effectiveRate} {displayUnit ? `/ ${displayUnit}` : ""}
-      </span>
-    </div>
-  )}
-</div>
-
-{/* Quantity Control - Refined & Responsive */}
-{bookingType !== 'Inquari Booking' && currentUnit?.isCountable !== false && (
-  <div style={{
-    display: "flex",
-    alignItems: "center",
-    gap: "clamp(12px, 2vw, 20px)",
-    padding: "clamp(10px, 1.5vw, 12px) clamp(12px, 2vw, 16px)",
-    backgroundColor: "#fafbfc",
-    borderRadius: "10px",
-    border: "1px solid #eef2f6",
-    marginBottom: "16px",
-    width: "100%",
-    flexWrap: "wrap"
-  }}>
-    <div style={{ 
-      display: "flex", 
-      alignItems: "center", 
-      gap: "clamp(6px, 0.8vw, 8px)",
-      flexShrink: 0
-    }}>
-      <svg width="clamp(14px, 1.5vw, 16px)" height="clamp(14px, 1.5vw, 16px)" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
-        <rect x="3" y="3" width="18" height="18" rx="2"/>
-        <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
-      </svg>
-      <span style={{ 
-        fontSize: "clamp(12px, 1.2vw, 13px)", 
-        fontWeight: "500", 
-        color: "#475569"
-      }}>
-        Quantity
-      </span>
-    </div>
-    <div style={{ 
-      display: "flex", 
-      alignItems: "center", 
-      gap: "2px",
-      backgroundColor: "white",
-      borderRadius: "8px",
-      border: "1px solid #e2e8f0",
-      padding: "2px",
-      boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-      flex: "0 1 auto"
-    }}>
-      <button
-        onClick={() => setQuantity(prev => prev > 1 ? prev - 1 : 1)}
-        style={{
-          width: "clamp(30px, 4vw, 34px)",
-          height: "clamp(30px, 4vw, 34px)",
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          fontSize: "clamp(16px, 2vw, 18px)",
-          fontWeight: "500",
-          color: "#475569",
-          borderRadius: "6px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          transition: "all 0.15s ease",
-          touchAction: "manipulation"
-        }}
-        onMouseEnter={(e) => {
-          e.target.style.backgroundColor = "#f1f5f9";
-          e.target.style.color = "#0f172a";
-        }}
-        onMouseLeave={(e) => {
-          e.target.style.backgroundColor = "transparent";
-          e.target.style.color = "#475569";
-        }}
-        onTouchStart={(e) => {
-          e.target.style.backgroundColor = "#f1f5f9";
-        }}
-        onTouchEnd={(e) => {
-          e.target.style.backgroundColor = "transparent";
-        }}
-      >
-        −
-      </button>
-      <span style={{ 
-        minWidth: "clamp(28px, 4vw, 36px)", 
-        textAlign: "center", 
-        fontWeight: "600",
-        fontSize: "clamp(14px, 1.8vw, 15px)",
-        color: "#0f172a",
-        padding: "0 4px",
-        fontFeatureSettings: "'tnum'"
-      }}>
-        {String(quantity).padStart(2, '0')}
-      </span>
-      <button
-        onClick={() => setQuantity(prev => prev + 1)}
-        style={{
-          width: "clamp(30px, 4vw, 34px)",
-          height: "clamp(30px, 4vw, 34px)",
-          border: "none",
-          background: "transparent",
-          cursor: "pointer",
-          fontSize: "clamp(16px, 2vw, 18px)",
-          fontWeight: "500",
-          color: "#475569",
-          borderRadius: "6px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          transition: "all 0.15s ease",
-          touchAction: "manipulation"
-        }}
-        onMouseEnter={(e) => {
-          e.target.style.backgroundColor = "#f1f5f9";
-          e.target.style.color = "#0f172a";
-        }}
-        onMouseLeave={(e) => {
-          e.target.style.backgroundColor = "transparent";
-          e.target.style.color = "#475569";
-        }}
-        onTouchStart={(e) => {
-          e.target.style.backgroundColor = "#f1f5f9";
-        }}
-        onTouchEnd={(e) => {
-          e.target.style.backgroundColor = "transparent";
-        }}
-      >
-        +
-      </button>
-    </div>
-  </div>
-)}
-
-{/* Total Amount - Premium Gradient & Responsive */}
-{bookingType !== 'Inquari Booking' ? (
-  <div style={{ 
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "clamp(14px, 2.5vw, 18px) clamp(16px, 3vw, 22px)",
-    background: "linear-gradient(135deg, #f0f4ff 0%, #e6edff 100%)",
-    borderRadius: "12px",
-    border: "1px solid #c7d9ff",
-    marginBottom: "20px",
-    width: "100%",
-    position: "relative",
-    overflow: "hidden",
-    flexWrap: "wrap",
-    gap: "clamp(8px, 1.5vw, 12px)"
-  }}>
-    <div style={{ 
-      position: "absolute", 
-      top: 0, 
-      right: 0, 
-      width: "100%", 
-      height: "100%", 
-      background: "linear-gradient(90deg, transparent 0%, rgba(99,102,241,0.05) 100%)", 
-      pointerEvents: "none" 
-    }}></div>
-    <div style={{ position: "relative", zIndex: 1 }}>
-      <span style={{ 
-        fontSize: "clamp(12px, 1.3vw, 13px)", 
-        fontWeight: "600", 
-        color: "#4338ca", 
-        letterSpacing: "0.3px", 
-        display: "flex", 
-        alignItems: "center", 
-        gap: "6px" 
-      }}>
-        <svg width="clamp(16px, 1.8vw, 18px)" height="clamp(16px, 1.8vw, 18px)" viewBox="0 0 24 24" fill="none" stroke="#4338ca" strokeWidth="2">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 6v6l4 2"/>
-        </svg>
-        Total Amount
-      </span>
-      <span style={{ 
-        display: "block",
-        fontSize: "clamp(10px, 1vw, 11px)", 
-        color: "#6366f1",
-        fontWeight: "400",
-        marginTop: "2px",
-        letterSpacing: "0.2px"
-      }}>
-        Inclusive of all taxes & charges
-      </span>
-    </div>
-    <span style={{ 
-      fontSize: "clamp(24px, 4.5vw, 30px)", 
-      fontWeight: "700", 
-      color: "#1e1b4b",
-      letterSpacing: "-0.5px",
-      position: "relative",
-      zIndex: 1
-    }}>
-      ₹{totalAmount}
-    </span>
-  </div>
-) : (
-  <div style={{ 
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "clamp(14px, 2.5vw, 18px) clamp(16px, 3vw, 22px)",
-    backgroundColor: "#fffbeb",
-    borderRadius: "12px",
-    border: "1px solid #fde68a",
-    marginBottom: "20px",
-    width: "100%",
-    flexWrap: "wrap",
-    gap: "clamp(8px, 1.5vw, 12px)"
-  }}>
-    <div>
-      <span style={{ 
-        fontSize: "clamp(12px, 1.3vw, 13px)", 
-        fontWeight: "600", 
-        color: "#92400e", 
-        letterSpacing: "0.3px" 
-      }}>
-        <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <svg width="clamp(16px, 1.8vw, 18px)" height="clamp(16px, 1.8vw, 18px)" viewBox="0 0 24 24" fill="none" stroke="#92400e" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M12 16v-4M12 8h.01"/>
-          </svg>
-          Total Amount
-        </span>
-      </span>
-      <span style={{ 
-        display: "block",
-        fontSize: "clamp(10px, 1vw, 11px)", 
-        color: "#b45309",
-        fontWeight: "400",
-        marginTop: "2px"
-      }}>
-        Final price confirmed after inquiry
-      </span>
-    </div>
-    <span style={{ 
-      fontSize: "clamp(14px, 1.8vw, 16px)", 
-      fontWeight: "600", 
-      color: "#d97706",
-      backgroundColor: "#fef3c7",
-      padding: "clamp(3px, 0.5vw, 4px) clamp(12px, 2vw, 16px)",
-      borderRadius: "20px",
-      border: "1px solid #fcd34d",
-      whiteSpace: "nowrap"
-    }}>
-      Awaiting Inquiry
-    </span>
-  </div>
-)}
-  {/* Action Buttons - Premium */}
-  <div style={{
-    display: "flex",
-    gap: "12px",
-    alignItems: "center",
-    width: "100%"
-  }}>
-    <button
-      onClick={() => setShowBookingModal(true)}
-      style={{
-        flex: "1",
-        padding: "14px 24px",
-        background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-        color: "white",
-        border: "none",
-        borderRadius: "10px",
-        cursor: "pointer",
-        fontSize: "14px",
-        fontWeight: "600",
-        letterSpacing: "0.4px",
-        transition: "all 0.25s ease",
-        boxShadow: "0 4px 16px rgba(99,102,241,0.3)",
-        position: "relative",
-        overflow: "hidden",
-        whiteSpace: "nowrap",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "8px"
-      }}
-      onMouseEnter={(e) => {
-        e.target.style.transform = "translateY(-2px) scale(1.01)";
-        e.target.style.boxShadow = "0 8px 28px rgba(99,102,241,0.4)";
-      }}
-      onMouseLeave={(e) => {
-        e.target.style.transform = "translateY(0) scale(1)";
-        e.target.style.boxShadow = "0 4px 16px rgba(99,102,241,0.3)";
-      }}
-      onMouseDown={(e) => e.target.style.transform = "scale(0.98)"}
-      onMouseUp={(e) => e.target.style.transform = "translateY(-2px) scale(1.01)"
-}
-    >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-        <path d="M2 17l10 5 10-5"/>
-        <path d="M2 12l10 5 10-5"/>
-      </svg>
-      Book Now
-    </button>
-
-    <div style={{ 
-      display: "flex", 
-      gap: "8px",
-      flexShrink: 0
-    }}>
-      <button
-        onClick={handleWhatsApp}
-        style={{
-          background: "#25D366",
-          color: "white",
-          border: "none",
-          borderRadius: "50%",
-          width: "48px",
-          height: "48px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          transition: "all 0.25s ease",
-          boxShadow: "0 4px 12px rgba(37,211,102,0.3)",
-          position: "relative"
-        }}
-        onMouseEnter={(e) => {
-          e.target.style.transform = "scale(1.08) rotate(-2deg)";
-          e.target.style.boxShadow = "0 6px 20px rgba(37,211,102,0.4)";
-        }}
-        onMouseLeave={(e) => {
-          e.target.style.transform = "scale(1) rotate(0)";
-          e.target.style.boxShadow = "0 4px 12px rgba(37,211,102,0.3)";
-        }}
-        title="Chat on WhatsApp"
-      >
-        <FontAwesomeIcon icon={faWhatsapp} size="lg" />
-      </button>
-
-      <button
-        onClick={handleContact}
-        style={{
-          background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-          color: "white",
-          border: "none",
-          borderRadius: "50%",
-          width: "48px",
-          height: "48px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          transition: "all 0.25s ease",
-          boxShadow: "0 4px 12px rgba(99,102,241,0.3)"
-        }}
-        onMouseEnter={(e) => {
-          e.target.style.transform = "scale(1.08) rotate(2deg)";
-          e.target.style.boxShadow = "0 6px 20px rgba(99,102,241,0.4)";
-        }}
-        onMouseLeave={(e) => {
-          e.target.style.transform = "scale(1) rotate(0)";
-          e.target.style.boxShadow = "0 4px 12px rgba(99,102,241,0.3)";
-        }}
-        title="Call us"
-      >
-        <FontAwesomeIcon icon={faPhone} size="lg" />
-      </button>
-    </div>
-  </div>
-
-  {/* Trust & Features */}
-  <div style={{
-  marginTop: "20px",
-  padding: "14px 0 0 0",
-  borderTop: "1px solid #f1f5f9",
-  width: "100%",
-  display: "flex",
-  justifyContent: "center",
-  gap: "clamp(12px, 3vw, 24px)", // Responsive gap
-  flexWrap: "wrap",
-  paddingLeft: "clamp(10px, 2vw, 0)", // Add some padding on small screens
-  paddingRight: "clamp(10px, 2vw, 0)"
-}}>
-  {[
-    { icon: "✓", text: "Secure Booking" },
-    { icon: "✓", text: "Best Price Guarantee" },
-    { icon: "✓", text: "Instant Confirmation" },
-    { icon: "✓", text: "24/7 Support" }
-  ].map((item, index) => (
-    <div key={index} style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "6px",
-      fontSize: "clamp(10px, 1.2vw, 13px)", // Responsive font size
-      color: "#64748b",
-      fontWeight: "450",
-      letterSpacing: "0.2px",
-      whiteSpace: "nowrap", // Prevents text from wrapping
-      // For very small screens, allow text to wrap
-      "@media (max-width: 480px)": {
-        whiteSpace: "normal"
-      }
-    }}>
-      <span style={{
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "clamp(14px, 1.5vw, 18px)", // Responsive size
-        height: "clamp(14px, 1.5vw, 18px)",
-        backgroundColor: "#eef2ff",
-        color: "#6366f1",
-        borderRadius: "50%",
-        fontSize: "clamp(8px, 0.8vw, 10px)", // Responsive icon size
-        fontWeight: "700",
-        flexShrink: 0 // Prevents icon from shrinking
-      }}>
-        {item.icon}
-      </span>
-      <span style={{
-        fontSize: "clamp(10px, 1.2vw, 13px)"
-      }}>
-        {item.text}
-      </span>
-    </div>
-  ))}
-</div>
-
-  {/* Add keyframe animation for pulse */}
-  <style>{`
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(0.8); }
-    }
-  `}</style>
-</div>
-          {/* Optional Inputs Section */}
-          <div style={{
-            display: "flex",
-            flexWrap: "nowrap",
-            gap: "15px",
-            marginTop: "15px",
-            overflowX: "auto"
-          }}>
+            {/* Optional Inputs Section */}
             {service.optionalInputs && service.optionalInputs.length > 0 && (
-              <div className="optional-inputs-section" style={{ marginTop: "30px" }}>
-                <h4>Optional Services</h4>
-                <div style={{
-                  display: "flex",
-                  flexWrap: "nowrap",
-                  gap: "15px",
-                  marginTop: "15px",
-                  overflowX: "auto"
-                }}>
+              <div className="bs-card">
+                <div className="bs-section-title-wrap">
+                  <span className="bs-section-icon">➕</span>
+                  <h3 className="bs-section-heading">Optional Add-on Services</h3>
+                </div>
+                <div className="bs-addons-grid">
                   {service.optionalInputs.map((input, index) => {
                     const getOptionalDisplayUnit = (input) => {
                       if (input.customUnit) return input.customUnit;
@@ -1767,109 +961,55 @@ const handleBooking = async (e) => {
                       if (unit.startsWith('per-')) return unit.replace('per-', '').replace(/-/g, ' ');
                       return unit;
                     };
-
                     const inputName = input.name || `Option ${index + 1}`;
                     const inputPrice = effectiveOptionalUnitPrice(input, selectedServiceArea);
-                    const displayUnit = getOptionalDisplayUnit(input);
+                    const optUnit = getOptionalDisplayUnit(input);
                     const inputImage = input.image || '';
                     const inputMaxCount = input.maxcount || 5;
                     const inputIsCountable = input.isCountable !== false;
 
                     return (
-                      <div
-                        key={index}
-                        style={{
-                          width: "180px",
-                          background: "white",
-                          borderRadius: "8px",
-                          boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-                          padding: "15px",
-                          textAlign: "center",
-                          flexShrink: 0
-                        }}
-                      >
+                      <div key={index} className="bs-addon-card">
                         {inputImage && (
                           <img
                             src={inputImage}
                             alt={inputName}
-                            style={{
-                              width: "100%",
-                              height: "120px",
-                              objectFit: "cover",
-                              borderRadius: "5px",
-                              marginBottom: "10px"
-                            }}
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
+                            className="bs-addon-img"
+                            onError={(e) => { e.target.style.display = 'none'; }}
                           />
                         )}
-
-                        <h5 style={{ fontSize: "1em", marginBottom: "5px" }}>
-                          {inputName}
-                        </h5>
-
-                        <p style={{ color: "#007bff", fontWeight: "bold", marginBottom: "10px" }}>
-                          ₹{inputPrice}
-                          {displayUnit && (
-                            <span> / {displayUnit}</span>
-                          )}
+                        <h5 className="bs-addon-name">{inputName}</h5>
+                        <p className="bs-addon-price">
+                          ₹{inputPrice} {optUnit && <span className="bs-addon-unit">/ {optUnit}</span>}
                         </p>
-
                         {inputIsCountable ? (
-                          <div style={{ display: "flex", justifyContent: "center", gap: "10px" }}>
+                          <div className="bs-addon-stepper">
                             <button
+                              className="bs-addon-step-btn"
                               onClick={() => handleChange(index, false)}
                               disabled={!optionalInputCounts[index]}
-                              style={{
-                                width: "30px",
-                                height: "30px",
-                                borderRadius: "5px",
-                                border: "1px solid #ddd",
-                                background: optionalInputCounts[index] ? "#f8f9fa" : "white",
-                                cursor: optionalInputCounts[index] ? "pointer" : "not-allowed",
-                                color: "black"
-                              }}
                             >
                               -
                             </button>
-                            <span style={{ minWidth: "30px", textAlign: "center", lineHeight: "30px" }}>
-                              {optionalInputCounts[index] || 0}
-                            </span>
+                            <span className="bs-addon-count">{optionalInputCounts[index] || 0}</span>
                             <button
+                              className="bs-addon-step-btn"
                               onClick={() => handleChange(index, true)}
                               disabled={optionalInputCounts[index] >= inputMaxCount}
-                              style={{
-                                width: "30px",
-                                height: "30px",
-                                borderRadius: "5px",
-                                border: "1px solid #ddd",
-                                background: "white",
-                                cursor: "pointer",
-                                color: "black"
-                              }}
                             >
                               +
                             </button>
                           </div>
                         ) : (
                           <button
+                            className={`bs-addon-toggle-btn ${addedOptionalInputs[index] ? 'btn-remove' : 'btn-add'}`}
                             onClick={() =>
                               addedOptionalInputs[index]
                                 ? handleRemoveOptionalInput(index)
                                 : handleAddOptionalInput(index)
                             }
-                            style={{
-                              width: "100%",
-                              padding: "8px",
-                              background: addedOptionalInputs[index] ? "#dc3545" : "#28a745",
-                              color: "white",
-                              border: "none",
-                              borderRadius: "5px",
-                              cursor: "pointer"
-                            }}
                           >
-                            {addedOptionalInputs[index] ? "Remove" : "Add"}
+                            {addedOptionalInputs[index] ? "Remove" : "+ Add"}
                           </button>
                         )}
                       </div>
@@ -1881,278 +1021,152 @@ const handleBooking = async (e) => {
 
             {/* Extra Inputs Section */}
             {service.extraInputs && service.extraInputs.length > 0 && (
-              <div className="extra-inputs-section" style={{ marginTop: "30px" }}>
-                <div style={{
-                  display: "flex",
-                  flexWrap: "nowrap",
-                  gap: "15px",
-                  marginTop: "15px",
-                  overflowX: "auto"
-                }}>
+              <div className="bs-card">
+                <div className="bs-section-title-wrap">
+                  <span className="bs-section-icon">⚙️</span>
+                  <h3 className="bs-section-heading">Additional Options</h3>
+                </div>
+                <div className="bs-addons-grid">
                   {service.extraInputs.map((input, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        width: "180px",
-                        background: "white",
-                        borderRadius: "8px",
-                        boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
-                        padding: "15px",
-                        textAlign: "center",
-                        flexShrink: 0
-                      }}
-                    >
-                      {input.image && (
-                        <img
-                          src={input.image}
-                          alt={input.name}
-                          style={{
-                            width: "100%",
-                            height: "120px",
-                            objectFit: "cover",
-                            borderRadius: "5px",
-                            marginBottom: "10px"
-                          }}
-                        />
-                      )}
-
-                      <h5 style={{ fontSize: "1em", marginBottom: "5px" }}>
-                        {input.name}
-                      </h5>
-
-                      <p style={{ color: "#007bff", fontWeight: "bold", marginBottom: "10px" }}>
-                        ₹{input.price} {input.unit === 'Other' ? input.customUnit : `/${input.unit}`}
+                    <div key={index} className="bs-addon-card">
+                      {input.image && <img src={input.image} alt={input.name} className="bs-addon-img" />}
+                      <h5 className="bs-addon-name">{input.name}</h5>
+                      <p className="bs-addon-price">
+                        ₹{input.price} <span className="bs-addon-unit">{input.unit === 'Other' ? input.customUnit : `/${input.unit}`}</span>
                       </p>
-
                       <button
+                        className={`bs-addon-toggle-btn ${addedExtraInputs[index] ? 'btn-remove' : 'btn-add'}`}
                         onClick={() =>
                           addedExtraInputs[index]
                             ? handleRemoveExtraInput(index)
                             : handleAddExtraInput(index)
                         }
-                        style={{
-                          width: "100%",
-                          padding: "8px",
-                          background: addedExtraInputs[index] ? "#dc3545" : "#28a745",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "5px",
-                          cursor: "pointer"
-                        }}
                       >
-                        {addedExtraInputs[index] ? "Remove" : "Add"}
+                        {addedExtraInputs[index] ? "Remove" : "+ Add"}
                       </button>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Description Section */}
-          <div style={{
-            backgroundColor: "white",
-            borderRadius: "12px",
-            padding: "clamp(16px, 4vw, 28px)",
-            marginTop: "20px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-            border: "1px solid #f0f0f0"
-          }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              marginBottom: "20px",
-              borderBottom: "2px solid #28a745",
-              paddingBottom: "12px"
-            }}>
-              <span style={{ fontSize: "24px" }}>📋</span>
-              <h3 style={{
-                margin: 0,
-                fontSize: "clamp(18px, 4vw, 24px)",
-                fontWeight: "600",
-                color: "#1a1a1a"
-              }}>
-                Service Details
-              </h3>
+            {/* Reviews Section */}
+            <div className="bs-card">
+              <div className="bs-section-title-wrap">
+                <span className="bs-section-icon">⭐</span>
+                <h3 className="bs-section-heading">Customer Reviews</h3>
+              </div>
+              <ReviewSystem serviceId={serviceid} />
             </div>
 
-            <div style={{
-              lineHeight: "1.7",
-              color: "#444",
-              fontSize: "clamp(14px, 3vw, 16px)"
-            }}>
-              {typeof service.description === 'string' ? (
-                service.description.split('\n').map((point, idx) => {
-                  const trimmedPoint = point.trim();
-                  if (!trimmedPoint) return null;
+            {/* Comments Section */}
+            <div className="bs-card">
+              <div className="bs-section-title-wrap">
+                <span className="bs-section-icon">💬</span>
+                <h3 className="bs-section-heading">Discussion & Questions</h3>
+              </div>
+              <CommentsSection serviceId={serviceid} />
+            </div>
+          </div>
 
-                  const hasBullet = trimmedPoint.startsWith('→') ||
-                    trimmedPoint.startsWith('•') ||
-                    trimmedPoint.startsWith('-');
+          {/* Right Sticky Sidebar Column: Booking & Checkout Card */}
+          <div className="bs-sidebar-column">
+            <div className="bs-checkout-card">
+              <div className="bs-checkout-header">
+                <span className="bs-checkout-badge">Instant Booking</span>
+                <span className="bs-avail-indicator">
+                  <span className="bs-avail-dot"></span>
+                  Available
+                </span>
+              </div>
 
-                  return (
-                    <div
-                      key={idx}
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: "12px",
-                        marginBottom: "12px",
-                        padding: "8px 12px",
-                        backgroundColor: idx % 2 === 0 ? "#fff" : "#fafafa",
-                        borderRadius: "8px",
-                        transition: "all 0.2s ease"
-                      }}
-                    >
-                      <span style={{
-                        fontSize: "18px",
-                        color: "#28a745",
-                        minWidth: "24px",
-                        marginTop: "2px"
-                      }}>
-                        {hasBullet ? "▹" : "•"}
-                      </span>
-                      <span style={{
-                        flex: 1,
-                        wordBreak: "break-word"
-                      }}>
-                        {hasBullet ? trimmedPoint.slice(1).trim() : trimmedPoint}
-                      </span>
-                    </div>
-                  );
-                })
-              ) : (
-                <p>{service.description}</p>
+              {/* Unit Controls (Date picker / slots) */}
+              <div>
+                {renderUnitBasedControls()}
+              </div>
+
+              {/* Pricing Plan Selector */}
+              {availableUnits.length > 1 && (
+                <div className="bs-plan-select-wrap">
+                  <label className="bs-plan-label">
+                    <span>🏷️</span> Pricing Plan
+                  </label>
+                  <select
+                    className="bs-select"
+                    value={selectedUnitIndex}
+                    onChange={(e) => setSelectedUnitIndex(parseInt(e.target.value))}
+                  >
+                    {availableUnits.map((unit, index) => (
+                      <option key={index} value={index}>
+                        {unit.unit === 'Other' ? unit.customUnit : unit.unit} — ₹{unit.price} {unit.isDefault ? "✦" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               )}
-            </div>
-          </div>
 
-          {/* Facilities Section */}
-          <div style={{
-            backgroundColor: "white",
-            borderRadius: "12px",
-            padding: "clamp(16px, 4vw, 28px)",
-            marginTop: "20px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-            border: "1px solid #f0f0f0"
-          }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              marginBottom: "20px",
-              borderBottom: "2px solid #007bff",
-              paddingBottom: "12px"
-            }}>
-              <span style={{ fontSize: "24px" }}>✨</span>
-              <h3 style={{
-                margin: 0,
-                fontSize: "clamp(18px, 4vw, 24px)",
-                fontWeight: "600",
-                color: "#1a1a1a"
-              }}>
-                What We Offer
-              </h3>
-            </div>
-
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-              gap: "12px",
-              marginTop: "8px"
-            }}>
-              {(() => {
-                let facilityArray = service.facility;
-                if (typeof service.facility === 'string') {
-                  facilityArray = service.facility
-                    .split('\n')
-                    .filter(line => line.trim() !== '')
-                    .map(line => line.replace(/^[→•\-]\s*/, '').trim());
-                }
-                if (Array.isArray(facilityArray)) {
-                  return facilityArray.map((item, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        padding: "10px 12px",
-                        backgroundColor: "#f8f9fa",
-                        borderRadius: "8px",
-                        transition: "all 0.2s ease",
-                        cursor: "pointer",
-                        gap: "12px"
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "#e9ecef";
-                        e.currentTarget.style.transform = "translateX(4px)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "#f8f9fa";
-                        e.currentTarget.style.transform = "translateX(0)";
-                      }}
-                    >
-                      <span style={{
-                        fontSize: "18px",
-                        color: "#007bff",
-                        minWidth: "24px"
-                      }}>
-                        ✓
-                      </span>
-                      <span style={{
-                        fontSize: "clamp(13px, 3vw, 15px)",
-                        color: "#333",
-                        lineHeight: "1.5",
-                        flex: 1
-                      }}>
-                        {item}
-                      </span>
-                    </div>
-                  ));
-                }
-                return (
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "12px",
-                    backgroundColor: "#f8f9fa",
-                    borderRadius: "8px",
-                    gap: "12px"
-                  }}>
-                    <span style={{ fontSize: "18px", color: "#007bff" }}>✓</span>
-                    <span style={{ lineHeight: "1.6", color: "#555" }}>
-                      {service.facility}
-                    </span>
+              {/* Price Box */}
+              {bookingType !== 'Inquari Booking' ? (
+                <div className="bs-price-box">
+                  <span className="bs-price-label">Base Rate</span>
+                  <div>
+                    <span className="bs-price-val">₹{effectiveRate}</span>
+                    {displayUnit && <span className="bs-price-unit">/ {displayUnit}</span>}
                   </div>
-                );
-              })()}
+                </div>
+              ) : (
+                <div className="bs-price-box">
+                  <span className="bs-price-label">Pricing Model</span>
+                  <span style={{ fontSize: "14px", fontWeight: "600", color: "#64748b" }}>On Inquiry</span>
+                </div>
+              )}
+
+              {/* Quantity Control */}
+              {bookingType !== 'Inquari Booking' && currentUnit?.isCountable !== false && (
+                <div className="bs-qty-wrap">
+                  <span className="bs-qty-label">Quantity</span>
+                  <div className="bs-qty-control">
+                    <button className="bs-qty-btn" onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={quantity <= 1}>-</button>
+                    <span className="bs-qty-val">{quantity}</span>
+                    <button className="bs-qty-btn" onClick={() => setQuantity(quantity + 1)}>+</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Total Amount */}
+              {bookingType !== 'Inquari Booking' ? (
+                <div className="bs-total-box">
+                  <span className="bs-total-label">Total Amount</span>
+                  <span className="bs-total-val">₹{totalAmount}</span>
+                </div>
+              ) : (
+                <div className="bs-total-box" style={{ background: "#475569" }}>
+                  <span className="bs-total-label">Inquiry Request</span>
+                  <span style={{ fontSize: "14px", fontWeight: "600", color: "#ffffff" }}>Free Quote</span>
+                </div>
+              )}
+
+              {/* Primary Action Buttons */}
+              <div className="bs-cta-group">
+                <button className="bs-btn-book" onClick={() => setShowBookingModal(true)}>
+                  {bookingType === 'Inquari Booking' ? "Send Inquiry" : "Book Service Now"}
+                </button>
+                <button className="bs-btn-icon-action btn-whatsapp" onClick={handleWhatsApp} title="Chat on WhatsApp">
+                  <FontAwesomeIcon icon={faWhatsapp} />
+                </button>
+                <button className="bs-btn-icon-action btn-phone" onClick={handleContact} title="Call Provider">
+                  <FontAwesomeIcon icon={faPhone} />
+                </button>
+              </div>
+
+              {/* Trust Badges */}
+              <div className="bs-trust-strip">
+                <div className="bs-trust-item"><span className="bs-trust-icon">✓</span> Secure Booking</div>
+                <div className="bs-trust-item"><span className="bs-trust-icon">✓</span> Best Price Guarantee</div>
+                <div className="bs-trust-item"><span className="bs-trust-icon">✓</span> Instant Confirmation</div>
+                <div className="bs-trust-item"><span className="bs-trust-icon">✓</span> 24/7 Support</div>
+              </div>
             </div>
-          </div>
-
-          {/* Reviews Section */}
-          <div style={{
-            backgroundColor: "white",
-            borderRadius: "8px",
-            padding: "20px",
-            marginTop: "20px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-          }}>
-            <h3>Reviews</h3>
-            <ReviewSystem serviceId={serviceid} />
-          </div>
-
-          {/* Comments Section */}
-          <div style={{
-            backgroundColor: "white",
-            borderRadius: "8px",
-            padding: "20px",
-            marginTop: "20px",
-            marginBottom: "40px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)"
-          }}>
-            <h3>Comments</h3>
-            <CommentsSection serviceId={serviceid} />
           </div>
         </div>
       </div>
@@ -2775,14 +1789,6 @@ const handleBooking = async (e) => {
                             const count = optionalInputCounts[index] || 0;
                             if (count === 0 && (input.isCountable || !addedOptionalInputs[index])) return null;
                             
-                            const getDisplayUnit = (input) => {
-                              if (input.customUnit) return input.customUnit;
-                              const unit = input.unit || 'per item';
-                              if (unit.startsWith('per-')) return unit.replace('per-', '').replace(/-/g, ' ');
-                              return unit;
-                            };
-
-                            const displayUnit = getDisplayUnit(input);
                             const optUnitRate = effectiveOptionalUnitPrice(input, selectedServiceArea);
                             
                             let itemTotal = 0;

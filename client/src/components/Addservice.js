@@ -4,14 +4,14 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import LocationSearch from './LocationSearch';
+import { FaStore, FaInfoCircle, FaRupeeSign, FaImage, FaListUl, FaMapMarkerAlt, FaPlusCircle, FaCheckCircle, FaTrash, FaPlus } from 'react-icons/fa';
+import './Addservice.css';
 
 export function Addservice({ userId }) {
     const [service, setService] = useState("");
-    const [description, setDescription] = useState("");
     const [phonenumber, setPhonenumber] = useState("");
     const [companyname, setCompanyName] = useState("");
     const [address, setAddress] = useState("");
-    const [facility, setFacility] = useState("");
     
     // Image states
     const [image1, setImage1] = useState("");
@@ -145,18 +145,7 @@ export function Addservice({ userId }) {
         setPricingUnits(newUnits);
     };
 
-    // Get available booking types for a unit
-    const getAvailableBookingTypes = (unitType) => {
-        const fullBookingUnits = ['per day', 'per person', 'per week', 'per month', 'per visit', 'per task', 'per project', 'per room', 'per session', 'per unit', 'per item', 'per event', 'per service'];
-        const inquireOnlyUnits = ['per hour', 'per km', 'Other'];
-        
-        if (fullBookingUnits.includes(unitType)) {
-            return ['Automatic Booking', 'Manual Booking', 'Inquari Booking'];
-        } else if (inquireOnlyUnits.includes(unitType)) {
-            return ['Inquari Booking'];
-        }
-        return ['Automatic Booking', 'Manual Booking', 'Inquari Booking'];
-    };
+    
 
     // Image handling functions
     const handleImageFileSelect = (imageNumber, file) => {
@@ -313,6 +302,21 @@ export function Addservice({ userId }) {
                 isCountable: true
             }]);
         }
+    };
+
+    const handleRemoveInput = (index) => {
+        const newInputs = inputs.filter((_, i) => i !== index);
+        setInputs(newInputs);
+        setOptionalInputImages(prev => {
+            const newState = { ...prev };
+            delete newState[index];
+            return newState;
+        });
+        setOptionalInputPreviews(prev => {
+            const newState = { ...prev };
+            delete newState[index];
+            return newState;
+        });
     };
 
     const handleOptionalImageUpload = async (index, file) => {
@@ -615,938 +619,794 @@ export function Addservice({ userId }) {
     }, [imagePreview1, imagePreview2, imagePreview3, optionalInputPreviews]);
 
     return (
-        <div className="container mt-5 service-form-container">
-            <div className="row g-4">
-                {/* Basic Information Column */}
-                <div className="col-lg-6" style={{ padding: "0px" }}>
-                    <div className="form-section-card">
-                        <h4 className="section-title">Basic Information</h4>
-                        <div className="form-group">
-                            <label>Service Name</label>
+        <div className="service-form-container">
+            {/* Top Hero Banner */}
+            <div className="as-hero-header">
+                <div className="as-hero-title-group">
+                    <h2>Create Service Offering</h2>
+                    <p>Configure pricing, media portfolio, coverage areas and booking rules for your new service.</p>
+                </div>
+                <div className="as-hero-badge">
+                    <FaStore style={{ marginRight: 6 }} /> Vendor Partner Studio
+                </div>
+            </div>
+
+            <div className="as-form-layout">
+                {/* 1. Basic Information */}
+                <div className="as-card-section">
+                    <div className="as-section-header">
+                        <h3 className="as-section-title">
+                            <span className="as-icon-box"><FaInfoCircle /></span>
+                            Basic Details & Classification
+                        </h3>
+                        <span className="as-section-hint">Define service title, vendor branding, and category</span>
+                    </div>
+
+                    <div className="as-grid-2">
+                        <div className="as-field">
+                            <label className="as-label">
+                                Service Name <span className="as-required">*</span>
+                            </label>
                             <input
                                 type="text"
-                                className="form-control styled-input"
-                                placeholder="Enter service name"
+                                className="as-input"
+                                placeholder="e.g. Master Plumbing & Leak Detection"
                                 value={service}
                                 onChange={(e) => setService(e.target.value)}
                             />
                         </div>
-                        
-                        {/* NEW: Multiple Pricing Units Section */}
-                        <div className="form-group">
-                            <div className="d-flex justify-content-between align-items-center mb-3">
-                                <label className="fw-bold">Pricing Options</label>
-                                <button
-                                    type="button"
-                                    className="btn btn-outline-primary btn-sm"
-                                    onClick={() => setShowUnitControls(!showUnitControls)}
-                                >
-                                    {showUnitControls ? "Hide Options" : "Add Multiple Units"}
-                                </button>
-                            </div>
 
-                            {!showUnitControls ? (
-                                // Simple view - show default unit only
-                                <div className="border rounded p-3 bg-light">
-                                    <div className="row">
-                                        <div className="col-md-6">
-                                            <label className="form-label small">Price</label>
-                                            <input
-                                                type="number"
-                                                className="form-control"
-                                                placeholder="Enter price"
-                                                value={pricingUnits[0]?.price || ''}
-                                                onChange={(e) => {
-                                                    const newUnits = [...pricingUnits];
-                                                    newUnits[0].price = e.target.value;
-                                                    setPricingUnits(newUnits);
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="col-md-6">
-                                            <label className="form-label small">Unit</label>
-                                            <select
-                                                className="form-control"
-                                                value={pricingUnits[0]?.unit || 'per day'}
-                                                onChange={(e) => {
-                                                    const newUnits = [...pricingUnits];
-                                                    newUnits[0].unit = e.target.value;
-                                                    if (e.target.value !== 'Other') {
-                                                        newUnits[0].customUnit = '';
-                                                    }
-                                                    setPricingUnits(newUnits);
-                                                }}
-                                            >
-                                                {unitOptions.map(unit => (
-                                                    <option key={unit} value={unit}>{unit}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    {pricingUnits[0]?.unit === 'Other' && (
-                                        <div className="mt-2">
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="Custom unit (e.g., 'per service')"
-                                                value={pricingUnits[0]?.customUnit || ''}
-                                                onChange={(e) => {
-                                                    const newUnits = [...pricingUnits];
-                                                    newUnits[0].customUnit = e.target.value;
-                                                    setPricingUnits(newUnits);
-                                                }}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                // Advanced view - show all pricing units
-                                <div>
-                                    {pricingUnits.map((unit, index) => (
-                                        <div key={index} className="border rounded p-3 mb-3" style={{ backgroundColor: unit.isDefault ? '#f0f8ff' : 'white' }}>
-                                            <div className="d-flex justify-content-between align-items-center mb-2">
-                                                <span className="badge bg-primary">
-                                                    {unit.isDefault ? '⭐ Default' : `Option ${index + 1}`}
-                                                </span>
-                                                <div>
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-outline-success btn-sm me-2"
-                                                        onClick={() => handlePricingUnitChange(index, 'isDefault', true)}
-                                                        disabled={unit.isDefault}
-                                                    >
-                                                        Set as Default
-                                                    </button>
-                                                    {pricingUnits.length > 1 && (
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-outline-danger btn-sm"
-                                                            onClick={() => handleRemovePricingUnit(index)}
-                                                        >
-                                                            Remove
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="row">
-                                                <div className="col-md-6">
-                                                    <label className="form-label small">Price</label>
-                                                    <input
-                                                        type="number"
-                                                        className="form-control"
-                                                        placeholder="Enter price"
-                                                        value={unit.price}
-                                                        onChange={(e) => handlePricingUnitChange(index, 'price', e.target.value)}
-                                                    />
-                                                </div>
-                                                <div className="col-md-6">
-                                                    <label className="form-label small">Unit</label>
-                                                    <select
-                                                        className="form-control"
-                                                        value={unit.unit}
-                                                        onChange={(e) => handlePricingUnitChange(index, 'unit', e.target.value)}
-                                                    >
-                                                        {unitOptions.map(u => (
-                                                            <option key={u} value={u}>{u}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            
-                                            {unit.unit === 'Other' && (
-                                                <div className="mt-2">
-                                                    <input
-                                                        type="text"
-                                                        className="form-control"
-                                                        placeholder="Custom unit (e.g., 'per service')"
-                                                        value={unit.customUnit || ''}
-                                                        onChange={(e) => handlePricingUnitChange(index, 'customUnit', e.target.value)}
-                                                    />
-                                                </div>
-                                            )}
-                                            
-                                            <div className="row mt-2">
-                                                <div className="col-md-6">
-                                                    <label className="form-label small">Max Quantity Per Day (optional)</label>
-                                                    <input
-                                                        type="number"
-                                                        className="form-control"
-                                                        placeholder="Unlimited"
-                                                        value={unit.maxQuantityPerDay || ''}
-                                                        onChange={(e) => handlePricingUnitChange(index, 'maxQuantityPerDay', e.target.value)}
-                                                    />
-                                                </div>
-                                                <div className="col-md-6">
-                                                    <label className="form-label small">Max Users Per Day (optional)</label>
-                                                    <input
-                                                        type="number"
-                                                        className="form-control"
-                                                        placeholder="Unlimited"
-                                                        value={unit.maxUsersPerDay || ''}
-                                                        onChange={(e) => handlePricingUnitChange(index, 'maxUsersPerDay', e.target.value)}
-                                                    />
-                                                </div>
-                                            </div>
-                                            
-                                          
-                                        </div>
-                                    ))}
-                                    
-                                    {pricingUnits.length < 10 && (
-                                        <button
-                                            type="button"
-                                            className="btn btn-outline-primary w-100"
-                                            onClick={handleAddPricingUnit}
-                                        >
-                                            + Add Another Pricing Option
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                        
-                        <div className="form-group">
-                            <label>Add Phone Number</label>
+                        <div className="as-field">
+                            <label className="as-label">
+                                Company / Agency Name
+                            </label>
                             <input
                                 type="text"
-                                className="form-control mt-2"
-                                placeholder="Phone Number"
-                                value={phonenumber}
-                                onChange={(e) => setPhonenumber(e.target.value)}
-                            />
-                        </div>
-                        
-                        <div className="form-group">
-                            <label>Add Company Name</label>
-                            <input
-                                type="text"
-                                className="form-control mt-2"
-                                placeholder="Company Name"
+                                className="as-input"
+                                placeholder="e.g. Apex Home Services LLP"
                                 value={companyname}
                                 onChange={(e) => setCompanyName(e.target.value)}
                             />
                         </div>
-                        
-                        <div className="form-group">
-                            <label>Description (One point per line)</label>
-                            <textarea
-                                className="form-control"
-                                placeholder="• Professional plumbing service&#10;• 24/7 emergency support&#10;• Free inspection"
-                                value={descriptionPoints}
-                                onChange={(e) => setDescriptionPoints(e.target.value)}
-                                rows={5}
-                                style={{
-                                    borderRadius: "8px",
-                                    border: "1px solid #ddd",
-                                    padding: "12px",
-                                    fontSize: "14px",
-                                    lineHeight: "1.6",
-                                    resize: "vertical"
-                                }}
+
+                        <div className="as-field">
+                            <label className="as-label">
+                                Contact Phone Number <span className="as-required">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                className="as-input"
+                                placeholder="e.g. +91 9876543210"
+                                value={phonenumber}
+                                onChange={(e) => setPhonenumber(e.target.value)}
                             />
-                            <div style={{
-                                fontSize: "12px",
-                                color: "#6c757d",
-                                marginTop: "5px",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "15px",
-                                flexWrap: "wrap"
-                            }}>
-                                <span>💡 Tip: Start each line with • or → for better formatting</span>
-                                <span>📊 {descriptionPoints.split('\n').filter(l => l.trim()).length} points added</span>
-                            </div>
                         </div>
-                        
-                        <div className="form-group">
-                            <label>Facilities & Amenities (One per line)</label>
-                            <textarea
-                                className="form-control"
-                                placeholder="• Free WiFi&#10;• Air Conditioning&#10;• Parking Available&#10;• Professional Equipment"
-                                value={facilityPoints}
-                                onChange={(e) => setFacilityPoints(e.target.value)}
-                                rows={5}
-                                style={{
-                                    borderRadius: "8px",
-                                    border: "1px solid #ddd",
-                                    padding: "12px",
-                                    fontSize: "14px",
-                                    lineHeight: "1.6",
-                                    resize: "vertical"
-                                }}
-                            />
-                            <div style={{
-                                fontSize: "12px",
-                                color: "#6c757d",
-                                marginTop: "5px",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "15px",
-                                flexWrap: "wrap"
-                            }}>
-                                <span>💡 Tip: List all facilities one per line</span>
-                                <span>🏷️ {facilityPoints.split('\n').filter(l => l.trim()).length} facilities added</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                {/* Additional Information Column */}
-                <div className="col-lg-6" style={{ padding: "0px" }}>
-                    <div className="form-section-card">
-                        <h4 className="section-title">Additional Details</h4>
-                        
-                        <div className="form-group">
-                            <label>Main Service Location *</label>
-                            <LocationSearch
-                                onLocationSelect={handleLocationSelect}
-                                placeholder="Enter your main service location..."
-                            />
-                            {address && (
-                                <div className="alert alert-success mt-2 small">
-                                    ✓ Main service location: <strong>{address.split(',')[0]}</strong>
-                                </div>
-                            )}
-                        </div>
-                        
-                        <div className="form-group">
-                            <label>Images (Upload or provide URLs) *</label>
-                            <div className="image-input-group">
-                                {/* Image 1 */}
-                                <div className="mb-3 border rounded p-3">
-                                    <div className="row">
-                                        <div className="col-md-6">
-                                            <label className="form-label small">Image URL 1</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="https://example.com/image.jpg"
-                                                value={image1}
-                                                onChange={(e) => handleImageUrlChange(1, e.target.value)}
-                                                disabled={!!imageFile1}
-                                            />
-                                        </div>
-                                        <div className="col-md-6">
-                                            <label className="form-label small">Or Upload Image 1</label>
-                                            <input
-                                                type="file"
-                                                className="form-control"
-                                                accept="image/*"
-                                                onChange={(e) => handleImageFileSelect(1, e.target.files[0])}
-                                                disabled={!!image1}
-                                            />
-                                        </div>
-                                    </div>
-                                    {(imagePreview1 || image1) && (
-                                        <div className="mt-2 d-flex align-items-center gap-2">
-                                            <img
-                                                src={imagePreview1 || image1}
-                                                alt="Preview 1"
-                                                style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px' }}
-                                            />
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-danger"
-                                                onClick={() => removeImage(1)}
-                                            >
-                                                Remove
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                {/* Image 2 */}
-                                <div className="mb-3 border rounded p-3">
-                                    <div className="row">
-                                        <div className="col-md-6">
-                                            <label className="form-label small">Image URL 2</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="https://example.com/image.jpg"
-                                                value={image2}
-                                                onChange={(e) => handleImageUrlChange(2, e.target.value)}
-                                                disabled={!!imageFile2}
-                                            />
-                                        </div>
-                                        <div className="col-md-6">
-                                            <label className="form-label small">Or Upload Image 2</label>
-                                            <input
-                                                type="file"
-                                                className="form-control"
-                                                accept="image/*"
-                                                onChange={(e) => handleImageFileSelect(2, e.target.files[0])}
-                                                disabled={!!image2}
-                                            />
-                                        </div>
-                                    </div>
-                                    {(imagePreview2 || image2) && (
-                                        <div className="mt-2 d-flex align-items-center gap-2">
-                                            <img
-                                                src={imagePreview2 || image2}
-                                                alt="Preview 2"
-                                                style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px' }}
-                                            />
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-danger"
-                                                onClick={() => removeImage(2)}
-                                            >
-                                                Remove
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                {/* Image 3 */}
-                                <div className="mb-3 border rounded p-3">
-                                    <div className="row">
-                                        <div className="col-md-6">
-                                            <label className="form-label small">Image URL 3</label>
-                                            <input
-                                                type="text"
-                                                className="form-control"
-                                                placeholder="https://example.com/image.jpg"
-                                                value={image3}
-                                                onChange={(e) => handleImageUrlChange(3, e.target.value)}
-                                                disabled={!!imageFile3}
-                                            />
-                                        </div>
-                                        <div className="col-md-6">
-                                            <label className="form-label small">Or Upload Image 3</label>
-                                            <input
-                                                type="file"
-                                                className="form-control"
-                                                accept="image/*"
-                                                onChange={(e) => handleImageFileSelect(3, e.target.files[0])}
-                                                disabled={!!image3}
-                                            />
-                                        </div>
-                                    </div>
-                                    {(imagePreview3 || image3) && (
-                                        <div className="mt-2 d-flex align-items-center gap-2">
-                                            <img
-                                                src={imagePreview3 || image3}
-                                                alt="Preview 3"
-                                                style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px' }}
-                                            />
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-danger"
-                                                onClick={() => removeImage(3)}
-                                            >
-                                                Remove
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="form-group">
-                            <label>Select Category </label>
+
+                        <div className="as-field">
+                            <label className="as-label">
+                                Booking Protocol <span className="as-required">*</span>
+                            </label>
                             <select
-                                className="form-control mt-2"
+                                className="as-select"
+                                value={bookingType}
+                                onChange={(e) => setBookingType(e.target.value)}
+                            >
+                                <option value="Automatic Booking">Automatic Booking (Instant Confirmation)</option>
+                                <option value="Manual Booking">Manual Booking (Vendor Acceptance Required)</option>
+                                <option value="Inquari Booking">Inquiry Booking (Price on Consultation)</option>
+                            </select>
+                        </div>
+
+                        <div className="as-field">
+                            <label className="as-label">
+                                Service Category <span className="as-required">*</span>
+                            </label>
+                            <select
+                                className="as-select"
                                 value={category}
                                 onChange={handleCategoryChange}
                             >
-                                <option value="">Select Category</option>
+                                <option value="">-- Choose Category --</option>
                                 {Object.keys(categoryOptions).map((cat) => (
                                     <option key={cat} value={cat}>{cat}</option>
                                 ))}
                             </select>
                         </div>
-                        
-                        {category && (
+
+                        <div className="as-field">
+                            <label className="as-label">
+                                Specialized Subcategory
+                            </label>
                             <select
-                                className="form-control mt-2"
+                                className="as-select"
                                 value={subCategory}
                                 onChange={handleSubCategoryChange}
+                                disabled={!category}
                             >
-                                <option value="">Select Subcategory</option>
-                                {categoryOptions[category]?.map((item) => (
+                                <option value="">-- Choose Subcategory --</option>
+                                {category && categoryOptions[category]?.map((item) => (
                                     <option key={item} value={item}>{item}</option>
                                 ))}
                             </select>
-                        )}
-                        
-                        <div className="form-group">
-                            <label>Booking Type *</label>
-                            <select
-                                className="form-control mt-2"
-                                value={bookingType}
-                                onChange={(e) => setBookingType(e.target.value)}
-                            >
-                                <option value="Automatic Booking">Automatic Booking</option>
-                                <option value="Manual Booking">Manual Booking</option>
-                                <option value="Inquari Booking">Inquari Booking</option>
-                            </select>
-                            <small className="text-muted d-block mt-1">
-                                💡 This will apply to all pricing units
-                            </small>
                         </div>
                     </div>
                 </div>
-                
-                {/* Location Features Section */}
-                <div className="col-md-12" style={{ padding: "0px" }}>
-                    <div className="card p-3 mb-3">
-                        <div className="row">
-                            <div className="col-12 col-md-6 mb-3">
-                                <div className="card h-100 border-0 shadow-sm">
-                                    <div className="card-body">
-                                        <div className="d-flex justify-content-between align-items-center mb-3">
-                                            <h5 className="mb-0">Location Type</h5>
-                                            <button
-                                                className="btn btn-outline-primary btn-sm"
-                                                onClick={() => setShowLocationOptions(!showLocationOptions)}
-                                            >
-                                                {showLocationOptions ? "Hide" : "Configure"}
-                                            </button>
-                                        </div>
-                                        {showLocationOptions && (
-                                            <div className="location-type-section">
-                                                <div className="alert alert-info small mb-3">
-                                                    <i className="fas fa-info-circle me-2"></i>
-                                                    <strong>How does your service handle customer locations?</strong>
-                                                    <div className="mt-1 small text-muted">
-                                                        Choose ONE location type that best fits your service
-                                                    </div>
-                                                </div>
-                                                <div className="row g-3 mb-4">
-                                                    <div className="col-md-4">
-                                                        <div
-                                                            className={`location-card ${selectedLocationType === "Simple" ? "selected" : ""}`}
-                                                            onClick={() => setSelectedLocationType("Simple")}
-                                                        >
-                                                            <div className="location-card-header">
-                                                                <h5 className="location-title">Single Location</h5>
-                                                            </div>
-                                                            <div className="location-badge bg-primary">Standard</div>
-                                                            <div className="location-description">
-                                                                <p>Vendor needs the customer's <strong>pickup/service address</strong> only.</p>
-                                                                <small className="text-muted">✓ Best for: Home services, repairs, deliveries</small>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="col-md-4">
-                                                        <div
-                                                            className={`location-card ${selectedLocationType === "No" ? "selected" : ""}`}
-                                                            onClick={() => setSelectedLocationType("No")}
-                                                        >
-                                                            <div className="location-card-header">
-                                                                <h5 className="location-title">No Location Required</h5>
-                                                            </div>
-                                                            <div className="location-badge bg-secondary">Virtual/Remote</div>
-                                                            <div className="location-description">
-                                                                <p>Vendor <strong>does NOT need any location</strong> from the customer.</p>
-                                                                <small className="text-muted">✓ Best for: Ticket Services</small>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="col-md-4">
-                                                        <div
-                                                            className={`location-card ${selectedLocationType === "Rental" ? "selected" : ""}`}
-                                                            onClick={() => setSelectedLocationType("Rental")}
-                                                        >
-                                                            <div className="location-card-header">
-                                                                <h5 className="location-title">Multiple Locations</h5>
-                                                            </div>
-                                                            <div className="location-badge bg-success">Multi-Stop</div>
-                                                            <div className="location-description">
-                                                                <p>Vendor needs <strong>multiple locations</strong></p>
-                                                                <small className="text-muted">✓ Best for: Transportation, tours</small>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                {selectedLocationType && (
-                                                    <div className="alert alert-primary py-3 px-4 small mb-3">
-                                                        <div className="d-flex align-items-center gap-2">
-                                                            <i className="fas fa-check-circle fa-lg"></i>
-                                                            <div>
-                                                                <strong>Selected Mode:</strong>
-                                                                {selectedLocationType === "Simple" && " Single Location - Customer will provide one address"}
-                                                                {selectedLocationType === "No" && " No Location Required - No address will be collected"}
-                                                                {selectedLocationType === "Rental" && " Multiple Locations - Customer can add pick-up, drop, and via points"}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {selectedLocationType && !locationAdded && (
-                                                    <button
-                                                        type="button"
-                                                        className="btn btn-success w-100 fw-semibold mb-4 shadow-sm"
-                                                        onClick={handleAddLocation}
-                                                    >
-                                                        <i className="fas fa-plus-circle me-2"></i>
-                                                        Add This Location Type
-                                                    </button>
-                                                )}
-                                                {locationAdded && selectedLocationType && (
-                                                    <div className="configured-locations">
-                                                        <h6 className="fw-semibold text-dark mb-3">
-                                                            <i className="fas fa-check-circle me-2 text-success"></i>
-                                                            Selected Location Type
-                                                        </h6>
-                                                        <div className="row">
-                                                            <div className="col-md-12">
-                                                                <div className="configured-card selected-card">
-                                                                    <div className="d-flex justify-content-between align-items-center">
-                                                                        <div className="d-flex align-items-center gap-3">
-                                                                            <div>
-                                                                                <div className="fw-semibold fs-5">
-                                                                                    {selectedLocationType === "Simple" && "Single Location"}
-                                                                                    {selectedLocationType === "No" && "No Location Required"}
-                                                                                    {selectedLocationType === "Rental" && "Multiple Locations"}
-                                                                                </div>
-                                                                                <small className="text-muted">
-                                                                                    {selectedLocationType === "Simple" && "Customer will provide one address"}
-                                                                                    {selectedLocationType === "No" && "No address will be collected"}
-                                                                                    {selectedLocationType === "Rental" && "Customer can add multiple addresses"}
-                                                                                </small>
-                                                                            </div>
-                                                                        </div>
-                                                                        <button
-                                                                            type="button"
-                                                                            className="btn btn-outline-danger btn-sm rounded-pill"
-                                                                            onClick={handleRemoveLocation}
-                                                                        >
-                                                                            <i className="fas fa-trash-alt me-1"></i>
-                                                                            Remove
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className="col-12 col-md-6 mb-3">
-                                <div className="card h-100 border-0 shadow-sm">
-                                    <div className="card-body">
-                                        <div className="d-flex justify-content-between align-items-center mb-3">
-                                            <h5 className="mb-0">Location-Based Pricing</h5>
-                                            <button
-                                                className="btn btn-outline-primary btn-sm"
-                                                onClick={() => setShowLocationPricing(!showLocationPricing)}
-                                            >
-                                                {showLocationPricing ? "Hide" : "Add Locations"}
-                                            </button>
-                                        </div>
-                                        {showLocationPricing && (
-                                            <div>
-                                                <div className="alert alert-info small mb-3">
-                                                    Add locations where this service is offered with specific pricing
-                                                </div>
-                                                <div className="border rounded-4 p-3 mb-4 bg-light">
-                                                    <h6 className="fw-bold mb-3">Add Service Location</h6>
-                                                    <div className="mb-3">
-                                                        <label className="form-label">Select Location</label>
-                                                        <LocationSearch
-                                                            onLocationSelect={handleLocationNameSelect}
-                                                            placeholder="Search for a city or area..."
-                                                        />
-                                                    </div>
-                                                    <div className="mb-3">
-                                                        <label className="form-label">Extra Price Adjustment</label>
-                                                        <div className="input-group">
-                                                            <span className="input-group-text">₹</span>
-                                                            <input
-                                                                type="number"
-                                                                className="form-control"
-                                                                placeholder="Extra amount (e.g., 200)"
-                                                                value={currentLocation.extraPrice}
-                                                                onChange={handleExtraPriceChange}
-                                                            />
-                                                            <span className="input-group-text">per unit</span>
-                                                        </div>
-                                                        <small className="text-muted">
-                                                            This extra applies to all pricing units
-                                                        </small>
-                                                    </div>
-                                                    {inputs.filter(inp => inp.name).length > 0 && (
-                                                        <div className="mb-3">
-                                                            <label className="form-label">Optional Services Extra Pricing</label>
-                                                            {inputs.filter(inp => inp.name).map((input, idx) => (
-                                                                <div key={idx} className="input-group mb-2">
-                                                                    <span className="input-group-text">{input.name}</span>
-                                                                    <span className="input-group-text">Base: ₹{input.price}</span>
-                                                                    <span className="input-group-text">+</span>
-                                                                    <input
-                                                                        type="number"
-                                                                        className="form-control"
-                                                                        placeholder="Extra amount"
-                                                                        value={currentLocation.optionalInputsExtra.find(
-                                                                            item => item.inputName === input.name
-                                                                        )?.extraPrice || 0}
-                                                                        onChange={(e) => handleOptionalInputExtraChange(
-                                                                            input.name,
-                                                                            parseFloat(e.target.value) || 0
-                                                                        )}
-                                                                    />
-                                                                    <span className="input-group-text">per {input.unit === "Other" ? input.customUnit || "unit" : input.unit.replace("per ", "")}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                    <button
-                                                        className="btn btn-success w-100"
-                                                        onClick={addLocationToService}
-                                                    >
-                                                        + Add This Location
-                                                    </button>
-                                                </div>
-                                                {locationsList.length > 0 && (
-                                                    <div>
-                                                        <h6 className="fw-bold mb-3">Service Locations ({locationsList.length})</h6>
-                                                        <div className="list-group">
-                                                            {locationsList.map((location, index) => (
-                                                                <div key={index} className="list-group-item">
-                                                                    <div className="d-flex justify-content-between align-items-start">
-                                                                        <div className="flex-grow-1">
-                                                                            <div className="fw-bold">{location.locationName}</div>
-                                                                            <div className="small text-muted">{location.locationAddress}</div>
-                                                                            <div className="mt-2">
-                                                                                <span className="badge bg-primary me-2">
-                                                                                    Extra: ₹{location.extraPrice}
-                                                                                </span>
-                                                                            </div>
-                                                                            {location.optionalInputsExtra.length > 0 && (
-                                                                                <div className="mt-2">
-                                                                                    <small className="text-muted">Optional extras:</small>
-                                                                                    {location.optionalInputsExtra.map((opt, optIdx) => (
-                                                                                        <span key={optIdx} className="badge bg-info ms-1">
-                                                                                            {opt.inputName}: +₹{opt.extraPrice}
-                                                                                        </span>
-                                                                                    ))}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                        <button
-                                                                            className="btn btn-danger btn-sm"
-                                                                            onClick={() => removeLocation(index)}
-                                                                        >
-                                                                            Remove
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+
+                {/* 2. Pricing & Unit Structure */}
+                <div className="as-card-section">
+                    <div className="as-section-header">
+                        <h3 className="as-section-title">
+                            <span className="as-icon-box"><FaRupeeSign /></span>
+                            Pricing & Billing Model
+                        </h3>
+                        <button
+                            type="button"
+                            className="btn btn-outline-primary btn-sm"
+                            style={{ borderRadius: 8, fontWeight: 600 }}
+                            onClick={() => setShowUnitControls(!showUnitControls)}
+                        >
+                            {showUnitControls ? "Simple View" : "Multiple Pricing Units (+)"}
+                        </button>
                     </div>
-                </div>
-                
-                {/* Optional Inputs Section */}
-                <div className="col-md-12" style={{ padding: "0px" }}>
-                    <div className="card p-3 mb-3">
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                            <h5 className="mb-0">Optional Inputs</h5>
-                            <button
-                                className="btn btn-outline-primary btn-sm"
-                                onClick={() => setShowOptionalInputs(!showOptionalInputs)}
-                            >
-                                {showOptionalInputs ? "Hide" : "Add"}
-                            </button>
-                        </div>
-                        {showOptionalInputs && (
-                            <div className="mt-4">
-                                <div className="alert alert-info mb-3">
-                                    <i className="fas fa-info-circle me-2"></i>
-                                    <strong>Note:</strong> Optional services will use the same booking type as the main service:
-                                    <span className="badge bg-primary ms-2">{bookingType}</span>
+
+                    {!showUnitControls ? (
+                        <div className="as-pricing-panel">
+                            <div className="as-grid-2">
+                                <div className="as-field" style={{ marginBottom: 0 }}>
+                                    <label className="as-label">
+                                        Base Rate (₹ INR) <span className="as-required">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="as-input"
+                                        placeholder="e.g. 499"
+                                        value={pricingUnits[0]?.price || ''}
+                                        onChange={(e) => {
+                                            const newUnits = [...pricingUnits];
+                                            newUnits[0].price = e.target.value;
+                                            setPricingUnits(newUnits);
+                                        }}
+                                    />
                                 </div>
-                                {inputs.map((input, index) => (
-                                    <div key={index} className="border rounded-4 mb-3 bg-white">
-                                        <div className="p-4">
-                                            <div className="row g-3">
-                                                <div className="col-md-4">
-                                                    <label className="form-label">Service Name</label>
-                                                    <input
-                                                        type="text"
-                                                        className="form-control"
-                                                        value={input.name}
-                                                        placeholder="Optional input name"
-                                                        onChange={(e) => handleInputChange(index, "name", e.target.value)}
-                                                    />
-                                                </div>
-                                                <div className="col-md-3">
-                                                    <label className="form-label">Base Price</label>
-                                                    <input
-                                                        type="number"
-                                                        className="form-control"
-                                                        value={input.price}
-                                                        placeholder="Price"
-                                                        onChange={(e) => handleInputChange(index, "price", e.target.value)}
-                                                    />
-                                                </div>
-                                                <div className="col-md-3">
-                                                    <label className="form-label">Unit</label>
-                                                    <select
-                                                        className="form-select"
-                                                        value={input.unit}
-                                                        onChange={(e) => handleInputChange(index, "unit", e.target.value)}
-                                                    >
-                                                        {unitOptions.map(unitOption => (
-                                                            <option key={unitOption} value={unitOption}>
-                                                                {unitOption === 'Other' ? 'Other (Custom)' : unitOption}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                                {input.unit === "Other" && (
-                                                    <div className="col-md-2">
-                                                        <label className="form-label">Custom Unit</label>
-                                                        <input
-                                                            type="text"
-                                                            className="form-control"
-                                                            value={input.customUnit}
-                                                            placeholder="per item"
-                                                            onChange={(e) => handleInputChange(index, "customUnit", e.target.value)}
-                                                        />
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="mt-3">
-                                                <label className="form-label">Service Image (Upload or URL)</label>
-                                                <div className="row">
-                                                    <div className="col-md-6">
-                                                        <input
-                                                            type="text"
-                                                            className="form-control mb-2"
-                                                            value={input.image}
-                                                            placeholder="Image URL (https://...)"
-                                                            onChange={(e) => {
-                                                                handleInputChange(index, "image", e.target.value);
-                                                                if (e.target.value) {
-                                                                    setOptionalInputImages(prev => {
-                                                                        const newState = { ...prev };
-                                                                        delete newState[index];
-                                                                        return newState;
-                                                                    });
-                                                                    setOptionalInputPreviews(prev => {
-                                                                        const newState = { ...prev };
-                                                                        delete newState[index];
-                                                                        return newState;
-                                                                    });
-                                                                }
-                                                            }}
-                                                            disabled={!!optionalInputImages[index]}
-                                                        />
-                                                    </div>
-                                                    <div className="col-md-6">
-                                                        <input
-                                                            type="file"
-                                                            className="form-control"
-                                                            accept="image/*"
-                                                            onChange={(e) => handleOptionalImageUpload(index, e.target.files[0])}
-                                                            disabled={!!input.image && !optionalInputImages[index]}
-                                                        />
-                                                        <small className="text-muted">Or upload an image (max 5MB)</small>
-                                                    </div>
-                                                </div>
-                                                {(optionalInputPreviews[index] || (input.image && !optionalInputImages[index])) && (
-                                                    <div className="mt-2 d-flex align-items-center gap-2">
-                                                        <img
-                                                            src={optionalInputPreviews[index] || input.image}
-                                                            alt="Preview"
-                                                            style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px' }}
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-sm btn-danger"
-                                                            onClick={() => {
-                                                                const newInputs = [...inputs];
-                                                                newInputs[index].image = '';
-                                                                setInputs(newInputs);
-                                                                setOptionalInputImages(prev => {
-                                                                    const newState = { ...prev };
-                                                                    delete newState[index];
-                                                                    return newState;
-                                                                });
-                                                                setOptionalInputPreviews(prev => {
-                                                                    const newState = { ...prev };
-                                                                    delete newState[index];
-                                                                    return newState;
-                                                                });
-                                                                if (optionalInputPreviews[index]) {
-                                                                    URL.revokeObjectURL(optionalInputPreviews[index]);
-                                                                }
-                                                            }}
-                                                        >
-                                                            Remove
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <hr className="my-4" />
-                                            <div className="d-flex justify-content-between align-items-center">
-                                                <div>
-                                                    <h6 className="fw-semibold mb-0">Quantity Control</h6>
-                                                    <small className="text-muted">Allow customers to choose quantity</small>
-                                                </div>
-                                                <div className="form-check form-switch">
-                                                    <input
-                                                        className="form-check-input"
-                                                        type="checkbox"
-                                                        checked={input.isCountable !== false}
-                                                        onChange={(e) => {
-                                                            handleInputChange(index, "isCountable", e.target.checked);
-                                                            if (!e.target.checked) {
-                                                                handleInputChange(index, "maxcount", "");
-                                                            }
-                                                        }}
-                                                    />
-                                                </div>
-                                            </div>
-                                            {input.isCountable !== false && (
-                                                <div className="col-md-4 mt-3">
-                                                    <label className="form-label">Maximum Quantity per Booking</label>
-                                                    <input
-                                                        type="number"
-                                                        className="form-control"
-                                                        value={input.maxcount || ""}
-                                                        placeholder="e.g. 10"
-                                                        onChange={(e) => handleInputChange(index, "maxcount", e.target.value)}
-                                                        min="1"
-                                                        max="100"
-                                                    />
-                                                </div>
+                                <div className="as-field" style={{ marginBottom: 0 }}>
+                                    <label className="as-label">
+                                        Billing Unit <span className="as-required">*</span>
+                                    </label>
+                                    <select
+                                        className="as-select"
+                                        value={pricingUnits[0]?.unit || 'per day'}
+                                        onChange={(e) => {
+                                            const newUnits = [...pricingUnits];
+                                            newUnits[0].unit = e.target.value;
+                                            if (e.target.value !== 'Other') {
+                                                newUnits[0].customUnit = '';
+                                            }
+                                            setPricingUnits(newUnits);
+                                        }}
+                                    >
+                                        {unitOptions.map(unit => (
+                                            <option key={unit} value={unit}>{unit}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                            {pricingUnits[0]?.unit === 'Other' && (
+                                <div className="as-field" style={{ marginTop: 14, marginBottom: 0 }}>
+                                    <label className="as-label">Custom Billing Unit Description</label>
+                                    <input
+                                        type="text"
+                                        className="as-input"
+                                        placeholder="e.g. per session, per sq ft"
+                                        value={pricingUnits[0]?.customUnit || ''}
+                                        onChange={(e) => {
+                                            const newUnits = [...pricingUnits];
+                                            newUnits[0].customUnit = e.target.value;
+                                            setPricingUnits(newUnits);
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="as-pricing-panel">
+                            {pricingUnits.map((unit, index) => (
+                                <div key={index} className={`as-unit-card ${unit.isDefault ? 'default-active' : ''}`}>
+                                    <div className="as-unit-card-header">
+                                        <span className={`pricing-unit-badge ${unit.isDefault ? 'default' : 'standard'}`}>
+                                            {unit.isDefault ? '⭐ Primary Default Unit' : `Unit Option #${index + 1}`}
+                                        </span>
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline-success btn-sm"
+                                                style={{ borderRadius: 6, fontSize: 12 }}
+                                                onClick={() => handlePricingUnitChange(index, 'isDefault', true)}
+                                                disabled={unit.isDefault}
+                                            >
+                                                Make Default
+                                            </button>
+                                            {pricingUnits.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-danger btn-sm"
+                                                    style={{ borderRadius: 6, fontSize: 12 }}
+                                                    onClick={() => handleRemovePricingUnit(index)}
+                                                >
+                                                    <FaTrash style={{ marginRight: 4 }} /> Remove
+                                                </button>
                                             )}
                                         </div>
                                     </div>
-                                ))}
+
+                                    <div className="as-grid-2">
+                                        <div className="as-field">
+                                            <label className="as-label">Rate (₹ INR)</label>
+                                            <input
+                                                type="number"
+                                                className="as-input"
+                                                placeholder="Price amount"
+                                                value={unit.price}
+                                                onChange={(e) => handlePricingUnitChange(index, 'price', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="as-field">
+                                            <label className="as-label">Unit Type</label>
+                                            <select
+                                                className="as-select"
+                                                value={unit.unit}
+                                                onChange={(e) => handlePricingUnitChange(index, 'unit', e.target.value)}
+                                            >
+                                                {unitOptions.map(u => (
+                                                    <option key={u} value={u}>{u}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {unit.unit === 'Other' && (
+                                        <div className="as-field">
+                                            <label className="as-label">Custom Unit Name</label>
+                                            <input
+                                                type="text"
+                                                className="as-input"
+                                                placeholder="e.g. per visit"
+                                                value={unit.customUnit || ''}
+                                                onChange={(e) => handlePricingUnitChange(index, 'customUnit', e.target.value)}
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div className="as-grid-2" style={{ marginTop: 10 }}>
+                                        <div className="as-field" style={{ marginBottom: 0 }}>
+                                            <label className="as-label">Max Quantity Per Day (Optional)</label>
+                                            <input
+                                                type="number"
+                                                className="as-input"
+                                                placeholder="Unlimited"
+                                                value={unit.maxQuantityPerDay || ''}
+                                                onChange={(e) => handlePricingUnitChange(index, 'maxQuantityPerDay', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="as-field" style={{ marginBottom: 0 }}>
+                                            <label className="as-label">Max Users Per Day (Optional)</label>
+                                            <input
+                                                type="number"
+                                                className="as-input"
+                                                placeholder="Unlimited"
+                                                value={unit.maxUsersPerDay || ''}
+                                                onChange={(e) => handlePricingUnitChange(index, 'maxUsersPerDay', e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {pricingUnits.length < 10 && (
                                 <button
-                                    className="btn btn-outline-primary fw-semibold mt-2"
-                                    onClick={handleAddInput}
+                                    type="button"
+                                    className="btn btn-outline-primary w-100"
+                                    style={{ borderRadius: 10, padding: '10px 0', fontWeight: 600 }}
+                                    onClick={handleAddPricingUnit}
                                 >
-                                    + Add Optional Service
+                                    <FaPlus style={{ marginRight: 6 }} /> Add Another Pricing Tier
                                 </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* 3. Portfolio & Media */}
+                <div className="as-card-section">
+                    <div className="as-section-header">
+                        <h3 className="as-section-title">
+                            <span className="as-icon-box"><FaImage /></span>
+                            Portfolio & Visual Showcase (At least 3 images required)
+                        </h3>
+                        <span className="as-section-hint">High-resolution service work photos</span>
+                    </div>
+
+                    <div className="as-images-grid">
+                        {/* Image 1 */}
+                        <div className={`as-image-slot ${imagePreview1 || image1 ? 'has-preview' : ''}`}>
+                            <label className="as-label">Primary Image #1 <span className="as-required">*</span></label>
+                            {(imagePreview1 || image1) ? (
+                                <div className="as-preview-box">
+                                    <img src={imagePreview1 || image1} alt="Preview 1" />
+                                    <button
+                                        type="button"
+                                        className="as-remove-img-btn"
+                                        onClick={() => removeImage(1)}
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <input
+                                        type="file"
+                                        className="as-input"
+                                        accept="image/*"
+                                        onChange={(e) => handleImageFileSelect(1, e.target.files[0])}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="as-input"
+                                        placeholder="Or paste image URL"
+                                        value={image1}
+                                        onChange={(e) => handleImageUrlChange(1, e.target.value)}
+                                    />
+                                </>
+                            )}
+                        </div>
+
+                        {/* Image 2 */}
+                        <div className={`as-image-slot ${imagePreview2 || image2 ? 'has-preview' : ''}`}>
+                            <label className="as-label">Showcase Image #2 <span className="as-required">*</span></label>
+                            {(imagePreview2 || image2) ? (
+                                <div className="as-preview-box">
+                                    <img src={imagePreview2 || image2} alt="Preview 2" />
+                                    <button
+                                        type="button"
+                                        className="as-remove-img-btn"
+                                        onClick={() => removeImage(2)}
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <input
+                                        type="file"
+                                        className="as-input"
+                                        accept="image/*"
+                                        onChange={(e) => handleImageFileSelect(2, e.target.files[0])}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="as-input"
+                                        placeholder="Or paste image URL"
+                                        value={image2}
+                                        onChange={(e) => handleImageUrlChange(2, e.target.value)}
+                                    />
+                                </>
+                            )}
+                        </div>
+
+                        {/* Image 3 */}
+                        <div className={`as-image-slot ${imagePreview3 || image3 ? 'has-preview' : ''}`}>
+                            <label className="as-label">Showcase Image #3 <span className="as-required">*</span></label>
+                            {(imagePreview3 || image3) ? (
+                                <div className="as-preview-box">
+                                    <img src={imagePreview3 || image3} alt="Preview 3" />
+                                    <button
+                                        type="button"
+                                        className="as-remove-img-btn"
+                                        onClick={() => removeImage(3)}
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <input
+                                        type="file"
+                                        className="as-input"
+                                        accept="image/*"
+                                        onChange={(e) => handleImageFileSelect(3, e.target.files[0])}
+                                    />
+                                    <input
+                                        type="text"
+                                        className="as-input"
+                                        placeholder="Or paste image URL"
+                                        value={image3}
+                                        onChange={(e) => handleImageUrlChange(3, e.target.value)}
+                                    />
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* 4. Description & Facilities */}
+                <div className="as-card-section">
+                    <div className="as-section-header">
+                        <h3 className="as-section-title">
+                            <span className="as-icon-box"><FaListUl /></span>
+                            Description & Service Highlights
+                        </h3>
+                        <span className="as-section-hint">Provide structured bullet points for customers</span>
+                    </div>
+
+                    <div className="as-grid-2">
+                        <div className="as-field" style={{ marginBottom: 0 }}>
+                            <label className="as-label">
+                                Detailed Scope (One point per line)
+                            </label>
+                            <textarea
+                                className="as-textarea"
+                                placeholder="• Complete diagnosis and inspection&#10;• Original OEM replacement parts&#10;• Post-service performance check"
+                                value={descriptionPoints}
+                                onChange={(e) => setDescriptionPoints(e.target.value)}
+                                rows={5}
+                            />
+                            <div className="as-field-tips">
+                                <span>💡 Tip: Start lines with • for clean list rendering</span>
+                                <span className="as-tag-pill">
+                                    {descriptionPoints.split('\n').filter(l => l.trim()).length} points added
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="as-field" style={{ marginBottom: 0 }}>
+                            <label className="as-label">
+                                Facilities & Amenities Included (One per line) <span className="as-required">*</span>
+                            </label>
+                            <textarea
+                                className="as-textarea"
+                                placeholder="• Certified Technicians&#10;• 30-Day Service Guarantee&#10;• Emergency On-Site Response&#10;• Digital Invoicing"
+                                value={facilityPoints}
+                                onChange={(e) => setFacilityPoints(e.target.value)}
+                                rows={5}
+                            />
+                            <div className="as-field-tips">
+                                <span>💡 Tip: List equipment, warranties, or amenities</span>
+                                <span className="as-tag-pill">
+                                    {facilityPoints.split('\n').filter(l => l.trim()).length} facilities added
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 5. Location Coverage & Pricing */}
+                <div className="as-card-section">
+                    <div className="as-section-header">
+                        <h3 className="as-section-title">
+                            <span className="as-icon-box"><FaMapMarkerAlt /></span>
+                            Location Fulfillment & Delivery Scope
+                        </h3>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                                type="button"
+                                className="btn btn-outline-primary btn-sm"
+                                style={{ borderRadius: 8, fontWeight: 600 }}
+                                onClick={() => setShowLocationOptions(!showLocationOptions)}
+                            >
+                                {showLocationOptions ? "Hide Scope" : "Configure Scope"}
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary btn-sm"
+                                style={{ borderRadius: 8, fontWeight: 600 }}
+                                onClick={() => setShowLocationPricing(!showLocationPricing)}
+                            >
+                                {showLocationPricing ? "Hide Surcharges" : "Location Surcharges"}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Main Base Address */}
+                    <div className="as-field" style={{ marginBottom: 20 }}>
+                        <label className="as-label">
+                            Main Headquarters / Operating Location <span className="as-required">*</span>
+                        </label>
+                        <LocationSearch
+                            onLocationSelect={handleLocationSelect}
+                            placeholder="Type to search your primary operating hub or city..."
+                        />
+                        {address && (
+                            <div style={{
+                                marginTop: 8,
+                                padding: '8px 12px',
+                                background: '#ecfdf5',
+                                border: '1px solid #a7f3d0',
+                                borderRadius: 10,
+                                fontSize: 13,
+                                color: '#059669',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6
+                            }}>
+                                <FaCheckCircle /> Operating Base: <strong>{address.split(',')[0]}</strong>
                             </div>
                         )}
                     </div>
+
+                    {/* Location Type Picker */}
+                    {showLocationOptions && (
+                        <div style={{ background: '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid #e2e8f0', marginBottom: 20 }}>
+                            <label className="as-label" style={{ marginBottom: 12 }}>
+                                Select Customer Address Requirement Type:
+                            </label>
+
+                            <div className="as-location-cards-row">
+                                <div
+                                    className={`as-loc-type-card ${selectedLocationType === "Simple" ? "selected" : ""}`}
+                                    onClick={() => setSelectedLocationType("Simple")}
+                                >
+                                    <div className="as-loc-type-title">Single On-Site Address</div>
+                                    <p className="as-loc-type-desc">Customer provides one delivery / doorstep service address.</p>
+                                    <span className="as-tag-pill" style={{ width: 'fit-content', marginTop: 'auto' }}>Standard Services</span>
+                                </div>
+
+                                <div
+                                    className={`as-loc-type-card ${selectedLocationType === "No" ? "selected" : ""}`}
+                                    onClick={() => setSelectedLocationType("No")}
+                                >
+                                    <div className="as-loc-type-title">No Location Required</div>
+                                    <p className="as-loc-type-desc">For virtual, digital, walk-in or pass-based events.</p>
+                                    <span className="as-tag-pill" style={{ width: 'fit-content', marginTop: 'auto' }}>Digital / Tickets</span>
+                                </div>
+
+                                <div
+                                    className={`as-loc-type-card ${selectedLocationType === "Rental" ? "selected" : ""}`}
+                                    onClick={() => setSelectedLocationType("Rental")}
+                                >
+                                    <div className="as-loc-type-title">Multi-Point / Transit Route</div>
+                                    <p className="as-loc-type-desc">Customer specifies pickup, drop-off and return destinations.</p>
+                                    <span className="as-tag-pill" style={{ width: 'fit-content', marginTop: 'auto' }}>Logistics / Travel</span>
+                                </div>
+                            </div>
+
+                            {selectedLocationType && !locationAdded && (
+                                <button
+                                    type="button"
+                                    className="btn btn-success btn-sm"
+                                    style={{ borderRadius: 8, fontWeight: 600, padding: '8px 18px' }}
+                                    onClick={handleAddLocation}
+                                >
+                                    <FaCheckCircle style={{ marginRight: 6 }} /> Confirm Location Configuration
+                                </button>
+                            )}
+
+                            {locationAdded && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#ecfdf5', borderRadius: 10, border: '1px solid #a7f3d0' }}>
+                                    <span style={{ fontSize: 13, fontWeight: 600, color: '#059669' }}>
+                                        ✓ Configured Mode: {selectedLocationType === 'Simple' ? 'Single Address' : selectedLocationType === 'No' ? 'No Location' : 'Multi-Stop'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-danger btn-sm"
+                                        style={{ borderRadius: 6, fontSize: 11 }}
+                                        onClick={handleRemoveLocation}
+                                    >
+                                        Change
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Location Specific Pricing */}
+                    {showLocationPricing && (
+                        <div style={{ background: '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid #e2e8f0' }}>
+                            <label className="as-label" style={{ marginBottom: 12 }}>
+                                City / Regional Extra Surcharges:
+                            </label>
+                            <div className="as-grid-2">
+                                <div className="as-field">
+                                    <label className="as-label">Region or City Name</label>
+                                    <LocationSearch
+                                        onLocationSelect={handleLocationNameSelect}
+                                        placeholder="Search city/region to add surcharge..."
+                                    />
+                                </div>
+                                <div className="as-field">
+                                    <label className="as-label">Extra Surcharge Amount (₹)</label>
+                                    <input
+                                        type="number"
+                                        className="as-input"
+                                        placeholder="e.g. 150"
+                                        value={currentLocation.extraPrice}
+                                        onChange={handleExtraPriceChange}
+                                    />
+                                </div>
+                            </div>
+
+                            {inputs.filter(inp => inp.name).length > 0 && (
+                                <div style={{ marginTop: 14, marginBottom: 14 }}>
+                                    <label className="as-label">Optional Add-ons Regional Extra Surcharges</label>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        {inputs.filter(inp => inp.name).map((inp, idx) => (
+                                            <div key={idx} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                                <span style={{ fontSize: 13, fontWeight: 600, minWidth: 140 }}>{inp.name}:</span>
+                                                <input
+                                                    type="number"
+                                                    className="as-input"
+                                                    style={{ maxWidth: 180 }}
+                                                    placeholder="+ Extra Fee (₹)"
+                                                    value={currentLocation.optionalInputsExtra.find(item => item.inputName === inp.name)?.extraPrice || 0}
+                                                    onChange={(e) => handleOptionalInputExtraChange(inp.name, parseFloat(e.target.value) || 0)}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                            <button
+                                type="button"
+                                className="btn btn-primary btn-sm"
+                                style={{ borderRadius: 8, fontWeight: 600, marginTop: 10 }}
+                                onClick={addLocationToService}
+                            >
+                                <FaPlus style={{ marginRight: 6 }} /> Add Region Surcharge
+                            </button>
+
+                            {locationsList.length > 0 && (
+                                <div style={{ marginTop: 16 }}>
+                                    <label className="as-label">Configured Region Adjustments ({locationsList.length})</label>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        {locationsList.map((loc, idx) => (
+                                            <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#ffffff', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                                                <div>
+                                                    <span style={{ fontWeight: 700, color: '#0f172a' }}>{loc.locationName}</span>
+                                                    <span style={{ marginLeft: 8, fontSize: 12, color: '#2563eb', fontWeight: 600 }}>+₹{loc.extraPrice} surcharge</span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-danger btn-sm"
+                                                    style={{ borderRadius: 6, fontSize: 11 }}
+                                                    onClick={() => removeLocation(idx)}
+                                                >
+                                                    <FaTrash />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
-                
-                <div className="col-md-12 text-center">
+
+                {/* 6. Optional Add-ons & Extra Services */}
+                <div className="as-card-section">
+                    <div className="as-section-header">
+                        <h3 className="as-section-title">
+                            <span className="as-icon-box"><FaPlusCircle /></span>
+                            Optional Add-ons & Extra Services
+                        </h3>
+                        <button
+                            type="button"
+                            className="btn btn-outline-primary btn-sm"
+                            style={{ borderRadius: 8, fontWeight: 600 }}
+                            onClick={() => setShowOptionalInputs(!showOptionalInputs)}
+                        >
+                            {showOptionalInputs ? "Hide Add-ons" : "Configure Add-ons (+)"}
+                        </button>
+                    </div>
+
+                    {showOptionalInputs && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            {inputs.map((input, index) => (
+                                <div key={index} style={{ background: '#f8fafc', padding: 20, borderRadius: 16, border: '1px solid #e2e8f0' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                                        <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
+                                            Add-on Item #{index + 1}
+                                        </span>
+                                        {inputs.length > 1 && (
+                                            <button
+                                                type="button"
+                                                className="btn btn-outline-danger btn-sm"
+                                                style={{ borderRadius: 6, fontSize: 11 }}
+                                                onClick={() => handleRemoveInput(index)}
+                                            >
+                                                <FaTrash style={{ marginRight: 4 }} /> Remove
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="as-grid-3">
+                                        <div className="as-field">
+                                            <label className="as-label">Add-on Title</label>
+                                            <input
+                                                type="text"
+                                                className="as-input"
+                                                placeholder="e.g. Deep Pipe Cleaning"
+                                                value={input.name}
+                                                onChange={(e) => handleInputChange(index, "name", e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="as-field">
+                                            <label className="as-label">Extra Fee (₹ INR)</label>
+                                            <input
+                                                type="number"
+                                                className="as-input"
+                                                placeholder="Amount"
+                                                value={input.price}
+                                                onChange={(e) => handleInputChange(index, "price", e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="as-field">
+                                            <label className="as-label">Unit Type</label>
+                                            <select
+                                                className="as-select"
+                                                value={input.unit}
+                                                onChange={(e) => handleInputChange(index, "unit", e.target.value)}
+                                            >
+                                                {unitOptions.map(u => (
+                                                    <option key={u} value={u}>{u}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="as-field" style={{ marginTop: 12, marginBottom: 0 }}>
+                                        <label className="as-label">Optional Add-on Image</label>
+                                        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                            <input
+                                                type="file"
+                                                className="as-input"
+                                                accept="image/*"
+                                                onChange={(e) => handleOptionalImageUpload(index, e.target.files[0])}
+                                                disabled={!!input.image && !optionalInputImages[index]}
+                                            />
+                                            {optionalInputPreviews[index] && (
+                                                <img
+                                                    src={optionalInputPreviews[index]}
+                                                    alt="Addon preview"
+                                                    style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8 }}
+                                                />
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+
+                            <button
+                                type="button"
+                                className="btn btn-outline-primary"
+                                style={{ borderRadius: 10, padding: '10px 0', fontWeight: 600 }}
+                                onClick={handleAddInput}
+                            >
+                                <FaPlus style={{ marginRight: 6 }} /> Add Another Optional Add-on
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* 7. Bottom Submission Bar */}
+                <div className="as-action-bar">
+                    <div>
+                        <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>Ready to Launch Service?</div>
+                        <div style={{ fontSize: 13, color: '#64748b' }}>Make sure service title, category, 3 photos, and base price are provided.</div>
+                    </div>
+
                     <button
-                        className="btn btn-primary btn-lg"
+                        type="button"
+                        className="as-publish-btn"
                         onClick={addService}
                         disabled={uploading}
                     >
-                        {uploading ? "Uploading Images..." : "ADD SERVICE"}
+                        {uploading ? (
+                            <>
+                                <span className="spinner-border spinner-border-sm" role="status" style={{ marginRight: 8 }} />
+                                Processing & Uploading...
+                            </>
+                        ) : (
+                            <>
+                                Publish Service Listing →
+                            </>
+                        )}
                     </button>
                 </div>
             </div>

@@ -1,0 +1,748 @@
+/* ==========================================================================
+   Service Hunt - Modern Navbar Styles
+   ========================================================================== */
+
+/* Navbar Root Container */
+nav.sh-navbar,
+.sh-navbar {
+    background-color: #ffffff !important;
+    background: #ffffff !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05) !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1040 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    transition: all 0.25s ease;
+}
+
+.sh-navbar-inner {
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Brand & Logo Section
+   ========================================================================== */
+.sh-brand-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    text-decoration: none !important;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.2s ease;
+}
+
+.sh-brand-link:hover {
+    transform: translateY(-1px);
+    text-decoration: none !important;
+}
+
+.sh-brand-logo-badge {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+    flex-shrink: 0;
+}
+
+.sh-brand-logo-icon {
+    font-size: 1.15rem;
+}
+
+.sh-brand-text {
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.sh-brand-dot {
+    display: inline-block;
+    color: #4f46e5;
+    -webkit-text-fill-color: #4f46e5;
+}
+
+/* ==========================================================================
+   Center Search Input (Optional when searchService is active)
+   ========================================================================== */
+.sh-nav-search-container {
+    position: relative;
+    flex: 1;
+    max-width: 380px;
+    margin: 0 1rem;
+    display: flex;
+    align-items: center;
+}
+
+.sh-nav-search-input {
+    width: 100% !important;
+    height: 38px !important;
+    padding: 0 32px 0 38px !important;
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 9999px !important;
+    font-size: 0.875rem !important;
+    color: #1e293b !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.sh-nav-search-input:focus {
+    background-color: #ffffff !important;
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+.sh-nav-search-icon {
+    position: absolute;
+    left: 14px;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+
+.sh-nav-search-clear {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 50%;
+}
+
+.sh-nav-search-clear:hover {
+    color: #475569;
+}
+
+/* ==========================================================================
+   Right Navigation Area
+   ========================================================================== */
+.sh-nav-right {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+/* ==========================================================================
+   Location Button & Popover
+   ========================================================================== */
+.sh-location-wrapper {
+    position: relative;
+}
+
+.sh-location-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: 1px solid #e2e8f0;
+    background-color: #f8fafc;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+    max-width: 240px;
+    white-space: nowrap;
+}
+
+.sh-location-pill:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #0f172a;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.sh-location-pill.active {
+    background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+    border-color: #c7d2fe;
+    color: #4338ca;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.08);
+}
+
+.sh-location-pill.active:hover {
+    background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
+    border-color: #a5b4fc;
+}
+
+.sh-location-pill:disabled,
+.sh-location-pill.disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+    background-color: #f1f5f9;
+}
+
+.sh-location-icon {
+    font-size: 0.95rem;
+    color: #6366f1;
+    flex-shrink: 0;
+}
+
+.sh-location-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 140px;
+}
+
+.sh-chevron-icon {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.sh-chevron-icon.open {
+    transform: rotate(180deg);
+}
+
+/* Location Dropdown Popover */
+.sh-location-popover {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 380px;
+    max-width: 90vw;
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 20px 45px -8px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(15, 23, 42, 0.05);
+    padding: 1.25rem;
+    z-index: 1050;
+    animation: shPopFade 0.2s ease-out;
+}
+
+.sh-location-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.sh-location-header-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.sh-location-header-sub {
+    margin: 0.15rem 0 0;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.sh-close-btn {
+    background: #f1f5f9;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #64748b;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.sh-close-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.sh-clear-location-btn {
+    margin-top: 0.85rem;
+    padding: 0.6rem 1rem;
+    background-color: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.sh-clear-location-btn:hover {
+    background-color: #fecaca;
+    color: #b91c1c;
+}
+
+/* ==========================================================================
+   User Profile Pill & Dropdown
+   ========================================================================== */
+.sh-user-wrapper {
+    position: relative;
+}
+
+.sh-user-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0.75rem 0.35rem 0.4rem;
+    border-radius: 9999px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.sh-user-pill:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.sh-user-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+    flex-shrink: 0;
+}
+
+.sh-user-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1e293b;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* User Dropdown Menu Card */
+.sh-user-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 270px;
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 20px 40px -8px rgba(15, 23, 42, 0.16), 0 0 0 1px rgba(15, 23, 42, 0.05);
+    padding: 0.5rem 0;
+    z-index: 1050;
+    animation: shPopFade 0.2s ease-out;
+}
+
+.sh-user-menu::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.sh-user-menu-header {
+    padding: 0.75rem 1.15rem;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sh-user-menu-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.sh-user-info-text {
+    overflow: hidden;
+}
+
+.sh-user-info-name {
+    font-size: 0.925rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sh-user-info-email {
+    font-size: 0.75rem;
+    color: #64748b;
+    line-height: 1.2;
+    margin-top: 0.15rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sh-role-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-top: 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.sh-role-badge.superadmin {
+    background-color: #fef3c7;
+    color: #b45309;
+}
+
+.sh-role-badge.admin {
+    background-color: #ede9fe;
+    color: #6d28d9;
+}
+
+.sh-role-badge.vendor {
+    background-color: #d1fae5;
+    color: #047857;
+}
+
+.sh-role-badge.user {
+    background-color: #f1f5f9;
+    color: #475569;
+}
+
+.sh-menu-group {
+    padding: 0.35rem 0;
+}
+
+.sh-menu-group-title {
+    font-size: 0.675rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    padding: 0.35rem 1.15rem 0.2rem;
+}
+
+.sh-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.55rem 1.15rem;
+    font-size: 0.875rem;
+    color: #334155;
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    font-weight: 500;
+}
+
+.sh-menu-item:hover {
+    background-color: #f8fafc;
+    color: #4f46e5;
+}
+
+.sh-menu-item-icon {
+    font-size: 0.95rem;
+    color: #64748b;
+    width: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s ease;
+}
+
+.sh-menu-item:hover .sh-menu-item-icon {
+    color: #4f46e5;
+}
+
+.sh-menu-divider {
+    height: 1px;
+    background-color: #f1f5f9;
+    margin: 0.35rem 0;
+}
+
+.sh-menu-item.logout {
+    color: #ef4444;
+}
+
+.sh-menu-item.logout:hover {
+    background-color: #fef2f2;
+    color: #dc2626;
+}
+
+.sh-menu-item.logout .sh-menu-item-icon {
+    color: #ef4444;
+}
+
+/* ==========================================================================
+   Auth Action Buttons (Logged Out)
+   ========================================================================== */
+.sh-auth-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.sh-btn-register {
+    padding: 0.5rem 1.15rem;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #4f46e5;
+    background-color: transparent;
+    border: 1px solid #c7d2fe;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.sh-btn-register:hover {
+    background-color: #eef2ff;
+    border-color: #a5b4fc;
+}
+
+.sh-btn-login {
+    padding: 0.5rem 1.25rem;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    border: 1px solid transparent;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.sh-btn-login:hover {
+    background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+}
+
+/* ==========================================================================
+   Backdrop for Modals & Overlay
+   ========================================================================== */
+.sh-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.3);
+    backdrop-filter: blur(2px);
+    z-index: 1045;
+    animation: shFadeIn 0.2s ease-out;
+}
+
+/* Animations */
+@keyframes shPopFade {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes shFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* ==========================================================================
+   Responsive Adaptations
+   ========================================================================== */
+@media (max-width: 768px) {
+    .sh-nav-search-container {
+        display: none;
+    }
+
+    .sh-navbar-inner {
+        padding: 0.6rem 0.85rem;
+        gap: 0.5rem;
+    }
+
+    .sh-brand-logo-badge {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+    }
+
+    .sh-brand-logo-icon {
+        font-size: 0.95rem;
+    }
+
+    .sh-brand-text {
+        font-size: 1.1rem;
+    }
+
+    .sh-nav-right {
+        gap: 0.5rem;
+    }
+
+    .sh-location-pill {
+        padding: 0.4rem 0.65rem;
+        font-size: 0.775rem;
+        max-width: 130px;
+        gap: 0.35rem;
+    }
+
+    .sh-location-name {
+        max-width: 75px;
+    }
+
+    .sh-user-pill {
+        padding: 0.25rem;
+    }
+
+    .sh-user-avatar {
+        width: 30px;
+        height: 30px;
+        font-size: 0.85rem;
+    }
+
+    .sh-user-name {
+        display: none;
+    }
+
+    .sh-btn-register,
+    .sh-btn-login {
+        padding: 0.4rem 0.75rem;
+        font-size: 0.775rem;
+        border-radius: 8px;
+    }
+
+    /* Full centered modal for mobile location picker */
+    .sh-location-popover {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 92%;
+        max-width: 380px;
+        border-radius: 20px;
+        padding: 1.15rem;
+        animation: shPopCenter 0.25s ease-out;
+    }
+
+    @keyframes shPopCenter {
+        from {
+            opacity: 0;
+            transform: translate(-50%, -46%) scale(0.96);
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+    }
+
+    .sh-user-menu {
+        position: fixed;
+        top: 64px;
+        right: 10px;
+        left: auto;
+        width: calc(100vw - 20px);
+        max-width: 300px;
+        max-height: calc(100vh - 80px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .sh-user-menu::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
+    }
+}
+
+@media (max-width: 400px) {
+    .sh-brand-text {
+        font-size: 0.95rem;
+    }
+
+    .sh-location-pill {
+        max-width: 105px;
+        padding: 0.35rem 0.5rem;
+    }
+
+    .sh-location-name {
+        max-width: 55px;
+    }
+}
+
+/* ==========================================================================
+   Hidden Scrollbars for Dropdowns
+   ========================================================================== */
+.sh-navbar .dropdown-menu {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+
+.sh-navbar .dropdown-menu::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+    width: 0;
+    height: 0;
+}

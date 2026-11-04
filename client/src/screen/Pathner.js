@@ -1,7 +1,21 @@
 import React, { useState } from 'react';
-import './pathner.css';  // Assuming we style the components in an external CSS file
-import axios from 'axios'; // Import axios for making HTTP requests
+import './pathner.css';
+import axios from 'axios';
 import Navbar from '../components/Navbar';
+import { 
+    FaBuilding, 
+    FaUser, 
+    FaEnvelope, 
+    FaPhone, 
+    FaMapMarkerAlt, 
+    FaTools, 
+    FaRocket, 
+    FaShieldAlt, 
+    FaHandshake, 
+    FaChartLine, 
+    FaCheckCircle, 
+    FaExclamationCircle 
+} from 'react-icons/fa';
 
 const Pathner = () => {
     const [ServiceName, setServiceName] = useState('');
@@ -9,10 +23,10 @@ const Pathner = () => {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [address, setAddress] = useState('');
     const [typeOfService, setTypeOfService] = useState('');
-    const [emailDetails, setEmailDetails] = useState(''); // Added state for email details
-    const [successMessage, setSuccessMessage] = useState(''); // State for success message
-    const [errorMessage, setErrorMessage] = useState(''); // State for error message
-    const [isLoading, setIsLoading] = useState(false); // State for loading
+    const [emailDetails, setEmailDetails] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -34,12 +48,12 @@ const Pathner = () => {
 
         try {
             const response = await axios.post('http://localhost:5000/api/pathners', pathnerData);
-            console.log(response.data); // Log success message
+            console.log(response.data);
             
             // Show success message
-            setSuccessMessage('✅ Service provider registered successfully!');
+            setSuccessMessage('Service provider registered successfully!');
             
-            // Optional: Reset form after successful submission
+            // Reset form after successful submission
             setServiceName('');
             setOwnerDetails('');
             setPhoneNumber('');
@@ -47,24 +61,21 @@ const Pathner = () => {
             setTypeOfService('');
             setEmailDetails('');
             
-            // Optional: Auto-hide success message after 5 seconds
+            // Auto-hide success message after 5 seconds
             setTimeout(() => {
                 setSuccessMessage('');
             }, 5000);
             
         } catch (error) {
             if (error.response) {
-                // The request was made, and the server responded with a status code outside the range of 2xx
                 console.error('Error saving pathner details:', error.response.data);
-                setErrorMessage(`❌ Error: ${error.response.data.message || 'Failed to save service provider details'}`);
+                setErrorMessage(error.response.data.message || 'Failed to save service provider details');
             } else if (error.request) {
-                // The request was made, but no response was received
                 console.error('No response received from the server:', error.request);
-                setErrorMessage('❌ No response from server. Please check your connection.');
+                setErrorMessage('No response from server. Please check your connection.');
             } else {
-                // Something else happened while setting up the request
                 console.error('Error in setting up the request:', error.message);
-                setErrorMessage(`❌ Error: ${error.message}`);
+                setErrorMessage(error.message);
             }
             
             // Auto-hide error message after 5 seconds
@@ -77,112 +88,248 @@ const Pathner = () => {
     };
 
     return (
-        <div className="service-registration">
+        <div className="pathner-page">
             <Navbar />
 
-            <div className="registration-container">
-                {/* Main Form Section */}
-                <main className="main-content">
-                    <h2>Service Provider Information</h2>
-                    
-                    {/* Success Message */}
-                    {successMessage && (
-                        <div className="success-message">
-                            {successMessage}
-                        </div>
-                    )}
-                    
-                    {/* Error Message */}
-                    {errorMessage && (
-                        <div className="error-message">
-                            {errorMessage}
-                        </div>
-                    )}
-                    
-                    <form onSubmit={handleSubmit}>
-                        <div className="form-group">
-                            <label htmlFor="serviceName">Service Name</label>
-                            <input
-                                type="text"
-                                id="serviceName"
-                                placeholder="Service name*"
-                                value={ServiceName}
-                                onChange={(e) => setServiceName(e.target.value)}
-                                required
-                                disabled={isLoading}
-                            />
+            <div className="pathner-container">
+                {/* Breadcrumb Navigation */}
+                <div className="pathner-breadcrumb">
+                    <a href="/home">Home</a>
+                    <span className="pathner-breadcrumb-sep">/</span>
+                    <span>Partner Network</span>
+                    <span className="pathner-breadcrumb-sep">/</span>
+                    <span className="pathner-breadcrumb-current">Register Business</span>
+                </div>
+
+                <div className="pathner-layout">
+                    {/* Left Column: Value Proposition & Benefits */}
+                    <div className="pathner-benefits-col">
+                        <span className="pathner-badge">
+                            <FaHandshake /> Partner Network
+                        </span>
+
+                        <h1 className="pathner-heading">
+                            Grow Your Business & Reach New Customers
+                        </h1>
+
+                        <p className="pathner-lead-text">
+                            Join our trusted platform of verified specialists. Showcase your expertise, manage requests, and grow your local client base with zero onboarding hassle.
+                        </p>
+
+                        <div className="pathner-cards-list">
+                            <div className="pathner-benefit-item">
+                                <div className="pathner-benefit-icon">
+                                    <FaRocket />
+                                </div>
+                                <div>
+                                    <h4 className="pathner-benefit-title">Instant Visibility</h4>
+                                    <p className="pathner-benefit-desc">
+                                        Get your services discovered by thousands of local clients searching for verified specialists every day.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="pathner-benefit-item">
+                                <div className="pathner-benefit-icon">
+                                    <FaChartLine />
+                                </div>
+                                <div>
+                                    <h4 className="pathner-benefit-title">Transparent & Flexible</h4>
+                                    <p className="pathner-benefit-desc">
+                                        Maintain 100% control over your rates, unit pricing (per hour, per day, custom), and add-on services.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="pathner-benefit-item">
+                                <div className="pathner-benefit-icon">
+                                    <FaShieldAlt />
+                                </div>
+                                <div>
+                                    <h4 className="pathner-benefit-title">Verified Specialist Badge</h4>
+                                    <p className="pathner-benefit-desc">
+                                        Build immediate credibility with authentic customer reviews, ratings, and verified accreditation.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="form-group">
-                            <label htmlFor="ownerDetails">Owner Details</label>
-                            <input
-                                type="text"
-                                id="ownerDetails"
-                                placeholder="Owner details"
-                                value={ownerDetails}
-                                onChange={(e) => setOwnerDetails(e.target.value)}
-                                required
-                                disabled={isLoading}
-                            />
+                        <div className="pathner-trust-pill">
+                            <FaCheckCircle className="pathner-trust-icon" />
+                            <span>Over 500+ local specialists trust Service Hunt to power their growth.</span>
                         </div>
+                    </div>
 
-                        <div className="form-group">
-                            <label htmlFor="emailDetails">Email</label>
-                            <input
-                                type="email"
-                                id="emailDetails"
-                                placeholder="Email"
-                                value={emailDetails}
-                                onChange={(e) => setEmailDetails(e.target.value)}
-                                required
-                                disabled={isLoading}
-                            />
+                    {/* Right Column: Registration Form Card */}
+                    <div className="pathner-form-col">
+                        <div className="pathner-card">
+                            <div className="pathner-card-header">
+                                <h2 className="pathner-card-title">Provider Application</h2>
+                                <p className="pathner-card-subtitle">
+                                    Fill out your business profile details below to get started with our team.
+                                </p>
+                            </div>
+
+                            {/* Success Notification Alert */}
+                            {successMessage && (
+                                <div className="pathner-alert-success">
+                                    <FaCheckCircle style={{ fontSize: '16px', flexShrink: 0 }} />
+                                    <span>{successMessage}</span>
+                                </div>
+                            )}
+
+                            {/* Error Notification Alert */}
+                            {errorMessage && (
+                                <div className="pathner-alert-error">
+                                    <FaExclamationCircle style={{ fontSize: '16px', flexShrink: 0 }} />
+                                    <span>{errorMessage}</span>
+                                </div>
+                            )}
+
+                            <form onSubmit={handleSubmit}>
+                                <div className="pathner-form-grid">
+                                    {/* Service / Business Name */}
+                                    <div className="pathner-field-group">
+                                        <label className="pathner-label" htmlFor="serviceName">
+                                            Service / Business Name <span className="pathner-required">*</span>
+                                        </label>
+                                        <div className="pathner-input-box">
+                                            <input
+                                                type="text"
+                                                id="serviceName"
+                                                className="pathner-input"
+                                                placeholder="      e.g. Apex Home Solutions"
+                                                value={ServiceName}
+                                                onChange={(e) => setServiceName(e.target.value)}
+                                                required
+                                                disabled={isLoading}
+                                            />
+                                            <FaBuilding className="pathner-input-icon" />
+                                        </div>
+                                    </div>
+
+                                    {/* Owner Details */}
+                                    <div className="pathner-field-group">
+                                        <label className="pathner-label" htmlFor="ownerDetails">
+                                            Owner / Lead Specialist <span className="pathner-required">*</span>
+                                        </label>
+                                        <div className="pathner-input-box">
+                                            <input
+                                                type="text"
+                                                id="ownerDetails"
+                                                className="pathner-input"
+                                                placeholder="     Full name"
+                                                value={ownerDetails}
+                                                onChange={(e) => setOwnerDetails(e.target.value)}
+                                                required
+                                                disabled={isLoading}
+                                            />
+                                            <FaUser className="pathner-input-icon" />
+                                        </div>
+                                    </div>
+
+                                    {/* Email */}
+                                    <div className="pathner-field-group">
+                                        <label className="pathner-label" htmlFor="emailDetails">
+                                            Business Email <span className="pathner-required">*</span>
+                                        </label>
+                                        <div className="pathner-input-box">
+                                            <input
+                                                type="email"
+                                                id="emailDetails"
+                                                className="pathner-input"
+                                                placeholder="contact@business.com"
+                                                value={emailDetails}
+                                                onChange={(e) => setEmailDetails(e.target.value)}
+                                                required
+                                                disabled={isLoading}
+                                            />
+                                            <FaEnvelope className="pathner-input-icon" />
+                                        </div>
+                                    </div>
+
+                                    {/* Phone Number */}
+                                    <div className="pathner-field-group">
+                                        <label className="pathner-label" htmlFor="phoneNumber">
+                                            Phone Number <span className="pathner-required">*</span>
+                                        </label>
+                                        <div className="pathner-input-box">
+                                            <input
+                                                type="tel"
+                                                id="phoneNumber"
+                                                className="pathner-input"
+                                                placeholder="Mobile or office phone"
+                                                value={phoneNumber}
+                                                onChange={(e) => setPhoneNumber(e.target.value)}
+                                                required
+                                                disabled={isLoading}
+                                            />
+                                            <FaPhone className="pathner-input-icon" />
+                                        </div>
+                                    </div>
+
+                                    {/* Operating Address */}
+                                    <div className="pathner-field-group full-width">
+                                        <label className="pathner-label" htmlFor="address">
+                                            Operating Address / City <span className="pathner-required">*</span>
+                                        </label>
+                                        <div className="pathner-input-box">
+                                            <input
+                                                type="text"
+                                                id="address"
+                                                className="pathner-input"
+                                                placeholder="     Street, City, Postal Code"
+                                                value={address}
+                                                onChange={(e) => setAddress(e.target.value)}
+                                                required
+                                                disabled={isLoading}
+                                            />
+                                            <FaMapMarkerAlt className="pathner-input-icon" />
+                                        </div>
+                                    </div>
+
+                                    {/* Type of Service Provided */}
+                                    <div className="pathner-field-group full-width">
+                                        <label className="pathner-label" htmlFor="typeOfService">
+                                            Type of Service Provided <span className="pathner-required">*</span>
+                                        </label>
+                                        <div className="pathner-input-box">
+                                            <input
+                                                type="text"
+                                                id="typeOfService"
+                                                className="pathner-input"
+                                                placeholder="      e.g. Electrical, Home Cleaning, Appliance Repair, Plumbing"
+                                                value={typeOfService}
+                                                onChange={(e) => setTypeOfService(e.target.value)}
+                                                required
+                                                disabled={isLoading}
+                                            />
+                                            <FaTools className="pathner-input-icon" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" className="pathner-submit-btn" disabled={isLoading}>
+                                    {isLoading ? (
+                                        <>
+                                            <div className="pathner-btn-spinner" />
+                                            <span>Submitting Application...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FaHandshake />
+                                            <span>Register as Partner</span>
+                                        </>
+                                    )}
+                                </button>
+
+                                <p className="pathner-security-note">
+                                    🔒 Your business information is securely stored and never shared with unauthorized parties.
+                                </p>
+                            </form>
                         </div>
-
-                        <div className="form-group">
-                            <label htmlFor="phoneNumber">Phone Number</label>
-                            <input
-                                type="tel"
-                                id="phoneNumber"
-                                placeholder="Phone Number"
-                                value={phoneNumber}
-                                onChange={(e) => setPhoneNumber(e.target.value)}
-                                required
-                                disabled={isLoading}
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="address">Address</label>
-                            <input
-                                type="text"
-                                id="address"
-                                placeholder="Address"
-                                value={address}
-                                onChange={(e) => setAddress(e.target.value)}
-                                required
-                                disabled={isLoading}
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label htmlFor="typeOfService">Type of Service Provided</label>
-                            <input
-                                type="text"
-                                id="typeOfService"
-                                placeholder="Type of Service"
-                                value={typeOfService}
-                                onChange={(e) => setTypeOfService(e.target.value)}
-                                required
-                                disabled={isLoading}
-                            />
-                        </div>
-
-                        <button type="submit" className="submit-button" disabled={isLoading}>
-                            {isLoading ? 'Submitting...' : 'Continue'}
-                        </button>
-                    </form>
-                </main>
+                    </div>
+                </div>
             </div>
         </div>
     );

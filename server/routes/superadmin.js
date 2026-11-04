@@ -47,6 +47,7 @@ const isSuperAdmin = async (req, res, next) => {
         }
         
         console.log('✅ SuperAdmin access granted');
+        req.user = user;
         next();
     } catch (error) {
         console.error('SuperAdmin middleware error:', error);
@@ -77,8 +78,12 @@ router.get("/dashboard", async (req, res) => {
             User.countDocuments({ role: 'user' }),
             Service.countDocuments(),
             Booking.countDocuments(),
-            // Count vendors (users with 'admin' role)
-            User.countDocuments({ role: 'admin' }),
+            // Count vendors (users with 'admin' or 'vendor' role, excluding superadmin)
+            User.countDocuments({
+                $or: [{ role: 'admin' }, { role: 'vendor' }],
+                email: { $ne: 'himanshufa875@gmail.com' },
+                role: { $ne: 'superadmin' }
+            }),
             Helper.countDocuments(),
             Pathner.countDocuments(),
             // Today's bookings
@@ -278,14 +283,20 @@ router.get("/vendors", async (req, res) => {
         const { page = 1, limit = 10 } = req.query;
         const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        // Fetch users with 'admin' role (vendors)
-        const vendors = await User.find({ role: 'admin' })
+        // Fetch users with 'admin' or 'vendor' role (vendors, excluding superadmin)
+        const vendorFilter = {
+            $or: [{ role: 'admin' }, { role: 'vendor' }],
+            email: { $ne: 'himanshufa875@gmail.com' },
+            role: { $ne: 'superadmin' }
+        };
+
+        const vendors = await User.find(vendorFilter)
             .select('-password')
             .skip(skip)
             .limit(parseInt(limit))
             .sort({ createdAt: -1 });
 
-        const total = await User.countDocuments({ role: 'admin' });
+        const total = await User.countDocuments(vendorFilter);
 
         res.json({
             success: true,
@@ -552,24 +563,109 @@ router.put("/bookings/:id/status", async (req, res) => {
         });
     }
 });
-// In your delete route - add this check
+// In your delete route - handle vendor, user, and other entities properly
 router.delete("/:entity/:id", async (req, res) => {
     try {
         const { entity, id } = req.params;
+        const currentUserId = req.body.userid || req.query.userid || (req.user && req.user._id ? req.user._id.toString() : null);
+
+        // Vendor removal
+        if (entity === 'vendor') {
+            // Find vendor in User collection and/or Vendor collection
+            let vendorUser = await User.findById(id);
+            let vendorDoc = await Vendor.findOne({ $or: [{ _id: id }, { userId: id }] });
+
+            if (!vendorUser && vendorDoc && vendorDoc.userId) {
+                vendorUser = await User.findById(vendorDoc.userId);
+            }
+
+            // Prevent deleting superadmin
+            if (vendorUser && (vendorUser.role === 'superadmin' || vendorUser.email === 'himanshufa875@gmail.com' || (currentUserId && vendorUser._id.toString() === currentUserId.toString()))) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Cannot delete super admin user"
+                });
+            }
+
+            if (!vendorUser && !vendorDoc) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Vendor not found"
+                });
+            }
+
+            const vendorUserId = vendorUser ? vendorUser._id : (vendorDoc?.userId || id);
+            const vendorEmail = vendorUser?.email || vendorDoc?.email;
+
+            // Delete from Vendor collection
+            await Vendor.deleteMany({
+                $or: [
+                    { _id: id },
+                    { userId: vendorUserId },
+                    ...(vendorEmail ? [{ email: vendorEmail }] : [])
+                ]
+            });
+
+            // Delete vendor from User collection
+            if (vendorUser) {
+                await User.findByIdAndDelete(vendorUser._id);
+            }
+
+            // Clean up vendor's services and helpers
+            await Service.deleteMany({ vendorId: vendorUserId });
+            await Helper.deleteMany({ vendorId: vendorUserId });
+
+            return res.json({
+                success: true,
+                message: "Vendor deleted successfully"
+            });
+        }
+
+        // User removal
+        if (entity === 'user') {
+            const user = await User.findById(id);
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                });
+            }
+
+            // Prevent deleting superadmin or self
+            if (user.role === 'superadmin' || user.email === 'himanshufa875@gmail.com' || (currentUserId && user._id.toString() === currentUserId.toString())) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Cannot delete super admin user"
+                });
+            }
+
+            // If user is a vendor/admin, also clean up associated vendor data
+            if (user.role === 'admin' || user.role === 'vendor' || user.isAdmin) {
+                await Vendor.deleteMany({
+                    $or: [
+                        { userId: user._id },
+                        { email: user.email }
+                    ]
+                });
+                await Service.deleteMany({ vendorId: user._id });
+                await Helper.deleteMany({ vendorId: user._id });
+            }
+
+            await User.findByIdAndDelete(id);
+
+            return res.json({
+                success: true,
+                message: "User deleted successfully"
+            });
+        }
+
         let Model;
-        
         switch (entity) {
-            case 'user':
-                Model = User;
-                break;
             case 'service':
                 Model = Service;
                 break;
             case 'booking':
                 Model = Booking;
-                break;
-            case 'vendor':
-                Model = Vendor;
                 break;
             case 'helper':
                 Model = Helper;
@@ -579,38 +675,27 @@ router.delete("/:entity/:id", async (req, res) => {
                 break;
             default:
                 return res.status(400).json({ 
-                    success: false,
+                    success: false, 
                     message: "Invalid entity" 
                 });
-        }
-
-        // Prevent superadmin from deleting themselves
-        if (entity === 'user') {
-            const user = await User.findById(id);
-            if (user && (user.role === 'superadmin' || user.isAdmin)) {
-                return res.status(403).json({
-                    success: false,
-                    message: "Cannot delete admin/super admin user"
-                });
-            }
         }
 
         const result = await Model.findByIdAndDelete(id);
         if (!result) {
             return res.status(404).json({ 
-                success: false,
+                success: false, 
                 message: `${entity} not found` 
             });
         }
 
         res.json({ 
-            success: true,
+            success: true, 
             message: `${entity} deleted successfully` 
         });
     } catch (error) {
         console.error('Delete error:', error);
         res.status(500).json({ 
-            success: false,
+            success: false, 
             message: error.message 
         });
     }

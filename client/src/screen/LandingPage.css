@@ -1,0 +1,782 @@
+/* ==========================================================================
+   Service Hunt - Modern Landing Page Styles
+   ========================================================================== */
+
+.lp-root {
+    min-height: 100vh;
+    background-color: #f8fafc;
+    color: #1e293b;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ==========================================================================
+   Hero Section
+   ========================================================================== */
+.lp-hero {
+    position: relative;
+    padding: 70px 20px 80px;
+    background: linear-gradient(135deg, #4338ca 0%, #6366f1 45%, #8b5cf6 80%, #a855f7 100%);
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.lp-hero::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -20%;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.lp-hero::after {
+    content: "";
+    position: absolute;
+    bottom: -40%;
+    right: -15%;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.lp-hero-card {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 860px;
+    padding: 38px 30px;
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 24px;
+    box-shadow: 0 25px 60px -10px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(12px);
+    text-align: center;
+}
+
+.lp-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 9999px;
+    background: #eef2ff;
+    color: #4f46e5;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+}
+
+.lp-hero-title {
+    font-size: 2.25rem;
+    font-weight: 800;
+    line-height: 1.2;
+    color: #0f172a;
+    margin: 0 0 10px;
+    letter-spacing: -0.02em;
+}
+
+.lp-hero-title-gradient {
+    background: linear-gradient(135deg, #4338ca 0%, #7c3aed 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.lp-hero-subtitle {
+    font-size: 1.05rem;
+    color: #64748b;
+    margin: 0 0 28px;
+    font-weight: 400;
+    line-height: 1.5;
+}
+
+/* Hero Search Bar */
+.lp-search-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: stretch;
+    justify-content: center;
+    width: 100%;
+}
+
+.lp-search-input-box {
+    flex: 1 1 300px;
+    position: relative;
+}
+
+.lp-search-input {
+    width: 100% !important;
+    height: 52px !important;
+    padding: 0 18px 0 46px !important;
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 14px !important;
+    font-size: 0.95rem !important;
+    background: #ffffff !important;
+    color: #1e293b !important;
+    outline: none !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease !important;
+    box-sizing: border-box !important;
+}
+
+.lp-search-input:focus {
+    border-color: #6366f1 !important;
+    background: #f8fafc !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+.lp-search-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 1.1rem;
+    pointer-events: none;
+}
+
+.lp-search-location-box {
+    flex: 1 1 240px;
+    position: relative;
+}
+
+.lp-search-location-box input {
+    height: 52px !important;
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 14px !important;
+    font-size: 0.95rem !important;
+    padding-left: 20px !important;
+}
+
+.lp-search-location-box input:focus {
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
+
+.lp-search-btn {
+    height: 52px;
+    flex: 0 1 150px;
+    min-width: 140px;
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 14px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+    transition: all 0.25s ease;
+}
+
+.lp-search-btn:hover {
+    background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.45);
+}
+
+.lp-search-btn:active {
+    transform: translateY(0);
+}
+
+/* Trust Badges */
+.lp-hero-features {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+}
+
+.lp-hero-feature-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.lp-hero-feature-icon {
+    font-size: 0.9rem;
+}
+
+.lp-hero-feature-icon.green {
+    color: #10b981;
+}
+
+.lp-hero-feature-icon.amber {
+    color: #f59e0b;
+}
+
+.lp-hero-feature-icon.indigo {
+    color: #6366f1;
+}
+
+/* ==========================================================================
+   Filter Bar (Search Results Mode)
+   ========================================================================== */
+.lp-filter-bar {
+    max-width: 1240px;
+    margin: 20px auto 25px;
+    padding: 14px 22px;
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.lp-filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.lp-results-count {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.lp-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    background-color: #4f46e5 !important;
+    border-color: #4f46e5 !important;
+    border-radius: 10px !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    font-size: 0.875rem !important;
+    box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2) !important;
+}
+
+/* ==========================================================================
+   Location Empty & Notice States
+   ========================================================================== */
+.lp-empty-state {
+    max-width: 680px;
+    margin: 50px auto;
+    padding: 50px 30px;
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+    border: 1px solid #e2e8f0;
+    text-align: center;
+}
+
+.lp-empty-icon-wrap {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
+
+.lp-empty-icon-wrap.orange {
+    background-color: #fff7ed;
+    color: #ea580c;
+}
+
+.lp-empty-icon-wrap.red {
+    background-color: #fef2f2;
+    color: #dc2626;
+}
+
+.lp-empty-title {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 10px;
+}
+
+.lp-empty-desc {
+    font-size: 0.95rem;
+    color: #64748b;
+    line-height: 1.6;
+    margin: 0 auto 24px;
+    max-width: 480px;
+}
+
+.lp-empty-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 28px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.lp-empty-btn.orange {
+    background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+    box-shadow: 0 4px 14px rgba(234, 88, 12, 0.3);
+}
+
+.lp-empty-btn.orange:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(234, 88, 12, 0.4);
+}
+
+.lp-empty-btn.primary {
+    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+}
+
+.lp-empty-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.4);
+}
+
+/* ==========================================================================
+   Section Headers & Containers
+   ========================================================================== */
+.lp-section-container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 45px 20px;
+}
+
+.lp-section-header {
+    margin-bottom: 25px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+}
+
+.lp-section-title {
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.015em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.lp-section-sub {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 4px 0 0;
+}
+
+/* Horizontal Service Carousel Row */
+.lp-service-carousel-card {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    margin-bottom: 40px;
+}
+
+.lp-horizontal-scroll {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    padding: 10px 4px 16px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.lp-horizontal-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.lp-service-card-item {
+    min-width: 270px;
+    max-width: 290px;
+    flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Categories Grid
+   ========================================================================== */
+.lp-categories-section {
+    background-color: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 50px 20px 60px;
+}
+
+.lp-categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 22px;
+    max-width: 1240px;
+    margin: 0 auto;
+}
+
+.lp-category-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 24px 18px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.lp-category-card:hover {
+    background: #ffffff;
+    transform: translateY(-5px);
+    box-shadow: 0 12px 28px -6px rgba(79, 70, 229, 0.12);
+    border-color: #c7d2fe;
+}
+
+.lp-category-img-wrap {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-bottom: 16px;
+    background: #ffffff;
+    padding: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lp-category-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
+}
+
+.lp-category-card:hover .lp-category-img {
+    transform: scale(1.08);
+}
+
+.lp-category-btn {
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #1e293b;
+    font-size: 0.825rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    line-height: 1.35;
+}
+
+.lp-category-card:hover .lp-category-btn {
+    background: #4f46e5;
+    color: #ffffff;
+    border-color: #4f46e5;
+}
+
+/* ==========================================================================
+   Event & Ticket Services
+   ========================================================================== */
+.lp-events-section {
+    background-color: #f8fafc;
+    padding: 60px 20px;
+}
+
+.lp-events-grid {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 30px;
+    max-width: 1240px;
+    margin: 0 auto;
+}
+
+.lp-event-column-card {
+    width: 350px;
+    max-width: 100%;
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.lp-event-column-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.1);
+}
+
+.lp-event-header-ribbon {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: #ffffff;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.05rem;
+    padding: 14px 18px;
+    letter-spacing: -0.01em;
+}
+
+.lp-event-subitems-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    padding: 18px;
+    background: #ffffff;
+}
+
+.lp-subitem-card {
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    transition: all 0.25s ease;
+}
+
+.lp-subitem-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+    border-color: #c7d2fe;
+}
+
+.lp-subitem-thumb {
+    height: 90px;
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+.lp-subitem-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.lp-subitem-card:hover .lp-subitem-img {
+    transform: scale(1.08);
+}
+
+.lp-subitem-btn {
+    width: 100%;
+    padding: 9px 6px;
+    background: #ffffff;
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    color: #1e293b;
+    font-size: 0.775rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    line-height: 1.25;
+}
+
+.lp-subitem-card:hover .lp-subitem-btn {
+    background: #eef2ff;
+    color: #4f46e5;
+}
+
+/* ==========================================================================
+   Travel & Transport Section
+   ========================================================================== */
+.lp-travel-section {
+    background-color: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    padding: 60px 20px;
+}
+
+.lp-travel-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 22px;
+    max-width: 1240px;
+    margin: 0 auto;
+}
+
+.lp-travel-card {
+    width: 260px;
+    border-radius: 16px;
+    overflow: hidden;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.lp-travel-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 26px rgba(79, 70, 229, 0.12);
+    border-color: #c7d2fe;
+}
+
+.lp-travel-thumb {
+    height: 135px;
+    overflow: hidden;
+}
+
+.lp-travel-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.lp-travel-card:hover .lp-travel-img {
+    transform: scale(1.06);
+}
+
+.lp-travel-title-box {
+    padding: 14px 18px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.875rem;
+    color: #1e293b;
+    background: #ffffff;
+    transition: all 0.2s ease;
+}
+
+.lp-travel-card:hover .lp-travel-title-box {
+    color: #4f46e5;
+    background: #f8fafc;
+}
+
+/* ==========================================================================
+   Loading Spinner
+   ========================================================================== */
+.lp-loader-screen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 80vh;
+    flex-direction: column;
+}
+
+.lp-spinner {
+    width: 52px;
+    height: 52px;
+    border: 4px solid #e2e8f0;
+    border-top: 4px solid #4f46e5;
+    border-radius: 50%;
+    animation: lpSpin 0.9s linear infinite;
+}
+
+.lp-loader-text {
+    margin-top: 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+@keyframes lpSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   Responsive Breakpoints
+   ========================================================================== */
+@media (max-width: 768px) {
+    .lp-hero {
+        padding: 40px 15px 50px;
+    }
+
+    .lp-hero-card {
+        padding: 24px 16px;
+        border-radius: 20px;
+    }
+
+    .lp-hero-title {
+        font-size: 1.65rem;
+    }
+
+    .lp-hero-subtitle {
+        font-size: 0.925rem;
+        margin-bottom: 20px;
+    }
+
+    .lp-search-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .lp-search-btn {
+        width: 100%;
+        flex: 1 1 100%;
+    }
+
+    .lp-section-container {
+        padding: 30px 15px;
+    }
+
+    .lp-section-title {
+        font-size: 1.35rem;
+    }
+
+    .lp-categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+
+    .lp-category-card {
+        padding: 16px 10px;
+    }
+
+    .lp-category-img-wrap {
+        width: 65px;
+        height: 65px;
+        margin-bottom: 10px;
+    }
+
+    .lp-events-grid {
+        gap: 20px;
+    }
+
+    .lp-travel-grid {
+        gap: 15px;
+    }
+
+    .lp-travel-card {
+        width: calc(50% - 10px);
+    }
+}
+
+@media (max-width: 480px) {
+    .lp-categories-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .lp-travel-card {
+        width: 100%;
+    }
+}

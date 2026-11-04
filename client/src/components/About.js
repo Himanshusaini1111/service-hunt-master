@@ -1,904 +1,600 @@
 import React, { useState } from "react";
+import { useLocation, Link } from "react-router-dom";
+import Navbar from "./Navbar";
+import "./About.css";
+
+// Crisp SVG Icons
+import {
+    FaTwitter,
+    FaFacebookF,
+    FaInstagram,
+    FaLinkedinIn,
+    FaArrowLeft,
+    FaCheckCircle,
+    FaRocket,
+    FaShieldAlt,
+    FaEye,
+    FaChartLine,
+    FaMoneyBillWave,
+    FaChartPie,
+    FaTools
+} from "react-icons/fa";
 
 const About = () => {
     const [activeSection, setActiveSection] = useState(null);
+    const location = useLocation();
+    const isStandalonePage = location.pathname === "/about";
 
     const toggleSection = (section) => {
-        setActiveSection(activeSection === section ? null : section);
+        setActiveSection((prev) => (prev === section ? null : section));
+        if (section) {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
     };
 
     return (
-        <div style={styles.page}>
-        <nav className="navbar navbar-expand-lg custom-navbar">
-                <div className="navbar-brand-section">
-                    {/* Brand Logo/Name */}
-                    <a className="navbar-brand d-flex align-items-center" href="/home">
-                        <h2 className="brand-title mb-0" >
-                            Service Hunt
-                        </h2>
-                    </a>
+        <div className={isStandalonePage ? "sh-about-standalone" : "sh-about-page"}>
+            {/* If viewed directly on /about route, show modern top Navbar */}
+            {isStandalonePage && <Navbar />}
 
-
-                </div>
-            </nav>
-
-            <style>{`
-    .navbar {
-        padding: 0.5rem 1rem;
-    }
-
-    .brand-title {
-        font-size: 1.75rem;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-    }
-
-`}</style>
-            <div style={styles.container}>
-                {!activeSection && (
-                    <div style={styles.gridContainer}>
-                        {/* Company Section */}
-                        <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>Company</h3>
-                            <ul style={styles.list}>
-                                <li style={styles.listItem}>
-                                    <a href="#about-us" style={styles.link} onClick={() => toggleSection("aboutUs")}>
-                                        About us
-                                    </a>
-                                </li>
-                                <li style={styles.listItem}>
-                                    <a href="#terms" style={styles.link} onClick={() => toggleSection("terms")}>
-                                        Terms & Conditions
-                                    </a>
-                                </li>
-                                <li style={styles.listItem}>
-                                    <a href="#privacy" style={styles.link} onClick={() => toggleSection("privacy")}>
-                                        Privacy Policy
-                                    </a>
-                                </li>
-                            </ul>
+            {/* If viewed on /about route and no section is open, default to showing the About Us content! */}
+            {(isStandalonePage && activeSection === null) || activeSection === "aboutUs" ? (
+                <div className="sh-detail-wrapper">
+                    <div className="sh-detail-card">
+                        <div className="sh-detail-header-bar">
+                            <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#6366f1", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                Company Overview
+                            </span>
+                            {activeSection && (
+                                <button
+                                    type="button"
+                                    className="sh-back-btn"
+                                    onClick={() => toggleSection(null)}
+                                >
+                                    <FaArrowLeft />
+                                    <span>Back to Footer</span>
+                                </button>
+                            )}
                         </div>
 
-                        {/* Customer Section */}
-                        <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>For Customers</h3>
-                            <ul style={styles.list}>
-                                <li style={styles.listItem}>
-                                    <a href="#user-us" style={styles.link} onClick={() => toggleSection("userUs")}>
-                                        Why Choose Us?
-                                    </a>
-                                </li>
-                                <li style={styles.listItem}>
-                                    <a href="#contact" style={styles.link}>
-                                        Contact Support
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
+                        <h1 className="sh-detail-title">About Service Hunt</h1>
 
-                        {/* Partners Section */}
-                        <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>For Partners</h3>
-                            <ul style={styles.list}>
-                                <li style={styles.listItem}>
-                                    <a href="#vendor-us" style={styles.link} onClick={() => toggleSection("vendorUs")}>
-                                        Partner Benefits
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-
-                        {/* Social & Apps Section */}
-                        <div style={styles.section}>
-                            <h3 style={styles.sectionTitle}>Connect With Us</h3>
-                            <div style={styles.socialContainer}>
-                                <div style={styles.iconGroup}>
-                                    <a href="#twitter" style={styles.iconLink}>
-                                        <i className="fab fa-twitter" style={styles.icon}></i>
-                                    </a>
-                                    <a href="#facebook" style={styles.iconLink}>
-                                        <i className="fab fa-facebook" style={styles.icon}></i>
-                                    </a>
-                                    <a href="#instagram" style={styles.iconLink}>
-                                        <i className="fab fa-instagram" style={styles.icon}></i>
-                                    </a>
-                                    <a href="#linkedin" style={styles.iconLink}>
-                                        <i className="fab fa-linkedin" style={styles.icon}></i>
-                                    </a>
-                                </div>
-
-                                <div style={styles.appLinks}>
-                                    <a href="#playstore" style={styles.appLink}>
-                                        <img
-                                            src="https://upload.wikimedia.org/wikipedia/commons/a/a0/Get_it_on_Google_play.svg"
-                                            alt="Google Play"
-                                            style={styles.storeImage}
-                                        />
-                                    </a>
-                                    <a href="#appstore" style={styles.appLink}>
-                                        <img
-                                            src="https://upload.wikimedia.org/wikipedia/commons/5/58/Download_on_the_App_Store_Badge.svg"
-                                            alt="App Store"
-                                            style={styles.storeImage}
-                                        />
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-                {/* About Us Section */}
-                {
-                    activeSection === "aboutUs" && (
-                        <div id="about-us" style={styles.content}>
-                            <h1 style={styles.heading}>About Us</h1>
+                        <div className="sh-hero-media">
                             <img
                                 src="https://th.bing.com/th/id/OIP.yn6JD0Y-ZbvHNU3gj3gauwHaHa?w=1210&h=1210&rs=1&pid=ImgDetMain"
                                 alt="Service Hunt"
-                                style={styles.image}
                             />
-                            <p style={styles.paragraph}>
-                                Welcome to <strong>Service Hunt</strong>, your one-stop destination for all service and event needs.
-                                We aim to simplify the process of finding and booking services, making your life hassle-free.
-                            </p>
+                        </div>
 
-                            <div style={styles.section}>
-                                <h2 style={styles.subheading}>Who We Are</h2>
+                        <p className="sh-detail-lead">
+                            Welcome to <strong>Service Hunt</strong>, your premier on-demand platform for local home maintenance, specialized trade professionals, event coordination, and lifestyle services. We empower local service providers while delivering seamless, trusted booking experiences to households nationwide.
+                        </p>
+
+                        <div className="sh-subsections-grid">
+                            <div className="sh-subsection-card">
                                 <img
                                     src="https://www.success.com/wp-content/uploads/2019/06/thebalancebusiness.jpg"
                                     alt="Who We Are"
-                                    style={styles.imageSmall}
+                                    className="sh-subsection-img"
                                 />
-                                <p style={styles.paragraph}>
-                                    We are a team of innovators, bringing together local vendors, service providers, and event organizers
-                                    on a single platform. Whether you need a plumber, wedding planner, or tickets to a live event, we have you covered.
+                                <h3><FaTools style={{ color: "#4f46e5" }} /> Who We Are</h3>
+                                <p style={{ fontSize: "0.875rem", color: "#64748b", lineHeight: 1.5 }}>
+                                    We are a team of tech innovators bridging local customers, licensed vendors, and independent service professionals on a single trusted, verified platform.
                                 </p>
                             </div>
 
-                            <div style={styles.section}>
-                                <h2 style={styles.subheading}>What We Do</h2>
+                            <div className="sh-subsection-card">
                                 <img
                                     src="https://th.bing.com/th/id/OIP.VjaDdG2ppXwMaEewed7TlgHaE7?w=800&h=533&rs=1&pid=ImgDetMain"
                                     alt="What We Do"
-                                    style={styles.imageSmall}
+                                    className="sh-subsection-img"
                                 />
-                                <ul style={styles.list}>
-                                    <li>✅ Connect You with Trusted Professionals</li>
-                                    <li>✅ Simplify Event Planning</li>
-                                    <li>✅ Provide Ticketing Solutions</li>
-                                    <li>✅ Support Local Businesses</li>
+                                <h3><FaRocket style={{ color: "#4f46e5" }} /> What We Do</h3>
+                                <ul className="sh-checklist">
+                                    <li className="sh-checklist-item">
+                                        <FaCheckCircle className="sh-check-icon" />
+                                        <span>Connect with vetted professionals</span>
+                                    </li>
+                                    <li className="sh-checklist-item">
+                                        <FaCheckCircle className="sh-check-icon" />
+                                        <span>Instant booking with dynamic pricing</span>
+                                    </li>
+                                    <li className="sh-checklist-item">
+                                        <FaCheckCircle className="sh-check-icon" />
+                                        <span>Event, ticket & transport solutions</span>
+                                    </li>
+                                    <li className="sh-checklist-item">
+                                        <FaCheckCircle className="sh-check-icon" />
+                                        <span>Empowering local service businesses</span>
+                                    </li>
                                 </ul>
                             </div>
 
-                            <div style={styles.section}>
-                                <h2 style={styles.subheading}>Our Vision</h2>
+                            <div className="sh-subsection-card">
                                 <img
                                     src="https://th.bing.com/th/id/OIP.Z9sBdTxSks6X1nOIVUz1vAHaE7?rs=1&pid=ImgDetMain"
                                     alt="Our Vision"
-                                    style={styles.imageSmall}
+                                    className="sh-subsection-img"
                                 />
-                                <p style={styles.paragraph}>
-                                    To become the leading platform for services and bookings, fostering connections between people
-                                    and businesses while transforming community interactions.
+                                <h3><FaEye style={{ color: "#4f46e5" }} /> Our Vision</h3>
+                                <p style={{ fontSize: "0.875rem", color: "#64748b", lineHeight: 1.5 }}>
+                                    To become the most reliable and customer-centric hyperlocal service ecosystem, transforming how communities find, book, and experience services every day.
                                 </p>
                             </div>
 
-                            <div style={styles.section}>
-                                <h2 style={styles.subheading}>Our Mission</h2>
+                            <div className="sh-subsection-card">
                                 <img
                                     src="https://th.bing.com/th/id/OIP.c3yLfXwSbnrQFsa1X-WqWAHaEo?w=1000&h=625&rs=1&pid=ImgDetMain"
                                     alt="Our Mission"
-                                    style={styles.imageSmall}
+                                    className="sh-subsection-img"
                                 />
-                                <p style={styles.paragraph}>
-                                    To create a seamless, trusted, and comprehensive marketplace where individuals can easily find services,
-                                    book events, and discover experiences effortlessly.
+                                <h3><FaShieldAlt style={{ color: "#4f46e5" }} /> Our Mission</h3>
+                                <p style={{ fontSize: "0.875rem", color: "#64748b", lineHeight: 1.5 }}>
+                                    To build a transparent, secure, and accessible platform offering upfront pricing, verified credentials, and unmatched service quality for all.
+                                </p>
+                            </div>
+                        </div>
+
+                        {activeSection && (
+                            <div className="sh-detail-footer">
+                                <button
+                                    type="button"
+                                    className="sh-back-btn"
+                                    onClick={() => toggleSection(null)}
+                                >
+                                    <FaArrowLeft />
+                                    <span>Back to Overview</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            ) : null}
+
+            {/* Vendor Partner Benefits Section */}
+            {activeSection === "vendorUs" && (
+                <div className="sh-detail-wrapper">
+                    <div className="sh-detail-card">
+                        <div className="sh-detail-header-bar">
+                            <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#6366f1", textTransform: "uppercase" }}>
+                                For Partners
+                            </span>
+                            <button
+                                type="button"
+                                className="sh-back-btn"
+                                onClick={() => toggleSection(null)}
+                            >
+                                <FaArrowLeft />
+                                <span>Back to Overview</span>
+                            </button>
+                        </div>
+
+                        <h1 className="sh-detail-title">Grow Your Business with Service Hunt</h1>
+
+                        <div className="sh-hero-media">
+                            <img
+                                src="https://th.bing.com/th/id/OIP.yELYmy4neggRJg7LrnCmagHaFS?w=1280&h=914&rs=1&pid=ImgDetMain"
+                                alt="Partner with us"
+                            />
+                        </div>
+
+                        <p className="sh-detail-lead">
+                            Join hundreds of verified professionals, contractors, and agencies expanding their client base. We handle discovery, scheduling, and billing so you can focus on delivering exceptional work.
+                        </p>
+
+                        <div className="sh-subsections-grid">
+                            <div className="sh-subsection-card">
+                                <h3><FaEye style={{ color: "#4f46e5" }} /> Enhanced Visibility</h3>
+                                <p style={{ fontSize: "0.875rem", color: "#64748b" }}>
+                                    Get featured in front of targeted local customers actively looking to hire service professionals in your city.
                                 </p>
                             </div>
 
-                            <button style={styles.backButton} onClick={() => toggleSection(null)}>
-                                🔙 Back
-                            </button>
-                        </div>
-                    )
-                }
+                            <div className="sh-subsection-card">
+                                <h3><FaChartLine style={{ color: "#4f46e5" }} /> Smart Management</h3>
+                                <p style={{ fontSize: "0.875rem", color: "#64748b" }}>
+                                    Real-time booking dashboard, helper dispatching, slot calendar control, and notification management.
+                                </p>
+                            </div>
 
+                            <div className="sh-subsection-card">
+                                <h3><FaMoneyBillWave style={{ color: "#4f46e5" }} /> Flexible & Secure Payouts</h3>
+                                <p style={{ fontSize: "0.875rem", color: "#64748b" }}>
+                                    Timely payouts directly to your bank account with integrated digital invoicing and transparent commissions.
+                                </p>
+                            </div>
 
-
-
-                {/* Vendor Us Section */}
-                {
-                    activeSection === "vendorUs" && (
-                        <div id="vendor-us" style={styles.content}>
-                            <div style={styles.vendorContainer}>
-                                <h1 style={styles.heading}>Grow Your Business With Us</h1>
-
-                                <div style={styles.heroImageContainer}>
-                                    <img
-                                        src="https://th.bing.com/th/id/OIP.yELYmy4neggRJg7LrnCmagHaFS?w=1280&h=914&rs=1&pid=ImgDetMain"
-                                        alt="Successful vendor partnership"
-                                        style={styles.heroImage}
-                                    />
-                                </div>
-
-                                <div style={styles.vendorBenefits}>
-                                    <h2 style={styles.sectionTitle}>
-                                        <span style={styles.icon}>🚀</span>
-                                        Vendor Advantages
-                                    </h2>
-
-                                    <div style={styles.benefitsGrid}>
-                                        <div style={styles.benefitCard}>
-                                            <div style={styles.benefitIcon}>👁️</div>
-                                            <h3 style={styles.benefitTitle}>Enhanced Visibility</h3>
-                                            <p>Reach thousands of potential customers in our marketplace</p>
-                                        </div>
-
-                                        <div style={styles.benefitCard}>
-                                            <div style={styles.benefitIcon}>📈</div>
-                                            <h3 style={styles.benefitTitle}>Smart Management</h3>
-                                            <p>Real-time booking dashboard and calendar integration</p>
-                                        </div>
-
-                                        <div style={styles.benefitCard}>
-                                            <div style={styles.benefitIcon}>💰</div>
-                                            <h3 style={styles.benefitTitle}>Flexible Payments</h3>
-                                            <p>Multiple payout options with secure transactions</p>
-                                        </div>
-
-                                        <div style={styles.benefitCard}>
-                                            <div style={styles.benefitIcon}>📊</div>
-                                            <h3 style={styles.benefitTitle}>Performance Insights</h3>
-                                            <p>Detailed analytics and customer feedback reports</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div style={styles.onboardingProcess}>
-                                    <h2 style={styles.sectionTitle}>
-                                        <span style={styles.icon}>📝</span>
-                                        Simple Onboarding
-                                    </h2>
-
-                                    <div style={styles.stepsContainer}>
-                                        <div style={styles.stepCard}>
-                                            <div style={styles.stepNumber}>1</div>
-                                            <h3 style={styles.stepTitle}>Account Setup</h3>
-                                            <p>Register your business and verify credentials</p>
-                                        </div>
-
-                                        <div style={styles.stepCard}>
-                                            <div style={styles.stepNumber}>2</div>
-                                            <h3 style={styles.stepTitle}>Profile Creation</h3>
-                                            <p>Add services, pricing, and availability</p>
-                                        </div>
-
-                                        <div style={styles.stepCard}>
-                                            <div style={styles.stepNumber}>3</div>
-                                            <h3 style={styles.stepTitle}>Go Live</h3>
-                                            <p>Start receiving and managing bookings</p>
-                                        </div>
-
-                                        <div style={styles.stepCard}>
-                                            <div style={styles.stepNumber}>4</div>
-                                            <h3 style={styles.stepTitle}>Growth Support</h3>
-                                            <p>Utilize our marketing tools and analytics</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div style={styles.ctaSection}>
-                                    <button
-                                        style={styles.ctaButton}
-                                        onClick={() => toggleSection(null)}
-                                        aria-label="Return to previous page"
-                                    >
-                                        ← Back to Overview
-                                    </button>
-                                    <p style={styles.supportText}>
-                                        Need help? Contact our <a href="#support" style={styles.supportLink}>partner team</a>
-                                    </p>
-                                </div>
+                            <div className="sh-subsection-card">
+                                <h3><FaChartPie style={{ color: "#4f46e5" }} /> Performance Insights</h3>
+                                <p style={{ fontSize: "0.875rem", color: "#64748b" }}>
+                                    Detailed job analytics, rating metrics, customer feedback, and growth tips to optimize your revenue.
+                                </p>
                             </div>
                         </div>
-                    )
-                }
-                {/* User Us Section */}
-                {
-                    activeSection === "userUs" && (
-                        <div id="user-us" style={styles.content}>
-                            <div style={styles.sectionContainer}>
-                                <h1 style={styles.heading}>Why Choose Our Platform?</h1>
 
-                                <div style={styles.imageContainer}>
-                                    <img
-                                        src="https://thumbs.dreamstime.com/z/great-customer-service-words-white-concept-exciting-experience-customers-45526322.jpg"
-                                        alt="Happy customers using our platform"
-                                        style={styles.featuredImage}
-                                    />
-                                </div>
+                        <h2 style={{ fontSize: "1.35rem", fontWeight: 800, margin: "30px 0 16px" }}>
+                            Simple 4-Step Onboarding Process
+                        </h2>
 
-                                <div style={styles.sectionContent}>
-                                    <section style={styles.featureSection}>
-                                        <h2 style={styles.subheading}>
-                                            <span style={styles.icon}>🏆</span>
-                                            Convenience at Your Fingertips
-                                        </h2>
-                                        <ul style={styles.featureList}>
-                                            <li style={styles.listItem}>
-                                                <strong>All-in-One Platform:</strong> Access all services from a single dashboard
-                                            </li>
-                                            <li style={styles.listItem}>
-                                                <strong>Instant Booking:</strong> Find and book services in 3 clicks
-                                            </li>
-                                            <li style={styles.listItem}>
-                                                <strong>Time-Saving:</strong> Reduce planning time by up to 70%
-                                            </li>
-                                        </ul>
-                                    </section>
-
-                                    <section style={styles.featureSection}>
-                                        <h2 style={styles.subheading}>
-                                            <span style={styles.icon}>🎯</span>
-                                            Comprehensive Service Selection
-                                        </h2>
-                                        <div style={styles.serviceGrid}>
-                                            <div style={styles.serviceCategory}>
-                                                <h3 style={styles.serviceTitle}>Home Services</h3>
-                                                <ul style={styles.serviceList}>
-                                                    <li>Plumbing & Electrical</li>
-                                                    <li>Cleaning & Maintenance</li>
-                                                    <li>Renovation Experts</li>
-                                                </ul>
-                                            </div>
-
-                                            <div style={styles.serviceCategory}>
-                                                <h3 style={styles.serviceTitle}>Event Planning</h3>
-                                                <ul style={styles.serviceList}>
-                                                    <li>Wedding Specialists</li>
-                                                    <li>Catering Services</li>
-                                                    <li>Professional Photographers</li>
-                                                </ul>
-                                            </div>
-
-                                            <div style={styles.serviceCategory}>
-                                                <h3 style={styles.serviceTitle}>Entertainment</h3>
-                                                <ul style={styles.serviceList}>
-                                                    <li>Live Events & Shows</li>
-                                                    <li>Adventure Activities</li>
-                                                    <li>Family Entertainment</li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </section>
-                                </div>
-
-                                <div style={styles.buttonContainer}>
-                                    <button
-                                        style={styles.backButton}
-                                        onClick={() => toggleSection(null)}
-                                        aria-label="Return to previous page"
-                                    >
-                                        <span style={styles.buttonIcon}>←</span>
-                                        Back to Overview
-                                    </button>
-                                </div>
+                        <div className="sh-steps-grid">
+                            <div className="sh-step-box">
+                                <div className="sh-step-num">1</div>
+                                <h4>Account Setup</h4>
+                                <p>Register your business profile and submit necessary documents.</p>
+                            </div>
+                            <div className="sh-step-box">
+                                <div className="sh-step-num">2</div>
+                                <h4>Profile Creation</h4>
+                                <p>Add your service offerings, photos, and location-based pricing.</p>
+                            </div>
+                            <div className="sh-step-box">
+                                <div className="sh-step-num">3</div>
+                                <h4>Go Live</h4>
+                                <p>Start receiving direct booking requests from nearby customers.</p>
+                            </div>
+                            <div className="sh-step-box">
+                                <div className="sh-step-num">4</div>
+                                <h4>Growth Support</h4>
+                                <p>Scale your business with dedicated support and marketing tools.</p>
                             </div>
                         </div>
-                    )
-                }
-                {/* Terms and Conditions Section */}
-                {
-                    activeSection === "terms" && (
-                        <div id="terms" style={styles.content}>
-                            <h1 style={styles.heading}>Terms And Conditions</h1>
-                            <section>
-                                <h2 style={styles.subheading}>For Users:</h2>
-                                <ul style={styles.list}>
-                                    <li>Users must confirm bookings within the specified timeline.</li>
-                                    <li>Cancellations may incur charges, depending on the vendor’s policy.</li>
-                                </ul>
-                            </section>
-                            <section>
-                                <h2 style={styles.subheading}>For Vendors:</h2>
-                                <ul style={styles.list}>
-                                    <li>Vendors must provide accurate business details and comply with local regulations.</li>
-                                    <li>Vendors must ensure the quality of their services and adhere to agreed timelines.</li>
-                                </ul>
-                            </section>
-                            <button style={styles.backButton} onClick={() => toggleSection(null)}>
-                                Back
-                            </button>
-                        </div>
-                    )
-                }
 
-                {/* Privacy Policy Section */}
-                {
-                    activeSection === "privacy" && (
-                        <div id="privacy" style={styles.content}>
-                            <h1 style={styles.heading}>Privacy Policy</h1>
-                            <section>
-                                <h2 style={styles.subheading}>Data Collection</h2>
-                                <ul style={styles.list}>
-                                    <li>We collect user information (name, email, phone number) for account creation and booking purposes.</li>
-                                    <li>We collect vendor details for registration and verification.</li>
-                                </ul>
-                            </section>
-                            <section>
-                                <h2 style={styles.subheading}>Data Usage</h2>
-                                <ul style={styles.list}>
-                                    <li>Your data is used to facilitate bookings, process payments, and provide customer support.</li>
-                                    <li>Vendor details are shared with users as required for bookings.</li>
-                                </ul>
-                            </section>
-                            <button style={styles.backButton} onClick={() => toggleSection(null)}>
-                                Back
+                        <div className="sh-detail-footer">
+                            <button
+                                type="button"
+                                className="sh-back-btn"
+                                onClick={() => toggleSection(null)}
+                            >
+                                <FaArrowLeft />
+                                <span>Back to Overview</span>
+                            </button>
+                            <Link to="/form" style={{ fontWeight: 700, color: "#4f46e5", textDecoration: "none" }}>
+                                Apply as Partner →
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Customer Benefits Section */}
+            {activeSection === "userUs" && (
+                <div className="sh-detail-wrapper">
+                    <div className="sh-detail-card">
+                        <div className="sh-detail-header-bar">
+                            <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#6366f1", textTransform: "uppercase" }}>
+                                For Customers
+                            </span>
+                            <button
+                                type="button"
+                                className="sh-back-btn"
+                                onClick={() => toggleSection(null)}
+                            >
+                                <FaArrowLeft />
+                                <span>Back to Overview</span>
                             </button>
                         </div>
-                    )
-                }
-            </div >
-        </div >
+
+                        <h1 className="sh-detail-title">Why Choose Service Hunt?</h1>
+
+                        <div className="sh-hero-media">
+                            <img
+                                src="https://thumbs.dreamstime.com/z/great-customer-service-words-white-concept-exciting-experience-customers-45526322.jpg"
+                                alt="Great Customer Experience"
+                            />
+                        </div>
+
+                        <div className="sh-subsections-grid">
+                            <div className="sh-subsection-card">
+                                <h3><FaCheckCircle style={{ color: "#10b981" }} /> All-in-One Convenience</h3>
+                                <p style={{ fontSize: "0.875rem", color: "#64748b" }}>
+                                    Access plumbers, electricians, caterers, drivers, and party planners from a single intuitive platform.
+                                </p>
+                            </div>
+
+                            <div className="sh-subsection-card">
+                                <h3><FaRocket style={{ color: "#4f46e5" }} /> 3-Click Instant Booking</h3>
+                                <p style={{ fontSize: "0.875rem", color: "#64748b" }}>
+                                    Select your city, choose your preferred timing, and book verified service providers with upfront pricing.
+                                </p>
+                            </div>
+
+                            <div className="sh-subsection-card">
+                                <h3><FaShieldAlt style={{ color: "#f59e0b" }} /> Verified Quality Guarantee</h3>
+                                <p style={{ fontSize: "0.875rem", color: "#64748b" }}>
+                                    Every professional is background-checked and customer-reviewed, ensuring you receive top-quality work every time.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="sh-detail-footer">
+                            <button
+                                type="button"
+                                className="sh-back-btn"
+                                onClick={() => toggleSection(null)}
+                            >
+                                <FaArrowLeft />
+                                <span>Back to Overview</span>
+                            </button>
+                            <Link to="/home" style={{ fontWeight: 700, color: "#4f46e5", textDecoration: "none" }}>
+                                Explore Services →
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Terms & Conditions Section */}
+            {activeSection === "terms" && (
+                <div className="sh-detail-wrapper">
+                    <div className="sh-detail-card">
+                        <div className="sh-detail-header-bar">
+                            <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#6366f1", textTransform: "uppercase" }}>
+                                Legal
+                            </span>
+                            <button
+                                type="button"
+                                className="sh-back-btn"
+                                onClick={() => toggleSection(null)}
+                            >
+                                <FaArrowLeft />
+                                <span>Back to Overview</span>
+                            </button>
+                        </div>
+
+                        <h1 className="sh-detail-title">Terms & Conditions</h1>
+
+                        <div className="sh-legal-card">
+                            <h3>Terms for Customers</h3>
+                            <ul>
+                                <li>Customers must confirm bookings and slot details within the designated service window.</li>
+                                <li>Cancellations made within 24 hours of scheduled service may incur policy-based processing fees.</li>
+                                <li>Customer feedback and ratings must accurately reflect genuine service interactions.</li>
+                            </ul>
+                        </div>
+
+                        <div className="sh-legal-card">
+                            <h3>Terms for Vendors & Service Providers</h3>
+                            <ul>
+                                <li>Vendors must maintain valid business documentation, insurance, and professional certifications.</li>
+                                <li>Service providers agree to arrive promptly during booked slots and deliver services as described.</li>
+                                <li>Direct payments outside the platform for on-platform leads violate marketplace terms.</li>
+                            </ul>
+                        </div>
+
+                        <div className="sh-detail-footer">
+                            <button
+                                type="button"
+                                className="sh-back-btn"
+                                onClick={() => toggleSection(null)}
+                            >
+                                <FaArrowLeft />
+                                <span>Back to Overview</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Privacy Policy Section */}
+            {activeSection === "privacy" && (
+                <div className="sh-detail-wrapper">
+                    <div className="sh-detail-card">
+                        <div className="sh-detail-header-bar">
+                            <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#6366f1", textTransform: "uppercase" }}>
+                                Privacy
+                            </span>
+                            <button
+                                type="button"
+                                className="sh-back-btn"
+                                onClick={() => toggleSection(null)}
+                            >
+                                <FaArrowLeft />
+                                <span>Back to Overview</span>
+                            </button>
+                        </div>
+
+                        <h1 className="sh-detail-title">Privacy Policy</h1>
+
+                        <div className="sh-legal-card">
+                            <h3>Data Collection</h3>
+                            <ul>
+                                <li>We collect basic account information (name, email address, contact number) to manage bookings.</li>
+                                <li>Location details are processed to match you with nearby service availability and calculate accurate area pricing.</li>
+                                <li>Vendor identification documents are collected strictly for partner onboarding and security verification.</li>
+                            </ul>
+                        </div>
+
+                        <div className="sh-legal-card">
+                            <h3>Data Usage & Security</h3>
+                            <ul>
+                                <li>Your contact and address details are shared only with the assigned service provider for confirmed orders.</li>
+                                <li>We implement industry-standard 256-bit encryption for all payment transactions and sensitive credentials.</li>
+                                <li>We do not sell personal data to third-party marketing companies under any circumstances.</li>
+                            </ul>
+                        </div>
+
+                        <div className="sh-detail-footer">
+                            <button
+                                type="button"
+                                className="sh-back-btn"
+                                onClick={() => toggleSection(null)}
+                            >
+                                <FaArrowLeft />
+                                <span>Back to Overview</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Default Footer Overview Grid (Visible when no active modal/detail view is open) */}
+            {!activeSection && (
+                <footer className="sh-footer-container">
+                    <div className="sh-footer-grid">
+                        {/* 1. Brand & Tagline */}
+                        <div className="sh-footer-col-brand">
+                            <h3>
+                                <FaTools style={{ color: "#6366f1", fontSize: "1.2rem" }} />
+                                <span>Service Hunt</span>
+                            </h3>
+                            <p className="sh-footer-tagline">
+                                Your trusted on-demand local marketplace for home maintenance, specialized repairs, event planning, and trusted lifestyle professionals.
+                            </p>
+                            <div className="sh-social-row">
+                                <a href="#twitter" className="sh-social-btn" aria-label="Twitter">
+                                    <FaTwitter />
+                                </a>
+                                <a href="#facebook" className="sh-social-btn" aria-label="Facebook">
+                                    <FaFacebookF />
+                                </a>
+                                <a href="#instagram" className="sh-social-btn" aria-label="Instagram">
+                                    <FaInstagram />
+                                </a>
+                                <a href="#linkedin" className="sh-social-btn" aria-label="LinkedIn">
+                                    <FaLinkedinIn />
+                                </a>
+                            </div>
+                        </div>
+
+                        {/* 2. Company */}
+                        <div>
+                            <h4 className="sh-footer-title">Company</h4>
+                            <ul className="sh-footer-list">
+                                <li>
+                                    <button
+                                        type="button"
+                                        className="sh-footer-link"
+                                        onClick={() => toggleSection("aboutUs")}
+                                    >
+                                        About Us
+                                    </button>
+                                </li>
+                                <li>
+                                    <button
+                                        type="button"
+                                        className="sh-footer-link"
+                                        onClick={() => toggleSection("terms")}
+                                    >
+                                        Terms & Conditions
+                                    </button>
+                                </li>
+                                <li>
+                                    <button
+                                        type="button"
+                                        className="sh-footer-link"
+                                        onClick={() => toggleSection("privacy")}
+                                    >
+                                        Privacy Policy
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+
+                        {/* 3. For Customers */}
+                        <div>
+                            <h4 className="sh-footer-title">For Customers</h4>
+                            <ul className="sh-footer-list">
+                                <li>
+                                    <button
+                                        type="button"
+                                        className="sh-footer-link"
+                                        onClick={() => toggleSection("userUs")}
+                                    >
+                                        Why Choose Us?
+                                    </button>
+                                </li>
+                                <li>
+                                    <Link to="/home" className="sh-footer-link">
+                                        Explore Services
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link to="/myorders" className="sh-footer-link">
+                                        Track Bookings
+                                    </Link>
+                                </li>
+                            </ul>
+                        </div>
+
+                        {/* 4. For Partners */}
+                        <div>
+                            <h4 className="sh-footer-title">For Partners</h4>
+                            <ul className="sh-footer-list">
+                                <li>
+                                    <button
+                                        type="button"
+                                        className="sh-footer-link"
+                                        onClick={() => toggleSection("vendorUs")}
+                                    >
+                                        Partner Benefits
+                                    </button>
+                                </li>
+                                <li>
+                                    <Link to="/form" className="sh-footer-link">
+                                        Register as Partner
+                                    </Link>
+                                </li>
+                                <li>
+                                    <Link to="/helperlogin" className="sh-footer-link">
+                                        Helper Panel
+                                    </Link>
+                                </li>
+                            </ul>
+                        </div>
+
+                        {/* 5. Mobile Apps */}
+                        <div>
+                            <h4 className="sh-footer-title">Get The App</h4>
+                            <div className="sh-app-badges">
+                                <a href="#playstore">
+                                    <img
+                                        src="https://upload.wikimedia.org/wikipedia/commons/a/a0/Get_it_on_Google_play.svg"
+                                        alt="Get it on Google Play"
+                                        className="sh-app-badge-img"
+                                    />
+                                </a>
+                                <a href="#appstore">
+                                    <img
+                                        src="https://upload.wikimedia.org/wikipedia/commons/5/58/Download_on_the_App_Store_Badge.svg"
+                                        alt="Download on the App Store"
+                                        className="sh-app-badge-img"
+                                    />
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom Copyright Bar */}
+                    <div className="sh-footer-bottom">
+                        <div>
+                            © {new Date().getFullYear()} Service Hunt Technologies, Inc. All rights reserved.
+                        </div>
+                        <div style={{ display: "flex", gap: "16px" }}>
+                            <button
+                                type="button"
+                                className="sh-footer-link"
+                                onClick={() => toggleSection("privacy")}
+                            >
+                                Privacy
+                            </button>
+                            <span>•</span>
+                            <button
+                                type="button"
+                                className="sh-footer-link"
+                                onClick={() => toggleSection("terms")}
+                            >
+                                Terms
+                            </button>
+                            <span>•</span>
+                            <Link to="/home" className="sh-footer-link">
+                                Sitemap
+                            </Link>
+                        </div>
+                    </div>
+                </footer>
+            )}
+        </div>
     );
 };
 
-const styles = {
-    page: {
-        backgroundColor: '#f0f4f8',
-        minHeight: '100vh',
-        fontFamily: 'Arial, sans-serif',
-    },
-    navbar: {
-        backgroundColor: '#3498db',
-        padding: '20px',
-        textAlign: 'center',
-        color: '#fff',
-    },
-    brand: {
-        margin: 0,
-        fontSize: '2rem',
-    },
-    container: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        padding: '20px',
-        maxWidth: '1200px',
-        margin: '0 auto',
-    },
-    section: {
-        width: '30%',
-        backgroundColor: '#fff',
-        padding: '20px',
-        borderRadius: '8px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    },
-    sectionTitle: {
-        color: '#3498db',
-        marginBottom: '20px',
-    },
-    list: {
-        listStyleType: 'none',
-        padding: 0,
-    },
-    listItem: {
-        marginBottom: '10px',
-    },
-    link: {
-        color: '#3498db',
-        textDecoration: 'none',
-        fontSize: '18px',
-        transition: 'color 0.3s ease',
-    },
-    linkHover: {
-        color: '#2980b9',
-    },
-    icons: {
-        display: 'flex',
-        gap: '10px',
-    },
-    iconLink: {
-        color: '#3498db',
-        fontSize: '24px',
-        transition: 'color 0.3s ease',
-    },
-    iconLinkHover: {
-        color: '#2980b9',
-    },
-    storeLinks: {
-        display: 'flex',
-        marginTop: '20px',
-    },
-    storeImage: {
-        width: '130px',
-        height: '40px',
-        marginRight: '10px',
-    },
-    content: {
-        marginTop: '30px',
-        padding: '20px',
-        backgroundColor: '#fff',
-        borderRadius: '8px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    },
-    heading: {
-        fontSize: '30px',
-        color: '#3498db',
-    },
-    subheading: {
-        fontSize: '24px',
-        marginTop: '20px',
-        color: '#2c3e50',
-    },
-    paragraph: {
-        fontSize: '16px',
-        lineHeight: '1.6',
-        color: '#34495e',
-    },
-    image: {
-        width: '100%',
-        height: '200px',
-        objectFit: 'cover',
-        borderRadius: '8px',
-        marginBottom: '20px',
-    },
-    backButton: {
-        backgroundColor: '#3498db',
-        color: '#fff',
-        padding: '10px 20px',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        marginTop: '20px',
-        transition: 'background-color 0.3s ease',
-    },
-    backButtonHover: {
-        backgroundColor: '#2980b9',
-    },
-
-    content: {
-        maxWidth: "900px", // Ensures it doesn’t spread too wide
-        width: "90%", // Keeps it responsive
-        margin: "0 auto", // Centers the content
-        padding: "20px",
-        textAlign: "center",
-    },
-    image: {
-        maxWidth: "100%",
-        height: "auto",
-        borderRadius: "10px",
-    },
-    imageSmall: {
-        maxWidth: "80%",
-        height: "auto",
-        borderRadius: "10px",
-        margin: "10px 0",
-    },
-    section: {
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: "30px",
-    },
-    list: {
-        listStyle: "none",
-        padding: "0",
-        textAlign: "left",
-    },
-    backButton: {
-        backgroundColor: "#007BFF",
-        color: "white",
-        padding: "10px 20px",
-        border: "none",
-        borderRadius: "5px",
-        cursor: "pointer",
-        marginTop: "20px",
-    },
-    sectionContainer: {
-        maxWidth: '800px',
-        margin: '0 auto',
-        padding: '20px',
-    },
-    imageContainer: {
-        borderRadius: '12px',
-        overflow: 'hidden',
-        margin: '30px 0',
-        boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
-    },
-    featuredImage: {
-        width: '100%',
-        height: '300px',
-        objectFit: 'cover',
-    },
-    sectionContent: {
-        textAlign: 'left',
-        margin: '40px 0',
-    },
-    featureSection: {
-        backgroundColor: '#f8f9fa',
-        borderRadius: '10px',
-        padding: '25px',
-        marginBottom: '30px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-    },
-    icon: {
-        marginRight: '10px',
-    },
-    featureList: {
-        listStyle: 'none',
-        padding: '0',
-        margin: '20px 0',
-    },
-    listItem: {
-        padding: '12px 0',
-        borderBottom: '1px solid #eee',
-        fontSize: '16px',
-        lineHeight: '1.6',
-        display: 'flex',
-        alignItems: 'center',
-        '&:last-child': {
-            borderBottom: 'none',
-        },
-    },
-    serviceGrid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-        gap: '25px',
-        marginTop: '25px',
-    },
-    serviceCategory: {
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        padding: '20px',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
-    },
-    serviceTitle: {
-        color: '#2c3e50',
-        margin: '0 0 15px 0',
-        fontSize: '18px',
-    },
-    serviceList: {
-        listStyle: 'none',
-        padding: '0',
-        margin: '0',
-        '& li': {
-            padding: '8px 0',
-            color: '#34495e',
-        },
-    },
-    buttonContainer: {
-        textAlign: 'center',
-        marginTop: '40px',
-    },
-    buttonIcon: {
-        marginRight: '8px',
-    },
-
-    vendorContainer: {
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '20px',
-    },
-    heroImageContainer: {
-        borderRadius: '16px',
-        overflow: 'hidden',
-        margin: '40px 0',
-        boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-    },
-    heroImage: {
-        width: '100%',
-        height: '400px',
-        objectFit: 'cover',
-    },
-    vendorBenefits: {
-        margin: '60px 0',
-    },
-    sectionTitle: {
-        fontSize: '28px',
-        color: '#2c3e50',
-        marginBottom: '40px',
-        display: 'flex',
-        alignItems: 'center',
-    },
-    icon: {
-        marginRight: '15px',
-        fontSize: '32px',
-    },
-    benefitsGrid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '30px',
-        marginTop: '30px',
-    },
-    benefitCard: {
-        backgroundColor: '#fff',
-        borderRadius: '12px',
-        padding: '30px',
-        textAlign: 'center',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-        transition: 'transform 0.3s ease',
-        ':hover': {
-            transform: 'translateY(-5px)',
-        },
-    },
-    benefitIcon: {
-        fontSize: '40px',
-        marginBottom: '20px',
-    },
-    benefitTitle: {
-        color: '#3498db',
-        margin: '15px 0',
-        fontSize: '20px',
-    },
-    onboardingProcess: {
-        margin: '60px 0',
-    },
-    stepsContainer: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: '25px',
-        marginTop: '40px',
-    },
-    stepCard: {
-        backgroundColor: '#f8f9fa',
-        borderRadius: '10px',
-        padding: '25px',
-        position: 'relative',
-        '::before': {
-            content: '""',
-            position: 'absolute',
-            top: '40px',
-            left: '-20px',
-            width: '40px',
-            height: '2px',
-            backgroundColor: '#3498db',
-            display: ['none', , 'block'], // Hide on mobile
-        },
-    },
-    stepNumber: {
-        width: '40px',
-        height: '40px',
-        backgroundColor: '#3498db',
-        color: '#fff',
-        borderRadius: '50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '20px',
-        fontWeight: 'bold',
-        marginBottom: '15px',
-    },
-    stepTitle: {
-        color: '#2c3e50',
-        margin: '10px 0',
-        fontSize: '18px',
-    },
-    ctaSection: {
-        textAlign: 'center',
-        margin: '50px 0 30px',
-    },
-    ctaButton: {
-        backgroundColor: '#3498db',
-        color: '#fff',
-        padding: '15px 40px',
-        borderRadius: '30px',
-        border: 'none',
-        fontSize: '16px',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-        ':hover': {
-            backgroundColor: '#2980b9',
-            transform: 'scale(1.05)',
-        },
-    },
-    supportText: {
-        marginTop: '25px',
-        color: '#7f8c8d',
-    },
-    supportLink: {
-        color: '#3498db',
-        textDecoration: 'none',
-        fontWeight: 'bold',
-    },
-    page: {
-        backgroundColor: '#f8f9fa',
-        padding: '2rem 0',
-        borderTop: '1px solid #e9ecef'
-    },
-    navbar: {
-        padding: '0 2rem 2rem',
-        borderBottom: '1px solid #dee2e6'
-    },
-    brand: {
-        fontSize: '1.8rem',
-        color: '#2d3436',
-        margin: 0
-    },
-    container: {
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '0 2rem'
-    },
-    gridContainer: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-        gap: '2rem',
-        padding: '2rem 0'
-    },
-    section: {
-        marginBottom: '2rem'
-    },
-    sectionTitle: {
-        fontSize: '1.1rem',
-        color: '#495057',
-        marginBottom: '1rem',
-        fontWeight: '600',
-        textTransform: 'uppercase'
-    },
-    list: {
-        listStyle: 'none',
-        padding: 0,
-        margin: 0
-    },
-    listItem: {
-        marginBottom: '0.75rem'
-    },
-    link: {
-        color: '#6c757d',
-        textDecoration: 'none',
-        fontSize: '0.95rem',
-        transition: 'color 0.2s ease',
-        ':hover': {
-            color: '#2d3436',
-            textDecoration: 'underline'
-        }
-    },
-    socialContainer: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1.5rem'
-    },
-    iconGroup: {
-        display: 'flex',
-        gap: '1rem'
-    },
-    icon: {
-        fontSize: '1.5rem',
-        color: '#6c757d',
-        transition: 'color 0.2s ease',
-        ':hover': {
-            color: '#2d3436'
-        }
-    },
-    appLinks: {
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1rem',
-        maxWidth: '200px'
-    },
-    storeImage: {
-        height: '40px',
-        width: 'auto',
-        borderRadius: '5px'
-    },
-    '@media (max-width: 768px)': {
-        gridContainer: {
-            gridTemplateColumns: '1fr'
-        },
-        brand: {
-            fontSize: '1.5rem'
-        }
-    },
-
-
-    navbar: {
-        backgroundColor: '#bdefbd',  // Light background
-        borderBottom: '1px solid #e9ecef'
-    },
-    brand: {
-        color: '#2d3436',  // Dark text
-        // ...
-    }
-}
 export default About;

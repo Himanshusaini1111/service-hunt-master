@@ -4,6 +4,9 @@ import Error from '../components/Error';
 import Loader from '../components/Loader';
 import Success from "../components/Success";
 import { GoogleLogin } from '@react-oauth/google';
+import Navbar from '../components/Navbar';
+import { FaEnvelope, FaLock, FaEye, FaEyeSlash, FaSignInAlt } from 'react-icons/fa';
+import './Auth.css';
 
 export default function LoginScreen() {
     const [formData, setFormData] = useState({
@@ -13,6 +16,7 @@ export default function LoginScreen() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
         // Redirect if user is already logged in
@@ -75,7 +79,6 @@ export default function LoginScreen() {
 
         try {
             setLoading(true);
-            // Send the credential to your backend for verification
             const result = await axios.post('/api/users/google-login', {
                 credential: credentialResponse.credential
             });
@@ -101,182 +104,143 @@ export default function LoginScreen() {
     };
 
     return (
-        <div className="min-vh-100 bg-light">
-            {/* Navigation */}
-            <nav className="navbar navbar-expand-lg custom-navbar">
-                <div className="navbar-brand-section">
-                    {/* Brand Logo/Name */}
-                    <a className="navbar-brand d-flex align-items-center" href="/home">
-                        <h2 className="brand-title mb-0">
-                            Service Hunt
-                        </h2>
-                    </a>
-                </div>
-            </nav>
+        <div className="auth-page">
+            <Navbar />
+            <div className="auth-bg-ambient" />
 
-            {/* Main Content */}
-            <div className="container">
-                <div className="row justify-content-center align-items-center min-vh-75 py-1">
-                    <div className="col-md-6 col-lg-5">
-                        {/* Login Card */}
-                        <div className="card shadow-lg border-0 rounded-3">
-                            <div className="card-body p-5">
-                                {/* Header */}
-                                <div className="text-center mb-4">
-                                    <h2 className="card-title fw-bold text-primary mb-2">
-                                        Welcome Back
-                                    </h2>
-                                    <p className="text-muted">Sign in to your account</p>
-                                </div>
+            <div className="auth-container">
+                <div className="auth-card">
+                    <div className="auth-card-top-accent" />
 
-                                {/* Status Messages */}
-                                {loading && (
-                                    <div className="mb-3">
-                                        <Loader />
-                                    </div>
-                                )}
-                                {error && (
-                                    <div className="mb-3">
-                                        <Error error={error} />
-                                    </div>
-                                )}
-                                {success && (
-                                    <div className="mb-3" style={{color:"white"}}>
-                                        <Success success="Login successful! Redirecting..." />
-                                    </div>
-                                )}
+                    <div className="auth-header">
+                        <div className="auth-header-icon">
+                            <FaSignInAlt />
+                        </div>
+                        <h1 className="auth-title">Welcome Back</h1>
+                        <p className="auth-subtitle">Sign in to manage bookings and services</p>
+                    </div>
 
-                                {/* Login Form */}
-                                <form onSubmit={handleSubmit}>
-                                    <div className="mb-3">
-                                        <label htmlFor="email" className="form-label fw-semibold">
-                                            Email Address
-                                        </label>
-                                        <input
-                                            id="email"
-                                            name="email"
-                                            type="email"
-                                            className="form-control form-control-lg"
-                                            placeholder="Enter your email"
-                                            value={formData.email}
-                                            onChange={handleInputChange}
-                                            onKeyPress={handleKeyPress}
-                                            disabled={loading}
-                                            required
-                                        />
-                                    </div>
+                    {/* Status Feedback */}
+                    {loading && (
+                        <div style={{ marginBottom: '16px' }}>
+                            <Loader />
+                        </div>
+                    )}
+                    {error && (
+                        <div style={{ marginBottom: '16px' }}>
+                            <Error error={error} />
+                        </div>
+                    )}
+                    {success && (
+                        <div style={{ marginBottom: '16px', color: '#059669' }}>
+                            <Success success="Login successful! Redirecting..." />
+                        </div>
+                    )}
 
-                                    <div className="mb-4">
-                                        <label htmlFor="password" className="form-label fw-semibold">
-                                            Password
-                                        </label>
-                                        <input
-                                            id="password"
-                                            name="password"
-                                            type="password"
-                                            className="form-control form-control-lg"
-                                            placeholder="Enter your password"
-                                            value={formData.password}
-                                            onChange={handleInputChange}
-                                            onKeyPress={handleKeyPress}
-                                            disabled={loading}
-                                            required
-                                        />
-                                    </div>
-
-                                    <button
-                                        type="submit"
-                                        className="btn btn-primary btn-lg w-100 py-3 fw-semibold"
-                                        disabled={loading}
-                                    >
-                                        {loading ? (
-                                            <>
-                                                <span className="spinner-border spinner-border-sm me-2" />
-                                                Signing In...
-                                            </>
-                                        ) : (
-                                            'Sign In'
-                                        )}
-                                    </button>
-                                </form>
-
-                                {/* Divider */}
-                                <div className="position-relative my-4">
-                                    <hr className="border-1" />
-                                    <span className="position-absolute top-50 start-50 translate-middle bg-white px-3 text-muted">
-                                        OR
-                                    </span>
-                                </div>
-
-                                {/* Google Login Button */}
-                                <div className="d-flex justify-content-center">
-                                    <GoogleLogin
-                                        onSuccess={handleGoogleLoginSuccess}
-                                        onError={handleGoogleLoginError}
-                                        useOneTap={false}
-                                        theme="outline"
-                                        size="large"
-                                        text="signin_with"
-                                        shape="rectangular"
-                                        // Optionally specify the client ID explicitly
-                                        clientId={googleClientId}
-                                    />
-                                </div>
-
-                                {/* Footer Links */}
-                                <div className="text-center mt-4 pt-3 border-top">
-                                    <p className="text-muted mb-2">
-                                        Don't have an account?{' '}
-                                        <a
-                                            href="/register"
-                                            className="text-primary fw-semibold text-decoration-none"
-                                        >
-                                            Create Account
-                                        </a>
-                                    </p>
-                                    <a
-                                        href="/forgot-password"
-                                        className="text-muted text-decoration-none small"
-                                    >
-                                        Forgot your password?
-                                    </a>
-                                </div>
+                    {/* Login Form */}
+                    <form className="auth-form" onSubmit={handleSubmit}>
+                        <div className="auth-field-group">
+                            <label className="auth-label" htmlFor="email">
+                                Email Address
+                            </label>
+                            <div className="auth-input-wrap">
+                                <input
+                                    id="email"
+                                    name="email"
+                                    type="email"
+                                    className="auth-input"
+                                    placeholder="name@example.com"
+                                    value={formData.email}
+                                    onChange={handleInputChange}
+                                    onKeyPress={handleKeyPress}
+                                    disabled={loading}
+                                    required
+                                />
+                                <FaEnvelope className="auth-input-icon" />
                             </div>
                         </div>
+
+                        <div className="auth-field-group">
+                            <label className="auth-label" htmlFor="password">
+                                Password
+                            </label>
+                            <div className="auth-input-wrap">
+                                <input
+                                    id="password"
+                                    name="password"
+                                    type={showPassword ? "text" : "password"}
+                                    className="auth-input has-toggle"
+                                    placeholder="Enter your password"
+                                    value={formData.password}
+                                    onChange={handleInputChange}
+                                    onKeyPress={handleKeyPress}
+                                    disabled={loading}
+                                    required
+                                />
+                                <FaLock className="auth-input-icon" />
+                                <button
+                                    type="button"
+                                    className="auth-toggle-pwd"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    aria-label={showPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                                </button>
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            className="auth-submit-btn"
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <>
+                                    <div className="auth-btn-spinner" />
+                                    <span>Signing In...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <FaSignInAlt />
+                                    <span>Sign In</span>
+                                </>
+                            )}
+                        </button>
+                    </form>
+
+                    {/* Divider */}
+                    <div className="auth-divider">
+                        <span className="auth-divider-text">OR CONTINUE WITH</span>
+                    </div>
+
+                    {/* Google OAuth Login */}
+                    <div className="auth-google-wrap">
+                        <GoogleLogin
+                            onSuccess={handleGoogleLoginSuccess}
+                            onError={handleGoogleLoginError}
+                            useOneTap={false}
+                            theme="outline"
+                            size="large"
+                            text="signin_with"
+                            shape="rectangular"
+                            clientId={googleClientId}
+                        />
+                    </div>
+
+                    {/* Footer Switch Links */}
+                    <div className="auth-footer">
+                        <span>
+                            Don't have an account?{' '}
+                            <a href="/register" className="auth-link">
+                                Create Account
+                            </a>
+                        </span>
+                        <a href="/forgot-password" className="auth-sublink">
+                            Forgot your password?
+                        </a>
                     </div>
                 </div>
             </div>
-
-            {/* Additional CSS */}
-            <style jsx>{`
-                .min-vh-100 {
-                    min-height: 100vh;
-                }
-                .min-vh-75 {
-                    min-height: 75vh;
-                }
-                .card {
-                    backdrop-filter: blur(10px);
-                    background: rgba(255, 255, 255, 0.95);
-                }
-                .btn-primary {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    border: none;
-                    transition: all 0.3s ease;
-                }
-                .btn-primary:hover:not(:disabled) {
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-                }
-                .form-control {
-                    border: 1px solid #e1e5e9;
-                    transition: all 0.3s ease;
-                }
-                .form-control:focus {
-                    border-color: #667eea;
-                    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-                }
-            `}</style>
         </div>
     );
 }

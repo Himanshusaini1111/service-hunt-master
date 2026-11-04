@@ -368,12 +368,35 @@ const SuperAdminDashboard = () => {
                             <Button
                                 size="small"
                                 variant="outlined"
-                                onClick={() => handleDelete('user', entity._id)}
-                                disabled={entity.role === 'superadmin'}
+                                onClick={() => handleDelete('vendor', entity._id)}
+                                disabled={entity.role === 'superadmin' || entity.email === 'himanshufa875@gmail.com'}
                                 color="error"
                             >
                                 Remove Vendor
                             </Button>
+                        </TableCell>
+                    </>
+                );
+            case 4: // Helpers
+                return (
+                    <>
+                        <TableCell>{entity.name}</TableCell>
+                        <TableCell>{entity.email || 'N/A'}</TableCell>
+                        <TableCell>{entity.skills || 'N/A'}</TableCell>
+                        <TableCell>
+                            <Chip
+                                label={entity.availability || 'Available'}
+                                color="primary"
+                                size="small"
+                            />
+                        </TableCell>
+                        <TableCell>
+                            <IconButton
+                                color="error"
+                                onClick={() => handleDelete('helper', entity._id)}
+                            >
+                                <Delete />
+                            </IconButton>
                         </TableCell>
                     </>
                 );

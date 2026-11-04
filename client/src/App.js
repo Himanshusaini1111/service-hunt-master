@@ -16,7 +16,6 @@ import BidNotification from './components/BidNotification';
 import About from './components/About'; // Import About component
 import VendorServices from "./components/VendorService"; // Update the path if necessary
 import Bidinputs from "./components/Bidinputs"; // Match the file name exactly
-import { HelperPanel } from "./screen/HelperPanel";
 import { HelperLogin } from './components/HelperLogin';
 import SuperAdminDashboard from './screen/SuperAdminDashboard';
 import MyOrders from './components/Order';
@@ -44,7 +43,7 @@ function App() {
           <Route path="/about" element={<About />} /> {/* Fix for About route */}
           <Route path="/vendor/:vendorId" element={<VendorServices />} />
           <Route path="/bidinputs" element={<Bidinputs />} />
-          <Route path="/helperpanel" element={<HelperPanel />} />
+          <Route path="/helperpanel" element={<Navigate to="/helperlogin" replace />} />
           <Route path="/helperlogin" element={<HelperLogin />} />
           <Route path="/superadmin" element={<SuperAdminDashboard />} />
           <Route path="/myorders" element={<MyOrders />} />

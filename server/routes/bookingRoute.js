@@ -569,7 +569,7 @@ async function sendPushNotificationToHelpers(helperIds, bookingData) {
                     requireInteraction: true
                 },
                 fcmOptions: {
-                    link: '/helperpanel'
+                    link: '/helperlogin'
                 }
             },
             data: {
