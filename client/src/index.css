@@ -1356,7 +1356,8 @@ img:hover {
     }
   }
 
-  .styled-input {
+  .styled-input,
+  .styled-select {
     border: 1px solid #dcdcdc;
     border-radius: 8px;
     padding: 0.75rem 1rem;
@@ -1369,7 +1370,6 @@ img:hover {
   }
 
   .styled-select {
-    @extend .styled-input;
     background-image: url("data:image/svg+xml,%3csvg...");
     background-position: right 0.75rem center;
     background-size: 16px 12px;

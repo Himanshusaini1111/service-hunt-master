@@ -18,8 +18,7 @@ const helperSchema = new mongoose.Schema({
     email: {
         type: String,
         required: [true, 'Email is required'],
-        match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Invalid email format']
-    },
+match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email format']    },
     address: {
         type: String,
         required: true

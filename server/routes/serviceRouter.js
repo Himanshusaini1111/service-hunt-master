@@ -273,6 +273,40 @@ router.delete("/deleteservice/:id", async (req, res) => {
     }
 });
 
+// Toggle Live Availability for vendor services without touching isVisible
+router.put('/toggleliveavailability', async (req, res) => {
+    try {
+        const userId = req.query.userid || req.body.userid;
+        if (!userId) {
+            return res.status(400).json({ success: false, message: 'User ID is required' });
+        }
+
+        const user = await User.findById(userId);
+        const isSuperAdmin = user?.email === 'himanshufa875@gmail.com' && (user?.role === 'superadmin' || user?.isAdmin);
+
+        const filter = isSuperAdmin ? {} : {
+            $or: [{ vendorId: userId }, { userid: userId }]
+        };
+
+        const { isLiveAvailable } = req.body;
+        if (typeof isLiveAvailable !== 'boolean') {
+            return res.status(400).json({ success: false, message: 'isLiveAvailable boolean value required' });
+        }
+
+        const result = await Service.updateMany(filter, { $set: { isLiveAvailable: isLiveAvailable } });
+
+        res.json({
+            success: true,
+            isLiveAvailable: isLiveAvailable,
+            modifiedCount: result.modifiedCount,
+            message: `Live availability ${isLiveAvailable ? 'enabled' : 'disabled'} successfully`
+        });
+    } catch (error) {
+        console.error('Error toggling live availability:', error);
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
+    }
+});
+
 // Toggle visibility
 router.put('/togglevisibility/:id', async (req, res) => {
     try {

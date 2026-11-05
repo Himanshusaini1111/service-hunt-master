@@ -1327,6 +1327,7 @@ td .btn-sm {
   margin: 0 0 8px 0;
   line-height: 1.3;
   display: -webkit-box;
+    line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -1420,6 +1421,7 @@ td .btn-sm {
   margin-bottom: 12px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+    line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -2566,3 +2568,4 @@ td .btn-sm {
 .visibility-toggle-btn:hover::before {
     left: 100%;
 }
+

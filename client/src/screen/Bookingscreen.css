@@ -11,10 +11,18 @@
   color: #1e293b;
 }
 
+.bookingscreen-page *,
+.bookingscreen-page *::before,
+.bookingscreen-page *::after {
+  box-sizing: border-box;
+}
+
 .bookingscreen-container {
   max-width: 1240px;
   margin: 0 auto;
   padding: 20px 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Breadcrumbs */
@@ -26,6 +34,8 @@
   color: #64748b;
   margin-bottom: 20px;
   flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .bs-breadcrumb a {
@@ -66,14 +76,6 @@
   }
 }
 
-@media (max-width: 900px) {
-  .bs-layout-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
-}
-
 /* Left Content Column */
 .bs-main-column {
   min-width: 0;
@@ -87,12 +89,71 @@
   position: sticky;
   top: 86px;
   z-index: 10;
+  box-sizing: border-box;
 }
 
+/* Mobile & Tablet Responsive Layout (<= 900px):
+   - Every section/card takes the exact same uniform full width (100%)
+   - Prevents content or text length ("written size") from shrinking or altering card width
+   - Reorder Instant Booking / Checkout card to appear above "About This Service"
+   - Desktop layout (> 900px) remains completely unchanged */
 @media (max-width: 900px) {
+  .bs-layout-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch !important;
+    justify-content: flex-start;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 20px;
+    box-sizing: border-box;
+  }
+
+  .bs-main-column {
+    display: contents;
+  }
+
+  /* Guarantee identical, uniform 100% width across all sections, divs, and cards */
+  .bs-carousel-card,
+  .bs-card,
+  .bs-main-column > .bs-card,
+  .bs-sidebar-column,
+  .bs-checkout-card {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  .bs-carousel-card {
+    order: 1;
+  }
+
+  .bs-main-column > .bs-header-card {
+    order: 2;
+  }
+
   .bs-sidebar-column {
+    order: 3;
     position: static;
-    width: 100%;
+  }
+
+  .bs-main-column > .bs-about-card {
+    order: 4;
+  }
+
+  .bs-main-column > .bs-card {
+    order: 10;
+  }
+
+  .bs-main-column > .bs-header-card {
+    order: 2;
+  }
+
+  .bs-main-column > .bs-about-card {
+    order: 4;
   }
 }
 
@@ -125,6 +186,12 @@
   overflow: hidden;
   position: relative;
   box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.25);
+}
+
+@media (max-width: 640px) {
+  .bs-carousel-card {
+    border-radius: 14px;
+  }
 }
 
 .bs-carousel-wrapper {
@@ -334,6 +401,10 @@
   color: #334155;
   font-size: 15px;
   line-height: 1.7;
+  width: 100%;
+  box-sizing: border-box;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .bs-desc-point {
@@ -345,6 +416,10 @@
   margin-bottom: 8px;
   background: #f8fafc;
   transition: background 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .bs-desc-point:hover {
@@ -363,6 +438,8 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 @media (max-width: 500px) {
@@ -383,6 +460,10 @@
   color: #334155;
   font-weight: 500;
   transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .bs-facility-item:hover {
@@ -555,6 +636,13 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .bs-checkout-card {
+    padding: 16px;
+    border-radius: 14px;
+  }
 }
 
 .bs-checkout-header {
@@ -1056,4 +1144,752 @@
 }
 .amount-section {
   margin-top: 15px;
+}
+
+/* ==========================================================================
+   Modern Booking & Bill Review Modals (showBookingModal & showBill)
+   ========================================================================== */
+
+/* Shared Modal Overlay & Dialog Animations */
+.bm-overlay,
+.bill-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+  backdrop-filter: blur(6px);
+  padding: 16px;
+  box-sizing: border-box;
+  animation: bmFadeIn 0.2s ease-out;
+}
+
+.bill-overlay {
+  z-index: 1060; /* Stacks above booking modal */
+}
+
+@keyframes bmFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.bm-dialog,
+.bill-dialog {
+  background: #ffffff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 640px;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(226, 232, 240, 0.8);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  animation: bmSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.bill-dialog {
+  max-width: 580px;
+}
+
+@keyframes bmSlideUp {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Modal Headers */
+.bm-header,
+.bill-header {
+  padding: 20px 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.bm-header-left,
+.bill-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.bm-header-icon,
+.bill-header-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  color: #2563eb;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+}
+
+.bill-header-icon {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  color: #059669;
+}
+
+.bm-header-title,
+.bill-header-title {
+  font-size: clamp(17px, 2.5vw, 20px);
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 2px 0;
+  line-height: 1.25;
+}
+
+.bm-header-subtitle,
+.bill-header-subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.bm-close-btn,
+.bill-close-btn {
+  background: #f1f5f9;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.bm-close-btn:hover,
+.bill-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+  transform: rotate(90deg);
+}
+
+/* Modal Body */
+.bm-body,
+.bill-body {
+  padding: 22px 24px;
+  box-sizing: border-box;
+  flex: 1;
+}
+
+/* Form Sections */
+.bm-section {
+  margin-bottom: 22px;
+}
+
+.bm-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 14px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.bm-section-title .section-icon {
+  font-size: 16px;
+}
+
+.bm-field-group {
+  margin-bottom: 16px;
+}
+
+.bm-field-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.bm-field-label .req {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+.bm-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.bm-input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 15px;
+  pointer-events: none;
+}
+
+.bm-input {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px 0 42px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #ffffff;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.bm-input:focus {
+  border-color: #2563eb;
+  background: #f8fafc;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.bm-input::placeholder {
+  color: #94a3b8;
+}
+
+.bm-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #0f172a;
+  background: #ffffff;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+  outline: none;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.bm-textarea:focus {
+  border-color: #2563eb;
+  background: #f8fafc;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.bm-field-hint {
+  font-size: 11.5px;
+  color: #64748b;
+  margin: 5px 0 0 2px;
+}
+
+/* Return Trip Checkbox Card */
+.bm-checkbox-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.bm-checkbox-card:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.bm-checkbox {
+  width: 19px;
+  height: 19px;
+  accent-color: #2563eb;
+  cursor: pointer;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.bm-checkbox-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 2px;
+}
+
+.bm-checkbox-desc {
+  font-size: 11.5px;
+  color: #64748b;
+  margin: 0;
+}
+
+/* Booking Preview Box (Step 1) */
+.bm-preview-box {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-top: 8px;
+}
+
+.bm-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+
+.bm-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 16px;
+  font-size: 13px;
+}
+
+.bm-preview-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bm-preview-item .lbl {
+  color: #64748b;
+}
+
+.bm-preview-item .val {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+/* Modal Footers */
+.bm-footer,
+.bill-footer {
+  padding: 16px 24px;
+  background: #ffffff;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+}
+
+.bm-btn-cancel,
+.bill-btn-back {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.bm-btn-cancel:hover,
+.bill-btn-back:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.bm-btn-submit {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border: none;
+  padding: 11px 26px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.bm-btn-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+
+.bill-btn-confirm {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  padding: 11px 26px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.bill-btn-confirm:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+}
+
+.bill-btn-confirm.inquiry {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+}
+
+.bill-btn-confirm.inquiry:hover {
+  box-shadow: 0 6px 16px rgba(245, 158, 11, 0.35);
+}
+
+/* ==========================================================================
+   Bill Summary Modal Content (Invoice Receipt Style)
+   ========================================================================== */
+
+/* Service Header Card */
+.bill-service-card {
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+
+.bill-service-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.bill-service-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #2563eb;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.bill-service-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.bill-company-chip {
+  background: #ffffff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.bill-location-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #475569;
+  background: #ffffff;
+  padding: 3px 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Inquiry Callout Alert */
+.bill-inquiry-alert {
+  background: #fffbeb;
+  border-left: 4px solid #f59e0b;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.bill-inquiry-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.bill-inquiry-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #b45309;
+  margin: 0 0 2px 0;
+}
+
+.bill-inquiry-desc {
+  font-size: 12.5px;
+  color: #78350f;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Specifications Grid */
+.bill-specs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.bill-spec-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+}
+
+.bill-spec-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.bill-spec-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Optional Addons Section */
+.bill-section {
+  margin-bottom: 18px;
+}
+
+.bill-section-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bill-addon-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.bill-addon-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.bill-addon-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.bill-addon-item:first-child {
+  padding-top: 0;
+}
+
+.bill-addon-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.bill-addon-calc {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.bill-addon-price {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.bill-addon-empty {
+  text-align: center;
+  font-size: 12.5px;
+  color: #94a3b8;
+  font-style: italic;
+  margin: 4px 0;
+}
+
+/* Pricing Breakdown & Grand Total Card */
+.bill-pricing-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+}
+
+.bill-pricing-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 13.5px;
+  color: #475569;
+}
+
+.bill-pricing-line.sub {
+  padding-left: 14px;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.bill-pricing-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 10px 0;
+}
+
+.bill-grand-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.bill-total-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.bill-total-val {
+  font-size: 24px;
+  font-weight: 800;
+  color: #2563eb;
+  letter-spacing: -0.02em;
+}
+
+/* Inquiry Desk Note */
+.bill-inquiry-note-card {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.bill-inquiry-note-icon {
+  font-size: 28px;
+  margin-bottom: 6px;
+}
+
+.bill-inquiry-note-text {
+  font-size: 13.5px;
+  color: #1e40af;
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* ==========================================================================
+   Responsive Breakpoints for Modals (<= 576px)
+   ========================================================================== */
+@media (max-width: 576px) {
+  .bm-dialog,
+  .bill-dialog {
+    max-width: 96vw;
+    border-radius: 16px;
+    max-height: 92vh;
+  }
+
+  .bm-header,
+  .bill-header {
+    padding: 14px 16px;
+  }
+
+  .bm-header-icon,
+  .bill-header-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 18px;
+  }
+
+  .bm-body,
+  .bill-body {
+    padding: 16px 14px;
+  }
+
+  .bm-preview-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .bill-specs-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .bm-footer,
+  .bill-footer {
+    padding: 12px 14px;
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+
+  .bm-btn-cancel,
+  .bill-btn-back,
+  .bm-btn-submit,
+  .bill-btn-confirm {
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .bill-total-val {
+    font-size: 21px;
+  }
 }

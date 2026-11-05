@@ -156,6 +156,10 @@ const serviceSchema = mongoose.Schema({
         type: Boolean,
         default: true
     },
+    isLiveAvailable: {
+        type: Boolean,
+        default: true
+    },
     bookingType: {
         type: String,
         enum: ['Automatic Booking', 'Manual Booking', 'Inquari Booking', 'timeSlot'],

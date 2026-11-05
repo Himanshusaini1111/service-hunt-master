@@ -41,6 +41,7 @@ const vendorSchema = new mongoose.Schema({
     activeJobs: { type: Number, default: 0 },
     totalEarnings: { type: Number, default: 0 },
     isVerified: { type: Boolean, default: false },
+    isApproved: { type: Boolean, default: false },
     status: {
         type: String,
         enum: ['pending', 'active', 'suspended'],

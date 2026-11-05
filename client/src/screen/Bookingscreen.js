@@ -872,7 +872,7 @@ const handleBooking = async (e) => {
             </div>
 
             {/* Service Header Info */}
-            <div className="bs-card">
+            <div className="bs-card bs-header-card">
               <div className="bs-header-info">
                 <div className="bs-tags-row">
                   <span className="bs-pill bs-pill-category">{service.category || "Service"}</span>
@@ -889,7 +889,7 @@ const handleBooking = async (e) => {
             </div>
 
             {/* Description Section */}
-            <div className="bs-card">
+            <div className="bs-card bs-about-card">
               <div className="bs-section-title-wrap">
                 <span className="bs-section-icon">📋</span>
                 <h3 className="bs-section-heading">About This Service</h3>
@@ -1171,604 +1171,419 @@ const handleBooking = async (e) => {
         </div>
       </div>
 
-      {/* Booking Modal */}
-      {showBookingModal && (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.6)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 1000,
-          backdropFilter: "blur(4px)",
-          animation: "fadeIn 0.3s ease"
-        }}>
-          <div style={{
-            background: "white",
-            borderRadius: "20px",
-            width: "90%",
-            maxWidth: "650px",
-            maxHeight: "85vh",
-            overflowY: "auto",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-            animation: "slideUp 0.3s ease"
-          }}>
-            <div style={{
-              padding: "24px 28px",
-              borderBottom: "1px solid #e8e8e8",
-              backgroundColor: "#fafafa",
-              borderRadius: "20px 20px 0 0",
-              position: "sticky",
-              top: 0,
-              zIndex: 10
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <span style={{ fontSize: "28px" }}>📝</span>
-                <div>
-                  <h2 style={{ margin: 0, fontSize: "22px", fontWeight: "600", color: "#1a1a1a" }}>
-                    {showBill ? "Confirm Your Booking" : "Booking Details"}
-                  </h2>
-                  <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#666" }}>
-                    {showBill ? "Please review and confirm your booking" : "Please fill in your details to continue"}
-                  </p>
-                </div>
+     
+{/* ================= BOOKING MODAL ================= */}
+{showBookingModal && (
+  <div
+    className="bm-overlay"
+    onClick={() => {
+      setShowBookingModal(false);
+      setShowBill(false);
+    }}
+  >
+    <div
+      className="bm-dialog"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* ================= MODAL HEADER ================= */}
+      <div className="bm-header">
+        <div className="bm-header-left">
+          <div className="bm-header-icon">📝</div>
+
+          <div>
+            <h2 className="bm-header-title">
+              {showBill ? "Confirm Your Booking" : "Booking Details"}
+            </h2>
+
+            <p className="bm-header-subtitle">
+              {showBill
+                ? "Please review and confirm your booking"
+                : "Please fill in your details to continue"}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="bm-close-btn"
+          onClick={() => {
+            setShowBookingModal(false);
+            setShowBill(false);
+          }}
+          aria-label="Close modal"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* ================= BOOKING FORM ================= */}
+      <form onSubmit={handleBooking}>
+
+        {/* ================= MODAL BODY ================= */}
+        <div className="bm-body">
+
+          {/* ---------- CONTACT INFORMATION ---------- */}
+          <section className="bm-section">
+
+            <div className="bm-section-title">
+              <span className="section-icon">👤</span>
+              <span>Contact Information</span>
+            </div>
+
+            {/* Full Name */}
+            <div className="bm-field-group">
+              <label className="bm-field-label">
+                Full Name <span className="req">*</span>
+              </label>
+
+              <div className="bm-input-wrapper">
+  <span className="bm-input-icon">👤</span>
+  <input
+    type="textform"
+    className="bm-input"
+    value={name}
+    onChange={(e) => setName(e.target.value)}
+    required
+    placeholder="Enter your full name"
+  />
+</div></div>
+
+            {/* Phone Number */}
+            <div className="bm-field-group">
+              <label className="bm-field-label">
+                Phone Number <span className="req">*</span>
+              </label>
+
+              <div className="bm-input-wrapper">
+                <span className="bm-input-icon">📞</span>
+
+                <input
+                  type="tel"
+                  className="bm-input"
+                  value={phone}
+                  onChange={(e) =>
+                    setPhone(e.target.value.replace(/\s/g, ""))
+                  }
+                  required
+                  placeholder="Enter your phone number"
+                />
               </div>
             </div>
 
-            <form onSubmit={handleBooking}>
-              <div style={{ padding: "24px 28px" }}>
-                <div style={{ marginBottom: "28px" }}>
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    marginBottom: "16px",
-                    paddingBottom: "8px",
-                    borderBottom: "2px solid #007bff"
-                  }}>
-                    <span style={{ fontSize: "18px" }}>👤</span>
-                    <h4 style={{ margin: 0, fontSize: "16px", fontWeight: "600", color: "#333" }}>
-                      Personal Information
-                    </h4>
-                  </div>
-                  
-                  <div style={{ marginBottom: "16px" }}>
-                    <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "500", color: "#555" }}>
-                      Full Name <span style={{ color: "#e74c3c" }}>*</span>
-                    </label>
+            {/* Description */}
+            <div className="bm-field-group">
+              <label className="bm-field-label">
+                Description / Special Requests
+                <span className="req">*</span>
+              </label>
+
+              <textarea
+                className="bm-textarea"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                required
+                placeholder="Any special requests or additional information..."
+              />
+            </div>
+
+          </section>
+
+          {/* ---------- LOCATION DETAILS ---------- */}
+          {getLocationType() !== "No" && (
+            <section className="bm-section">
+
+              <div className="bm-section-title">
+                <span className="section-icon">📍</span>
+                <span>Location Details</span>
+              </div>
+
+              {/* Simple Location */}
+              {getLocationType() === "Simple" && (
+                <div className="bm-field-group">
+                  <label className="bm-field-label">
+                    Service Address <span className="req">*</span>
+                  </label>
+
+                  <div className="bm-input-wrapper">
+                    <span className="bm-input-icon">🏠</span>
+
                     <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      type="text form"
+                      className="bm-input"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
                       required
-                      placeholder="Enter your full name"
-                      style={{
-                        width: "100%",
-                        padding: "12px 14px",
-                        border: "1px solid #ddd",
-                        borderRadius: "10px",
-                        fontSize: "14px",
-                        transition: "all 0.2s ease"
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = "#007bff";
-                        e.target.style.boxShadow = "0 0 0 3px rgba(0,123,255,0.1)";
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = "#ddd";
-                        e.target.style.boxShadow = "none";
-                      }}
+                      placeholder="Enter your service address"
                     />
                   </div>
 
-                  <div style={{ marginBottom: "16px" }}>
-                    <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "500", color: "#555" }}>
-                      Phone Number <span style={{ color: "#e74c3c" }}>*</span>
+                  <p className="bm-field-hint">
+                    We will dispatch service professionals to this address.
+                  </p>
+                </div>
+              )}
+
+              {/* Rental Location */}
+              {getLocationType() === "Rental" && (
+                <>
+                  {/* Pickup Address */}
+                  <div className="bm-field-group">
+                    <label className="bm-field-label">
+                      Pickup Address <span className="req">*</span>
                     </label>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      required
-                      placeholder="Enter your phone number"
-                      style={{
-                        width: "100%",
-                        padding: "12px 14px",
-                        border: "1px solid #ddd",
-                        borderRadius: "10px",
-                        fontSize: "14px",
-                        transition: "all 0.2s ease"
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = "#007bff";
-                        e.target.style.boxShadow = "0 0 0 3px rgba(0,123,255,0.1)";
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = "#ddd";
-                        e.target.style.boxShadow = "none";
-                      }}
-                    />
+
+                    <div className="bm-input-wrapper">
+                      <span className="bm-input-icon">🚗</span>
+
+                      <input
+                        type="text"
+                        className="bm-input"
+                        value={pickupAddress}
+                        onChange={(e) => setPickupAddress(e.target.value)}
+                        required
+                        placeholder="Enter pickup location"
+                      />
+                    </div>
                   </div>
 
-                  <div style={{ marginBottom: "16px" }}>
-                    <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "500", color: "#555" }}>
-                      Description / Special Requests
+                  {/* Drop-off Address */}
+                  <div className="bm-field-group">
+                    <label className="bm-field-label">
+                      Drop-off Address <span className="req">*</span>
                     </label>
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      rows="3"
-                      placeholder="Any special requests or additional information..."
-                      style={{
-                        width: "100%",
-                        padding: "12px 14px",
-                        border: "1px solid #ddd",
-                        borderRadius: "10px",
-                        fontSize: "14px",
-                        resize: "vertical",
-                        fontFamily: "inherit",
-                        transition: "all 0.2s ease"
-                      }}
-                      onFocus={(e) => {
-                        e.target.style.borderColor = "#007bff";
-                        e.target.style.boxShadow = "0 0 0 3px rgba(0,123,255,0.1)";
-                      }}
-                      onBlur={(e) => {
-                        e.target.style.borderColor = "#ddd";
-                        e.target.style.boxShadow = "none";
-                      }}
-                    />
+
+                    <div className="bm-input-wrapper">
+                      <span className="bm-input-icon">🏁</span>
+
+                      <input
+                        type="text"
+                        className="bm-input"
+                        value={dropAddress}
+                        onChange={(e) => setDropAddress(e.target.value)}
+                        required
+                        placeholder="Enter drop-off location"
+                      />
+                    </div>
                   </div>
+
+                  {/* Return Trip */}
+                  <label className="bm-checkbox-card">
+                    <input
+                      type="checkbox"
+                      className="bm-checkbox"
+                      checked={returnTrip}
+                      onChange={(e) => setReturnTrip(e.target.checked)}
+                    />
+
+                    <div>
+                      <div className="bm-checkbox-title">
+                        🔄 Return Trip Required
+                      </div>
+
+                      <p className="bm-checkbox-desc">
+                        Additional charges may apply for return trip.
+                      </p>
+                    </div>
+                  </label>
+                </>
+              )}
+
+            </section>
+          )}
+
+          {/* ---------- BOOKING SUMMARY ---------- */}
+          {!showBill && (
+            <section className="bm-preview-box">
+
+              <div className="bm-preview-header">
+                <span>📋</span>
+                <span>Booking Summary Preview</span>
+              </div>
+
+              <div className="bm-preview-grid">
+
+                <div className="bm-preview-item">
+                  <span className="lbl">Service:</span>
+                  <span className="val">{service?.name}</span>
                 </div>
 
-                {getLocationType() !== 'No' && (
-                  <div style={{ marginBottom: "28px" }}>
-                    <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      marginBottom: "16px",
-                      paddingBottom: "8px",
-                      borderBottom: "2px solid #28a745"
-                    }}>
-                      <span style={{ fontSize: "18px" }}>📍</span>
-                      <h4 style={{ margin: 0, fontSize: "16px", fontWeight: "600", color: "#333" }}>
-                        Location Details
-                      </h4>
-                    </div>
+                <div className="bm-preview-item">
+                  <span className="lbl">Price:</span>
+                  <span className="val">
+                    ₹{effectiveRate} / {displayUnit}
+                  </span>
+                </div>
 
-                    {getLocationType() === 'Simple' && (
-                      <div style={{ marginBottom: "15px" }}>
-                        <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "500", color: "#555" }}>
-                          Service Address <span style={{ color: "#e74c3c" }}>*</span>
-                        </label>
-                        <div style={{ position: "relative" }}>
-                          <span style={{
-                            position: "absolute",
-                            left: "12px",
-                            top: "50%",
-                            transform: "translateY(-50%)",
-                            color: "#999",
-                            fontSize: "16px"
-                          }}>🏠</span>
-                          <input
-                            type="text"
-                            value={address}
-                            onChange={(e) => setAddress(e.target.value)}
-                            required={getLocationType() === 'Simple'}
-                            placeholder="Enter your service address"
-                            style={{
-                              width: "100%",
-                              padding: "12px 14px 12px 40px",
-                              border: "1px solid #ddd",
-                              borderRadius: "10px",
-                              fontSize: "14px",
-                              transition: "all 0.2s ease"
-                            }}
-                            onFocus={(e) => {
-                              e.target.style.borderColor = "#28a745";
-                              e.target.style.boxShadow = "0 0 0 3px rgba(40,167,69,0.1)";
-                            }}
-                            onBlur={(e) => {
-                              e.target.style.borderColor = "#ddd";
-                              e.target.style.boxShadow = "none";
-                            }}
-                          />
-                        </div>
-                        <p style={{ fontSize: "11px", color: "#999", marginTop: "5px" }}>
-                          We'll send service professionals to this address
-                        </p>
-                      </div>
-                    )}
-
-                    {getLocationType() === 'Rental' && (
-                      <>
-                        <div style={{ marginBottom: "15px" }}>
-                          <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "500", color: "#555" }}>
-                            Pickup Address <span style={{ color: "#e74c3c" }}>*</span>
-                          </label>
-                          <div style={{ position: "relative" }}>
-                            <span style={{
-                              position: "absolute",
-                              left: "12px",
-                              top: "50%",
-                              transform: "translateY(-50%)",
-                              color: "#999",
-                              fontSize: "16px"
-                            }}>🚗</span>
-                            <input
-                              type="text"
-                              value={pickupAddress}
-                              onChange={(e) => setPickupAddress(e.target.value)}
-                              required
-                              placeholder="Enter pickup location"
-                              style={{
-                                width: "100%",
-                                padding: "12px 14px 12px 40px",
-                                border: "1px solid #ddd",
-                                borderRadius: "10px",
-                                fontSize: "14px",
-                                transition: "all 0.2s ease"
-                              }}
-                              onFocus={(e) => {
-                                e.target.style.borderColor = "#28a745";
-                                e.target.style.boxShadow = "0 0 0 3px rgba(40,167,69,0.1)";
-                              }}
-                              onBlur={(e) => {
-                                e.target.style.borderColor = "#ddd";
-                                e.target.style.boxShadow = "none";
-                              }}
-                            />
-                          </div>
-                        </div>
-
-                        <div style={{ marginBottom: "15px" }}>
-                          <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "500", color: "#555" }}>
-                            Drop-off Address <span style={{ color: "#e74c3c" }}>*</span>
-                          </label>
-                          <div style={{ position: "relative" }}>
-                            <span style={{
-                              position: "absolute",
-                              left: "12px",
-                              top: "50%",
-                              transform: "translateY(-50%)",
-                              color: "#999",
-                              fontSize: "16px"
-                            }}>🏁</span>
-                            <input
-                              type="text"
-                              value={dropAddress}
-                              onChange={(e) => setDropAddress(e.target.value)}
-                              required
-                              placeholder="Enter drop-off location"
-                              style={{
-                                width: "100%",
-                                padding: "12px 14px 12px 40px",
-                                border: "1px solid #ddd",
-                                borderRadius: "10px",
-                                fontSize: "14px",
-                                transition: "all 0.2s ease"
-                              }}
-                              onFocus={(e) => {
-                                e.target.style.borderColor = "#28a745";
-                                e.target.style.boxShadow = "0 0 0 3px rgba(40,167,69,0.1)";
-                              }}
-                              onBlur={(e) => {
-                                e.target.style.borderColor = "#ddd";
-                                e.target.style.boxShadow = "none";
-                              }}
-                            />
-                          </div>
-                        </div>
-
-                        <div style={{ 
-                          marginBottom: "15px", 
-                          padding: "12px",
-                          backgroundColor: "#f8f9fa",
-                          borderRadius: "10px",
-                          border: "1px solid #e8e8e8"
-                        }}>
-                          <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-                            <input
-                              type="checkbox"
-                              checked={returnTrip}
-                              onChange={(e) => setReturnTrip(e.target.checked)}
-                              style={{
-                                width: "18px",
-                                height: "18px",
-                                cursor: "pointer"
-                              }}
-                            />
-                            <span style={{ fontSize: "14px", color: "#333" }}>
-                              🔄 Return Trip Required
-                            </span>
-                          </label>
-                          <p style={{ fontSize: "11px", color: "#999", marginTop: "8px", marginLeft: "28px" }}>
-                            Additional charges may apply for return trip
-                          </p>
-                        </div>
-                      </>
-                    )}
+                {quantity > 1 && (
+                  <div className="bm-preview-item">
+                    <span className="lbl">Quantity:</span>
+                    <span className="val">× {quantity}</span>
                   </div>
                 )}
 
-                {!showBill && (
-                  <div style={{
-                    backgroundColor: "#f8f9fa",
-                    borderRadius: "12px",
-                    padding: "16px",
-                    marginTop: "8px",
-                    border: "1px solid #e8e8e8"
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-                      <span style={{ fontSize: "16px" }}>📋</span>
-                      <span style={{ fontSize: "13px", fontWeight: "600", color: "#333" }}>Booking Summary Preview</span>
-                    </div>
-                    <div style={{ fontSize: "13px", color: "#666" }}>
-                      <p style={{ margin: "4px 0" }}><strong>Service:</strong> {service?.name}</p>
-                      <p style={{ margin: "4px 0" }}><strong>Price:</strong> ₹{effectiveRate} / {displayUnit}</p>
-                      {quantity > 1 && <p style={{ margin: "4px 0" }}><strong>Quantity:</strong> {quantity}</p>}
-                      {daysCount > 1 && <p style={{ margin: "4px 0" }}><strong>Duration:</strong> {daysCount} days</p>}
-                    </div>
+                {daysCount > 1 && (
+                  <div className="bm-preview-item">
+                    <span className="lbl">Duration:</span>
+                    <span className="val">{daysCount} days</span>
                   </div>
                 )}
-              </div>
 
-              <div style={{
-                padding: "16px 28px",
-                borderTop: "1px solid #e8e8e8",
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: "12px",
-                backgroundColor: "#fafafa",
-                borderRadius: "0 0 20px 20px",
-                position: "sticky",
-                bottom: 0
-              }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowBookingModal(false);
-                    setShowBill(false);
-                  }}
-                  style={{
-                    padding: "10px 24px",
-                    background: "white",
-                    color: "#666",
-                    border: "1px solid #d9d9d9",
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "500",
-                    transition: "all 0.2s ease"
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = "#999";
-                    e.currentTarget.style.color = "#333";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = "#d9d9d9";
-                    e.currentTarget.style.color = "#666";
-                  }}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  style={{
-                    padding: "10px 28px",
-                    background: showBill ? "#28a745" : "#007bff",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    transition: "all 0.2s ease",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "translateY(-1px)";
-                    e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.15)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
-                  }}
-                >
-                  {showBill ? "Confirm Booking" : "Generate Bill"}
-                </button>
               </div>
-            </form>
-          </div>
+            </section>
+          )}
+
         </div>
-      )}
+
+        {/* ================= MODAL FOOTER ================= */}
+        <div className="bm-footer">
+
+          <button
+            type="button"
+            className="bm-btn-cancel"
+            onClick={() => {
+              setShowBookingModal(false);
+              setShowBill(false);
+            }}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            className="bm-btn-submit"
+          >
+            {showBill ? "Confirm Booking" : "Generate Bill →"}
+          </button>
+
+        </div>
+
+      </form>
+    </div>
+  </div>
+)}
+
 
       {/* Bill Summary Modal */}
       {showBill && (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.6)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 1001,
-          backdropFilter: "blur(4px)",
-          animation: "fadeIn 0.3s ease"
-        }}>
-          <div style={{
-            background: "white",
-            borderRadius: "16px",
-            padding: "0",
-            width: "90%",
-            maxWidth: "550px",
-            maxHeight: "85vh",
-            overflowY: "auto",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-            animation: "slideUp 0.3s ease"
-          }}>
-            <div style={{
-              padding: "24px 28px",
-              borderBottom: "1px solid #e8e8e8",
-              backgroundColor: "#fafafa",
-              borderRadius: "16px 16px 0 0",
-              position: "sticky",
-              top: 0,
-              zIndex: 10
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <span style={{ fontSize: "28px" }}>📋</span>
+        <div className="bill-overlay" onClick={() => setShowBill(false)}>
+          <div className="bill-dialog" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="bill-header">
+              <div className="bill-header-left">
+                <div className="bill-header-icon">📋</div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: "20px", fontWeight: "600", color: "#1a1a1a" }}>
+                  <h3 className="bill-header-title">
                     {bookingType === 'Inquari Booking' ? 'Inquiry Summary' : 'Booking Summary'}
                   </h3>
-                  <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#666" }}>
+                  <p className="bill-header-subtitle">
                     {bookingType === 'Inquari Booking' 
                       ? 'Please review your inquiry details' 
                       : 'Please review your booking details before confirming'}
                   </p>
                 </div>
               </div>
+              <button
+                type="button"
+                className="bill-close-btn"
+                onClick={() => setShowBill(false)}
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
 
-            <div style={{ padding: "24px 28px" }}>
-              <div style={{
-                backgroundColor: "#f8f9fa",
-                borderRadius: "12px",
-                padding: "16px",
-                marginBottom: "20px",
-                border: "1px solid #e8e8e8"
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" }}>
+            {/* Body */}
+            <div className="bill-body">
+              {/* Service Overview Card */}
+              <div className="bill-service-card">
+                <div className="bill-service-top">
                   <div>
-                    <span style={{ fontSize: "12px", color: "#666", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                      Service
-                    </span>
-                    <h4 style={{ margin: "4px 0 0", fontSize: "18px", fontWeight: "600", color: "#1a1a1a" }}>
-                      {service.name}
-                    </h4>
+                    <div className="bill-service-label">Service</div>
+                    <h4 className="bill-service-name">{service.name}</h4>
                   </div>
                   {service.companyname && (
-                    <span style={{
-                      backgroundColor: "#e8f4f8",
-                      padding: "4px 10px",
-                      borderRadius: "20px",
-                      fontSize: "12px",
-                      color: "#007185"
-                    }}>
-                      {service.companyname}
+                    <span className="bill-company-chip">
+                      🏢 {service.companyname}
                     </span>
                   )}
                 </div>
-                
+
                 {selectedServiceArea && (
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "#555", marginTop: "8px" }}>
+                  <div className="bill-location-tag">
                     <span>📍</span>
                     <span>Serving: <strong>{selectedServiceArea.locationName}</strong></span>
                   </div>
                 )}
               </div>
 
+              {/* Inquiry Alert Callout */}
               {bookingType === 'Inquari Booking' && (
-                <div style={{
-                  backgroundColor: "#fff8e1",
-                  borderLeft: "4px solid #ff9800",
-                  padding: "16px",
-                  borderRadius: "8px",
-                  marginBottom: "20px"
-                }}>
-                  <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
-                    <span style={{ fontSize: "20px" }}>📌</span>
-                    <div>
-                      <strong style={{ color: "#e65100", fontSize: "14px" }}>Inquiry Required</strong>
-                      <p style={{ margin: "4px 0 0", fontSize: "13px", color: "#666" }}>
-                        This is an inquiry-based booking. Our team will contact you within 24 hours to confirm pricing and availability.
-                      </p>
-                    </div>
+                <div className="bill-inquiry-alert">
+                  <span className="bill-inquiry-icon">📌</span>
+                  <div>
+                    <h5 className="bill-inquiry-title">Inquiry Required</h5>
+                    <p className="bill-inquiry-desc">
+                      This is an inquiry-based booking. Our team will contact you within 24 hours to confirm pricing and availability.
+                    </p>
                   </div>
                 </div>
               )}
 
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(2, 1fr)",
-                gap: "16px",
-                marginBottom: "20px",
-                padding: "16px",
-                backgroundColor: "#fff",
-                border: "1px solid #e8e8e8",
-                borderRadius: "12px"
-              }}>
+              {/* Specifications Grid */}
+              <div className="bill-specs-grid">
                 {quantity > 1 && bookingType !== 'Inquari Booking' && (
-                  <div>
-                    <span style={{ fontSize: "11px", color: "#999", textTransform: "uppercase" }}>Quantity</span>
-                    <p style={{ margin: "4px 0 0", fontSize: "16px", fontWeight: "500" }}>× {quantity}</p>
+                  <div className="bill-spec-card">
+                    <div className="bill-spec-label">Quantity</div>
+                    <div className="bill-spec-val">× {quantity}</div>
                   </div>
                 )}
-                
-                <div>
-                  <span style={{ fontSize: "11px", color: "#999", textTransform: "uppercase" }}>Unit</span>
-                  <p style={{ margin: "4px 0 0", fontSize: "16px", fontWeight: "500" }}>{displayUnit}</p>
+
+                <div className="bill-spec-card">
+                  <div className="bill-spec-label">Unit</div>
+                  <div className="bill-spec-val">{displayUnit}</div>
                 </div>
-                
+
                 {daysCount > 1 && bookingType !== 'Inquari Booking' && (
-                  <div>
-                    <span style={{ fontSize: "11px", color: "#999", textTransform: "uppercase" }}>Duration</span>
-                    <p style={{ margin: "4px 0 0", fontSize: "16px", fontWeight: "500" }}>{daysCount} days</p>
+                  <div className="bill-spec-card">
+                    <div className="bill-spec-label">Duration</div>
+                    <div className="bill-spec-val">{daysCount} days</div>
                   </div>
                 )}
-                
+
                 {selectedDates.length > 0 && (
-                  <div>
-                    <span style={{ fontSize: "11px", color: "#999", textTransform: "uppercase" }}>
+                  <div className="bill-spec-card">
+                    <div className="bill-spec-label">
                       {selectedSlots.length > 0 ? 'Date' : 'Dates'}
-                    </span>
-                    <p style={{ margin: "4px 0 0", fontSize: "14px", fontWeight: "500" }}>
+                    </div>
+                    <div className="bill-spec-val">
                       {selectedDates.length === 1 
                         ? new Date(selectedDates[0]).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                         : `${selectedDates.length} days selected`
                       }
-                    </p>
+                    </div>
                   </div>
                 )}
-                
+
                 {selectedSlots.length > 0 && (
-                  <div>
-                    <span style={{ fontSize: "11px", color: "#999", textTransform: "uppercase" }}>Time Slots</span>
-                    <p style={{ margin: "4px 0 0", fontSize: "14px", fontWeight: "500" }}>
+                  <div className="bill-spec-card">
+                    <div className="bill-spec-label">Time Slots</div>
+                    <div className="bill-spec-val">
                       {selectedSlots.map(s => s.slot).join(', ')}
-                    </p>
+                    </div>
                   </div>
                 )}
               </div>
 
+              {/* Optional Services Breakdown */}
               {bookingType !== 'Inquari Booking' && (
-                <div style={{ marginBottom: "20px" }}>
-                  <div style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "12px"
-                  }}>
-                    <span style={{ fontSize: "14px", fontWeight: "600", color: "#333" }}>Optional Services</span>
-                    <span style={{ fontSize: "12px", color: "#999" }}>Added items</span>
+                <div className="bill-section">
+                  <div className="bill-section-title">
+                    <span>Optional Services</span>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>Added items</span>
                   </div>
-                  
-                  <div style={{ 
-                    backgroundColor: "#fafafa", 
-                    borderRadius: "12px", 
-                    padding: "12px",
-                    border: "1px solid #e8e8e8"
-                  }}>
+
+                  <div className="bill-addon-box">
                     {(() => {
                       const hasOptionalServices = (service.optionalInputs || []).some((input, index) => {
                         const count = optionalInputCounts[index] || 0;
@@ -1777,7 +1592,7 @@ const handleBooking = async (e) => {
 
                       if (!hasOptionalServices) {
                         return (
-                          <p style={{ color: '#999', fontStyle: 'italic', margin: '8px 0', textAlign: 'center', fontSize: '13px' }}>
+                          <p className="bill-addon-empty">
                             No optional services selected
                           </p>
                         );
@@ -1788,9 +1603,9 @@ const handleBooking = async (e) => {
                           {(service.optionalInputs || []).map((input, index) => {
                             const count = optionalInputCounts[index] || 0;
                             if (count === 0 && (input.isCountable || !addedOptionalInputs[index])) return null;
-                            
+
                             const optUnitRate = effectiveOptionalUnitPrice(input, selectedServiceArea);
-                            
+
                             let itemTotal = 0;
                             let calculationBreakdown = '';
                             const inputUnit = input.unit || '';
@@ -1824,19 +1639,12 @@ const handleBooking = async (e) => {
                             }
 
                             return (
-                              <div key={`optional-${index}`} style={{
-                                marginBottom: '12px',
-                                paddingBottom: '12px',
-                                borderBottom: '1px solid #e8e8e8',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                              }}>
+                              <div key={`optional-${index}`} className="bill-addon-item">
                                 <div>
-                                  <div style={{ fontWeight: '500', fontSize: '13px', color: '#333' }}>{input.name}</div>
-                                  <div style={{ fontSize: '11px', color: '#999', marginTop: '2px' }}>{calculationBreakdown}</div>
+                                  <div className="bill-addon-name">{input.name}</div>
+                                  <div className="bill-addon-calc">{calculationBreakdown}</div>
                                 </div>
-                                <span style={{ fontWeight: '600', color: '#007bff', fontSize: '15px' }}>₹{itemTotal}</span>
+                                <span className="bill-addon-price">₹{itemTotal}</span>
                               </div>
                             );
                           })}
@@ -1847,112 +1655,62 @@ const handleBooking = async (e) => {
                 </div>
               )}
 
+              {/* Pricing Breakdown Card */}
               {bookingType !== 'Inquari Booking' && (
-                <div style={{
-                  backgroundColor: "#fff",
-                  borderRadius: "12px",
-                  padding: "16px",
-                  border: "1px solid #e8e8e8",
-                  marginBottom: "20px"
-                }}>
-                  <div style={{ marginBottom: "12px", paddingBottom: "12px", borderBottom: "1px solid #e8e8e8" }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
-                      <span style={{ color: "#666" }}>Base Price</span>
-                      <span>₹{effectiveRate}</span>
-                    </div>
-                    {service.unit?.includes('day') && daysCount > 1 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px', marginLeft: '20px' }}>
-                        <span style={{ color: "#999", fontSize: "12px" }}>× {daysCount} days</span>
-                        <span style={{ fontSize: "12px" }}>₹{effectiveRate * daysCount}</span>
-                      </div>
-                    )}
-                    {service.isCountable && quantity > 1 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginLeft: '20px' }}>
-                        <span style={{ color: "#999", fontSize: "12px" }}>× {quantity} quantity</span>
-                        <span style={{ fontSize: "12px" }}>₹{effectiveRate * daysCount * quantity}</span>
-                      </div>
-                    )}
+                <div className="bill-pricing-card">
+                  <div className="bill-pricing-line">
+                    <span>Base Price</span>
+                    <span style={{ fontWeight: 600 }}>₹{effectiveRate}</span>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '18px', fontWeight: '600', color: '#1a1a1a' }}>Total Amount</span>
-                    <span style={{ fontSize: '24px', fontWeight: '700', color: '#007bff' }}>₹{totalAmount}</span>
+                  {service.unit?.includes('day') && daysCount > 1 && (
+                    <div className="bill-pricing-line sub">
+                      <span>× {daysCount} days</span>
+                      <span>₹{effectiveRate * daysCount}</span>
+                    </div>
+                  )}
+
+                  {service.isCountable && quantity > 1 && (
+                    <div className="bill-pricing-line sub">
+                      <span>× {quantity} quantity</span>
+                      <span>₹{effectiveRate * daysCount * quantity}</span>
+                    </div>
+                  )}
+
+                  <div className="bill-pricing-divider"></div>
+
+                  <div className="bill-grand-total">
+                    <span className="bill-total-label">Total Amount</span>
+                    <span className="bill-total-val">₹{totalAmount}</span>
                   </div>
                 </div>
               )}
 
+              {/* Inquiry Note Card */}
               {bookingType === 'Inquari Booking' && (
-                <div style={{
-                  backgroundColor: "#e8f4f8",
-                  borderRadius: "12px",
-                  padding: "16px",
-                  textAlign: "center",
-                  marginBottom: "20px"
-                }}>
-                  <span style={{ fontSize: "32px", display: "block", marginBottom: "8px" }}>📞</span>
-                  <p style={{ margin: 0, fontSize: "14px", color: "#007185" }}>
+                <div className="bill-inquiry-note-card">
+                  <div className="bill-inquiry-note-icon">📞</div>
+                  <p className="bill-inquiry-note-text">
                     Our team will contact you shortly to confirm pricing and availability
                   </p>
                 </div>
               )}
             </div>
 
-            <div style={{
-              padding: "16px 28px",
-              borderTop: "1px solid #e8e8e8",
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "12px",
-              backgroundColor: "#fafafa",
-              borderRadius: "0 0 16px 16px"
-            }}>
+            {/* Footer */}
+            <div className="bill-footer">
               <button
+                type="button"
+                className="bill-btn-back"
                 onClick={() => setShowBill(false)}
-                style={{
-                  padding: "10px 24px",
-                  background: "white",
-                  color: "#666",
-                  border: "1px solid #d9d9d9",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  transition: "all 0.2s ease"
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = "#999";
-                  e.currentTarget.style.color = "#333";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = "#d9d9d9";
-                  e.currentTarget.style.color = "#666";
-                }}
               >
                 Back to Edit
               </button>
-              
+
               <button
+                type="button"
+                className={`bill-btn-confirm ${bookingType === 'Inquari Booking' ? 'inquiry' : ''}`}
                 onClick={handleBooking}
-                style={{
-                  padding: "10px 28px",
-                  background: bookingType === 'Inquari Booking' ? "#ff9800" : "#28a745",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                  transition: "all 0.2s ease",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-1px)";
-                  e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.15)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
-                }}
               >
                 {bookingType === 'Inquari Booking' ? "Submit Inquiry" : "Confirm Booking"}
               </button>

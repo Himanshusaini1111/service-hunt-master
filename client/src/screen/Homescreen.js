@@ -149,6 +149,9 @@ function Homescreen() {
 
     // Check if service is available today
     const isServiceAvailableToday = useCallback((service) => {
+        // If live availability is disabled by admin/vendor, service is NOT available today
+        if (service.isLiveAvailable === false) return false;
+
         const today = moment().format("YYYY-MM-DD");
         if (!service.unavailableDates || service.unavailableDates.length === 0) return true;
 

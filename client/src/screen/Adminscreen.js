@@ -155,49 +155,41 @@ function Adminscreen() {
         }
     };
 
-    // Function to toggle all services visibility
+    // Function to toggle live availability without mutating isVisible
     const toggleAllServicesVisibility = async () => {
         if (allServices.length === 0) {
             message.warning("No services available to toggle");
             return;
         }
 
-        const confirm = window.confirm("Are you sure you want to change live Availability");
+        const isCurrentlyLive = allServices.every(service => service.isLiveAvailable !== false);
+        const newLiveState = !isCurrentlyLive;
+
+        const confirm = window.confirm(`Are you sure you want to ${newLiveState ? 'enable' : 'disable'} live Availability?`);
         if (!confirm) return;
 
         try {
             setIsTogglingAllServices(true);
-            
-            // Determine new state based on current services
-            const allVisible = allServices.every(service => service.isVisible);
-            const newVisibility = !allVisible;
-            
-            // Create array of update promises
-            const promises = allServices.map(service =>
-                axios.put(`/api/service/togglevisibility/${service._id}`, {
-                    isVisible: newVisibility
-                })
-            );
-            
-            // Wait for all updates to complete
-            await Promise.all(promises);
-            
-            // Update local state
-            setAllServices(prevServices =>
-                prevServices.map(service => ({
-                    ...service,
-                    isVisible: newVisibility
-                }))
-            );
-            
-            message.success(`All services ${newVisibility ? 'activated' : 'hidden'} successfully`);
-            
-            // Refresh the services in the Services tab
-            setRefreshKey(prev => prev + 1);
-            
+
+            const response = await axios.put(`/api/service/toggleliveavailability?userid=${user._id}`, {
+                isLiveAvailable: newLiveState
+            });
+
+            if (response.data && response.data.success) {
+                // Update local state isLiveAvailable without altering isVisible
+                setAllServices(prevServices =>
+                    prevServices.map(service => ({
+                        ...service,
+                        isLiveAvailable: newLiveState
+                    }))
+                );
+
+                message.success(`Live availability ${newLiveState ? 'enabled' : 'disabled'} successfully`);
+                setRefreshKey(prev => prev + 1);
+            }
         } catch (error) {
-            console.error("Toggle all error:", error);
-            message.error("Error toggling all services");
+            console.error("Toggle live availability error:", error);
+            message.error("Error toggling live availability");
         } finally {
             setIsTogglingAllServices(false);
         }
@@ -415,15 +407,15 @@ function Adminscreen() {
             };
         }
         
-        const allVisible = allServices.every(s => s.isVisible);
+        const isLive = allServices.length > 0 && allServices.every(s => s.isLiveAvailable !== false);
         
-     if (allVisible) {
+     if (isLive) {
     return {
         text: "Disable Live Availability",
         icon: "bi-eye-slash",
         variant: "btn-danger",
         disabled: false,
-        tooltip: "Services are currently live. Click to take offline"
+        tooltip: "Live availability is active. Click to disable for today"
     };
 } else {
     return {
@@ -431,7 +423,7 @@ function Adminscreen() {
         icon: "bi-eye",
         variant: "btn-success",
         disabled: false,
-        tooltip: "Services are currently offline. Click to make live"
+        tooltip: "Live availability is disabled. Click to enable"
     };
 }
     };
