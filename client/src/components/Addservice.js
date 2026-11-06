@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import LocationSearch from './LocationSearch';
-import { FaStore, FaInfoCircle, FaRupeeSign, FaImage, FaListUl, FaMapMarkerAlt, FaPlusCircle, FaCheckCircle, FaTrash, FaPlus } from 'react-icons/fa';
+import { FaStore, FaInfoCircle, FaRupeeSign, FaImage, FaListUl, FaMapMarkerAlt, FaPlusCircle, FaCheckCircle, FaTrash, FaPlus, FaLink, FaChevronDown } from 'react-icons/fa';
 import './Addservice.css';
 
 export function Addservice({ userId }) {
@@ -35,10 +35,15 @@ export function Addservice({ userId }) {
             isCountable: true,
             maxQuantityPerDay: '',
             maxUsersPerDay: '',
-            description: ''
+            description: '',
+            isMerged: false,
+            mergedUnit: 'per day'
         }
     ]);
     const [showUnitControls, setShowUnitControls] = useState(false);
+    const [showSimpleMerge, setShowSimpleMerge] = useState(false);
+    const [openUnitMerge, setOpenUnitMerge] = useState({});
+    const [openOptionalMerge, setOpenOptionalMerge] = useState({});
     
     // Optional inputs
     const [inputs, setInputs] = useState([{
@@ -48,7 +53,9 @@ export function Addservice({ userId }) {
         maxcount: '',
         unit: 'per day',
         customUnit: '',
-        isCountable: true
+        isCountable: true,
+        isMerged: false,
+        mergedUnit: 'per day'
     }]);
     
     const [optionalInputImages, setOptionalInputImages] = useState({});
@@ -107,7 +114,9 @@ export function Addservice({ userId }) {
                     isCountable: true,
                     maxQuantityPerDay: '',
                     maxUsersPerDay: '',
-                    description: ''
+                    description: '',
+                    isMerged: false,
+                    mergedUnit: 'per day'
                 }
             ]);
         }
@@ -299,7 +308,9 @@ export function Addservice({ userId }) {
                 maxcount: '',
                 unit: 'per day',
                 customUnit: '',
-                isCountable: true
+                isCountable: true,
+                isMerged: false,
+                mergedUnit: 'per day'
             }]);
         }
     };
@@ -507,6 +518,8 @@ export function Addservice({ userId }) {
                 unit: input.unit,
                 customUnit: input.unit === "Other" ? input.customUnit : "",
                 isCountable: input.isCountable !== false,
+                isMerged: !!input.isMerged,
+                mergedUnit: input.mergedUnit || 'per day',
                 bookingType: bookingType
             }));
             
@@ -524,13 +537,17 @@ export function Addservice({ userId }) {
                     isCountable: u.isCountable !== false,
                     maxQuantityPerDay: u.maxQuantityPerDay ? parseInt(u.maxQuantityPerDay) : null,
                     maxUsersPerDay: u.maxUsersPerDay ? parseInt(u.maxUsersPerDay) : null,
-                    description: u.description || ''
+                    description: u.description || '',
+                    isMerged: !!u.isMerged,
+                    mergedUnit: u.mergedUnit || 'per day'
                 })),
                 // Legacy fields for backward compatibility
                 rentperday: parseFloat(defaultUnit.price) || 0,
                 unit: defaultUnit.unit,
                 customUnit: defaultUnit.unit === "Other" ? defaultUnit.customUnit : "",
                 isCountable: defaultUnit.isCountable !== false,
+                isMerged: !!defaultUnit.isMerged,
+                mergedUnit: defaultUnit.mergedUnit || 'per day',
                 maxQuantityPerDay: defaultUnit.maxQuantityPerDay ? parseInt(defaultUnit.maxQuantityPerDay) : null,
                 maxUsersPerDay: defaultUnit.maxUsersPerDay ? parseInt(defaultUnit.maxUsersPerDay) : null,
                 description: formattedDescription,
@@ -769,9 +786,30 @@ export function Addservice({ userId }) {
                                     />
                                 </div>
                                 <div className="as-field" style={{ marginBottom: 0 }}>
-                                    <label className="as-label">
-                                        Billing Unit <span className="as-required">*</span>
-                                    </label>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                        <label className="as-label" style={{ marginBottom: 0 }}>
+                                            Billing Unit <span className="as-required">*</span>
+                                        </label>
+                                        <button
+                                            type="button"
+                                            className={`as-classic-merge-btn ${pricingUnits[0]?.isMerged ? 'active' : ''} ${showSimpleMerge ? 'open' : ''}`}
+                                            onClick={() => setShowSimpleMerge(!showSimpleMerge)}
+                                            title="Click to configure unit merge"
+                                        >
+                                            <FaLink style={{ fontSize: 11, marginRight: 5 }} />
+                                            <span>
+                                                {pricingUnits[0]?.isMerged 
+                                                    ? `Merged: + ${pricingUnits[0]?.mergedUnit || 'per day'}` 
+                                                    : '+ Merge Option'}
+                                            </span>
+                                            <FaChevronDown className="as-merge-chevron" style={{
+                                                fontSize: 10,
+                                                marginLeft: 6,
+                                                transform: showSimpleMerge ? 'rotate(180deg)' : 'none',
+                                                transition: 'transform 0.2s ease'
+                                            }} />
+                                        </button>
+                                    </div>
                                     <select
                                         className="as-select"
                                         value={pricingUnits[0]?.unit || 'per day'}
@@ -806,6 +844,77 @@ export function Addservice({ userId }) {
                                     />
                                 </div>
                             )}
+
+                            {/* Merge Unit Section for Simple View (Shown when upper side Merge Option is clicked) */}
+                            {showSimpleMerge && (
+                                <div className="as-classic-merge-box">
+                                    <div className="as-classic-merge-header">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <span className="as-classic-merge-badge">
+                                                <FaLink style={{ fontSize: 11 }} /> Unit Merge Section
+                                            </span>
+                                            <span style={{ fontSize: 12, color: '#64748b' }}>
+                                                Combine {pricingUnits[0]?.unit || 'per room'} with duration
+                                            </span>
+                                        </div>
+                                        <label className="as-classic-toggle-label">
+                                            <input
+                                                type="checkbox"
+                                                checked={pricingUnits[0]?.isMerged || false}
+                                                onChange={(e) => {
+                                                    const newUnits = [...pricingUnits];
+                                                    newUnits[0].isMerged = e.target.checked;
+                                                    if (!newUnits[0].mergedUnit) newUnits[0].mergedUnit = 'per day';
+                                                    setPricingUnits(newUnits);
+                                                }}
+                                                style={{ width: 16, height: 16, accentColor: '#16a34a', cursor: 'pointer' }}
+                                            />
+                                            <span style={{ fontSize: 12.5, fontWeight: 700, color: pricingUnits[0]?.isMerged ? '#166534' : '#64748b' }}>
+                                                {pricingUnits[0]?.isMerged ? '✓ Merge Enabled' : 'Enable Merge'}
+                                            </span>
+                                        </label>
+                                    </div>
+
+                                    {pricingUnits[0]?.isMerged ? (
+                                        <div className="as-classic-merge-body">
+                                            <div className="as-grid-2">
+                                                <div className="as-field" style={{ marginBottom: 0 }}>
+                                                    <label className="as-label" style={{ color: '#166534', fontWeight: 600 }}>
+                                                        Secondary Duration Unit
+                                                    </label>
+                                                    <select
+                                                        className="as-select"
+                                                        value={pricingUnits[0]?.mergedUnit || 'per day'}
+                                                        onChange={(e) => {
+                                                            const newUnits = [...pricingUnits];
+                                                            newUnits[0].mergedUnit = e.target.value;
+                                                            setPricingUnits(newUnits);
+                                                        }}
+                                                        style={{ borderColor: '#86efac' }}
+                                                    >
+                                                        <option value="per day">per day (Multi-day / Check-in to Check-out)</option>
+                                                        <option value="per hour">per hour (Time Slots)</option>
+                                                        <option value="per week">per week</option>
+                                                        <option value="per month">per month</option>
+                                                    </select>
+                                                </div>
+                                                <div className="as-classic-merge-preview">
+                                                    <div style={{ fontWeight: 600, color: '#14532d', marginBottom: 4 }}>
+                                                        📐 Formula: Rate × Qty ({pricingUnits[0]?.unit || 'unit'}) × Duration ({pricingUnits[0]?.mergedUnit || 'per day'})
+                                                    </div>
+                                                    <div style={{ fontSize: 11.5, color: '#166534' }}>
+                                                        👁️ On service cards and booking screen, only <b>"{pricingUnits[0]?.unit || 'unit'}"</b> will be shown.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic', marginTop: 8 }}>
+                                            Check "Enable Merge" above to calculate total price by both quantity ({pricingUnits[0]?.unit || 'e.g. rooms'}) and duration (e.g. days/hours).
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="as-pricing-panel">
@@ -815,7 +924,26 @@ export function Addservice({ userId }) {
                                         <span className={`pricing-unit-badge ${unit.isDefault ? 'default' : 'standard'}`}>
                                             {unit.isDefault ? '⭐ Primary Default Unit' : `Unit Option #${index + 1}`}
                                         </span>
-                                        <div style={{ display: 'flex', gap: 8 }}>
+                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                            <button
+                                                type="button"
+                                                className={`as-classic-merge-btn ${unit.isMerged ? 'active' : ''} ${openUnitMerge[index] ? 'open' : ''}`}
+                                                onClick={() => setOpenUnitMerge(prev => ({ ...prev, [index]: !prev[index] }))}
+                                                title="Click to configure unit merge"
+                                            >
+                                                <FaLink style={{ fontSize: 11, marginRight: 5 }} />
+                                                <span>
+                                                    {unit.isMerged 
+                                                        ? `Merged: + ${unit.mergedUnit || 'per day'}` 
+                                                        : '+ Merge Option'}
+                                                </span>
+                                                <FaChevronDown className="as-merge-chevron" style={{
+                                                    fontSize: 10,
+                                                    marginLeft: 6,
+                                                    transform: openUnitMerge[index] ? 'rotate(180deg)' : 'none',
+                                                    transition: 'transform 0.2s ease'
+                                                }} />
+                                            </button>
                                             <button
                                                 type="button"
                                                 className="btn btn-outline-success btn-sm"
@@ -898,6 +1026,68 @@ export function Addservice({ userId }) {
                                             />
                                         </div>
                                     </div>
+
+                                    {/* Merge Unit Section for this Pricing Unit (Shown when upper side Merge Option is clicked) */}
+                                    {openUnitMerge[index] && (
+                                        <div className="as-classic-merge-box">
+                                            <div className="as-classic-merge-header">
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <span className="as-classic-merge-badge">
+                                                        <FaLink style={{ fontSize: 11 }} /> Unit Merge Section
+                                                    </span>
+                                                    <span style={{ fontSize: 12, color: '#64748b' }}>
+                                                        Combine {unit.unit} with duration
+                                                    </span>
+                                                </div>
+                                                <label className="as-classic-toggle-label">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={unit.isMerged || false}
+                                                        onChange={(e) => handlePricingUnitChange(index, 'isMerged', e.target.checked)}
+                                                        style={{ width: 16, height: 16, accentColor: '#16a34a', cursor: 'pointer' }}
+                                                    />
+                                                    <span style={{ fontSize: 12.5, fontWeight: 700, color: unit.isMerged ? '#166534' : '#64748b' }}>
+                                                        {unit.isMerged ? '✓ Merge Enabled' : 'Enable Merge'}
+                                                    </span>
+                                                </label>
+                                            </div>
+
+                                            {unit.isMerged ? (
+                                                <div className="as-classic-merge-body">
+                                                    <div className="as-grid-2">
+                                                        <div className="as-field" style={{ marginBottom: 0 }}>
+                                                            <label className="as-label" style={{ color: '#166534', fontWeight: 600 }}>
+                                                                Secondary Duration Unit
+                                                            </label>
+                                                            <select
+                                                                className="as-select"
+                                                                value={unit.mergedUnit || 'per day'}
+                                                                onChange={(e) => handlePricingUnitChange(index, 'mergedUnit', e.target.value)}
+                                                                style={{ borderColor: '#86efac' }}
+                                                            >
+                                                                <option value="per day">per day (Multi-day / Check-in to Check-out)</option>
+                                                                <option value="per hour">per hour (Time Slots)</option>
+                                                                <option value="per week">per week</option>
+                                                                <option value="per month">per month</option>
+                                                            </select>
+                                                        </div>
+                                                        <div className="as-classic-merge-preview">
+                                                            <div style={{ fontWeight: 600, color: '#14532d', marginBottom: 4 }}>
+                                                                📐 Formula: Rate × Qty ({unit.unit}) × Duration ({unit.mergedUnit || 'per day'})
+                                                            </div>
+                                                            <div style={{ fontSize: 11.5, color: '#166534' }}>
+                                                                👁️ On service cards and booking screen, only <b>"{unit.unit}"</b> will be shown.
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic', marginTop: 8 }}>
+                                                    Check "Enable Merge" above to calculate total price by both quantity ({unit.unit}) and duration (e.g. days/hours).
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
 
@@ -1304,16 +1494,37 @@ export function Addservice({ userId }) {
                                         <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
                                             Add-on Item #{index + 1}
                                         </span>
-                                        {inputs.length > 1 && (
+                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                             <button
                                                 type="button"
-                                                className="btn btn-outline-danger btn-sm"
-                                                style={{ borderRadius: 6, fontSize: 11 }}
-                                                onClick={() => handleRemoveInput(index)}
+                                                className={`as-classic-merge-btn ${input.isMerged ? 'active' : ''} ${openOptionalMerge[index] ? 'open' : ''}`}
+                                                onClick={() => setOpenOptionalMerge(prev => ({ ...prev, [index]: !prev[index] }))}
+                                                title="Click to configure unit merge"
                                             >
-                                                <FaTrash style={{ marginRight: 4 }} /> Remove
+                                                <FaLink style={{ fontSize: 11, marginRight: 5 }} />
+                                                <span>
+                                                    {input.isMerged 
+                                                        ? `Merged: + ${input.mergedUnit || 'per day'}` 
+                                                        : '+ Merge Option'}
+                                                </span>
+                                                <FaChevronDown className="as-merge-chevron" style={{
+                                                    fontSize: 10,
+                                                    marginLeft: 6,
+                                                    transform: openOptionalMerge[index] ? 'rotate(180deg)' : 'none',
+                                                    transition: 'transform 0.2s ease'
+                                                }} />
                                             </button>
-                                        )}
+                                            {inputs.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-danger btn-sm"
+                                                    style={{ borderRadius: 6, fontSize: 11 }}
+                                                    onClick={() => handleRemoveInput(index)}
+                                                >
+                                                    <FaTrash style={{ marginRight: 4 }} /> Remove
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="as-grid-3">
@@ -1369,6 +1580,68 @@ export function Addservice({ userId }) {
                                             )}
                                         </div>
                                     </div>
+
+                                    {/* Merge Unit Section for this Optional Add-on (Shown when upper side Merge Option is clicked) */}
+                                    {openOptionalMerge[index] && (
+                                        <div className="as-classic-merge-box">
+                                            <div className="as-classic-merge-header">
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    <span className="as-classic-merge-badge">
+                                                        <FaLink style={{ fontSize: 11 }} /> Unit Merge Section
+                                                    </span>
+                                                    <span style={{ fontSize: 12, color: '#64748b' }}>
+                                                        Combine {input.unit || 'per item'} with duration
+                                                    </span>
+                                                </div>
+                                                <label className="as-classic-toggle-label">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={input.isMerged || false}
+                                                        onChange={(e) => handleInputChange(index, 'isMerged', e.target.checked)}
+                                                        style={{ width: 16, height: 16, accentColor: '#16a34a', cursor: 'pointer' }}
+                                                    />
+                                                    <span style={{ fontSize: 12.5, fontWeight: 700, color: input.isMerged ? '#166534' : '#64748b' }}>
+                                                        {input.isMerged ? '✓ Merge Enabled' : 'Enable Merge'}
+                                                    </span>
+                                                </label>
+                                            </div>
+
+                                            {input.isMerged ? (
+                                                <div className="as-classic-merge-body">
+                                                    <div className="as-grid-2">
+                                                        <div className="as-field" style={{ marginBottom: 0 }}>
+                                                            <label className="as-label" style={{ color: '#166534', fontWeight: 600 }}>
+                                                                Secondary Duration Unit
+                                                            </label>
+                                                            <select
+                                                                className="as-select"
+                                                                value={input.mergedUnit || 'per day'}
+                                                                onChange={(e) => handleInputChange(index, 'mergedUnit', e.target.value)}
+                                                                style={{ borderColor: '#86efac' }}
+                                                            >
+                                                                <option value="per day">per day (Multi-day / Duration)</option>
+                                                                <option value="per hour">per hour (Time Slots)</option>
+                                                                <option value="per week">per week</option>
+                                                                <option value="per month">per month</option>
+                                                            </select>
+                                                        </div>
+                                                        <div className="as-classic-merge-preview">
+                                                            <div style={{ fontWeight: 600, color: '#14532d', marginBottom: 4 }}>
+                                                                📐 Formula: Extra Fee × Qty ({input.unit || 'item'}) × Duration ({input.mergedUnit || 'per day'})
+                                                            </div>
+                                                            <div style={{ fontSize: 11.5, color: '#166534' }}>
+                                                                👁️ On service cards and booking screen, only <b>"{input.unit || 'item'}"</b> will be shown.
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic', marginTop: 8 }}>
+                                                    Check "Enable Merge" above to calculate extra fee by both count ({input.unit || 'items'}) and duration (e.g. days/hours).
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
 

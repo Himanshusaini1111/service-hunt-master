@@ -18,6 +18,16 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import Navbar from '../components/Navbar';
 
+// Helper to extract only the first unit for display
+const getFirstUnit = (unit, customUnit) => {
+  let u = unit === "Other" ? (customUnit || "Other") : (unit || "per day");
+  if (typeof u === 'string') {
+    const parts = u.split(/\s*(?:and|\/|\+|&)\s*/i);
+    return parts[0].trim();
+  }
+  return u;
+};
+
 function Bookingscreen() {
   const { serviceid } = useParams();
   const locationRoute = useLocation();
@@ -142,6 +152,8 @@ function Bookingscreen() {
             customUnit: data.customUnit || '',
             isDefault: true,
             isCountable: data.isCountable !== false,
+            isMerged: !!data.isMerged,
+            mergedUnit: data.mergedUnit || 'per day',
             maxQuantityPerDay: data.maxQuantityPerDay,
             maxUsersPerDay: data.maxUsersPerDay
           }]);
@@ -236,16 +248,23 @@ function Bookingscreen() {
   useEffect(() => {
     const currentUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
     const unitType = currentUnit?.unit || service?.unit || 'per day';
+    const isMerged = currentUnit?.isMerged || service?.isMerged || false;
+    const mergedUnit = currentUnit?.mergedUnit || service?.mergedUnit || 'per day';
+    const effectiveTimeType = isMerged ? mergedUnit : unitType;
 
-    if (unitType.includes('hour') || unitType === 'per person' || unitType === 'per item' || unitType === 'Other') {
+    if (effectiveTimeType.includes('hour') || (!isMerged && (unitType === 'per person' || unitType === 'per item' || unitType === 'Other'))) {
       setDaysCount(1);
+    } else if (selectedDates.length > 1) {
+      setDaysCount(selectedDates.length);
     } else if (fromDate && toDate) {
       const start = moment(fromDate);
       const end = moment(toDate);
       const diff = end.diff(start, 'days') + 1;
       setDaysCount(diff > 0 ? diff : 1);
+    } else {
+      setDaysCount(1);
     }
-  }, [fromDate, toDate, service, availableUnits, selectedUnitIndex]);
+  }, [fromDate, toDate, selectedDates, service, availableUnits, selectedUnitIndex]);
 
   // Calculate total amount
   useEffect(() => {
@@ -257,14 +276,28 @@ function Bookingscreen() {
     const currentUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
     const unitRent = currentUnit.price || 0;
     const unitType = currentUnit.unit || 'per day';
+    const mainUnit = unitType;
     const isCountable = currentUnit.isCountable !== false;
     const currentBookingType = bookingType || service.bookingType || 'Automatic Booking';
+
+    const isMerged = currentUnit.isMerged || service.isMerged || false;
+    const mergedUnit = currentUnit.mergedUnit || service.mergedUnit || 'per day';
 
     let baseTotal = 0;
 
     // For Inquari Booking, total is 0
     if (currentBookingType === 'Inquari Booking') {
       baseTotal = 0;
+    } else if (isMerged) {
+      // Merged pricing calculation: Rate × Quantity × Duration
+      const qtyMultiplier = isCountable ? (quantity || 1) : 1;
+      if (mergedUnit.includes('hour')) {
+        const slotMultiplier = selectedSlots.length || 1;
+        baseTotal = unitRent * qtyMultiplier * slotMultiplier;
+      } else {
+        const dayMultiplier = daysCount || 1;
+        baseTotal = unitRent * qtyMultiplier * dayMultiplier;
+      }
     } else {
       // Calculate base price based on unit type
       if (unitType.includes('day') || unitType.includes('week') || unitType.includes('month')) {
@@ -284,8 +317,16 @@ function Bookingscreen() {
         let multiplier = 1;
         const inputUnit = input.unit || '';
         const mainUnit = unitType;
+        const isOptMerged = input.isMerged || false;
+        const optMergedUnit = input.mergedUnit || 'per day';
 
-        if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
+        if (isOptMerged) {
+          if (optMergedUnit.includes('hour')) {
+            multiplier = (selectedSlots.length || 1);
+          } else {
+            multiplier = daysCount;
+          }
+        } else if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
             (mainUnit.includes('day') || mainUnit === 'per-day')) {
           multiplier = daysCount;
         } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
@@ -303,9 +344,16 @@ function Bookingscreen() {
         const inputPrice = effectiveOptionalUnitPrice(input, selectedServiceArea);
         let multiplier = 1;
         const inputUnit = input.unit || '';
-        const mainUnit = unitType;
+        const isOptMerged = input.isMerged || false;
+        const optMergedUnit = input.mergedUnit || 'per day';
 
-        if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
+        if (isOptMerged) {
+          if (optMergedUnit.includes('hour')) {
+            multiplier = (selectedSlots.length || 1);
+          } else {
+            multiplier = daysCount;
+          }
+        } else if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
             (mainUnit.includes('day') || mainUnit === 'per-day')) {
           multiplier = daysCount;
         } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
@@ -400,12 +448,15 @@ const handleBooking = async (e) => {
       const locationType = getLocationType();
       const currentUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
       const unitType = currentUnit?.unit || service?.unit || 'per day';
+      const isMerged = currentUnit?.isMerged || service?.isMerged || false;
+      const mergedUnit = currentUnit?.mergedUnit || service?.mergedUnit || 'per day';
+      const effectiveTimeType = isMerged ? mergedUnit : unitType;
 
-      if ((unitType.includes('day') || unitType.includes('week') || unitType.includes('month')) && selectedDates.length === 0) {
+      if ((effectiveTimeType.includes('day') || effectiveTimeType.includes('week') || effectiveTimeType.includes('month')) && selectedDates.length === 0) {
         Swal.fire('Error', 'Please select at least one date', 'error');
         return;
       }
-      if (unitType.includes('hour') && selectedSlots.length === 0) {
+      if (effectiveTimeType.includes('hour') && selectedSlots.length === 0) {
         Swal.fire('Error', 'Please select at least one time slot', 'error');
         return;
       }
@@ -453,9 +504,11 @@ const handleBooking = async (e) => {
       description,
       service: service.name,
       locationType: getLocationType(),
-      unit: currentUnit.unit || service.unit,
+      unit: getFirstUnit(currentUnit.unit, currentUnit.customUnit) || getFirstUnit(service.unit, service.customUnit),
       customUnit: currentUnit.customUnit || service.customUnit || '',
       isCountable: currentUnit.isCountable !== false,
+      isMerged: currentUnit.isMerged || service.isMerged || false,
+      mergedUnit: currentUnit.mergedUnit || service.mergedUnit || 'per day',
       rentperday: effectiveRentSnapshot,
       selectedUnitIndex: selectedUnitIndex,
       selectedUnit: currentUnit,
@@ -479,8 +532,10 @@ const handleBooking = async (e) => {
             name: input.name,
             price: effectiveOptionalUnitPrice(input, selectedServiceArea),
             count,
-            unit: input.unit,
+            unit: getFirstUnit(input.unit, input.customUnit),
             customUnit: input.customUnit,
+            isMerged: !!input.isMerged,
+            mergedUnit: input.mergedUnit || 'per day',
             isCountable
           };
         })
@@ -554,8 +609,11 @@ const handleBooking = async (e) => {
 
     const currentUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
     const unit = currentUnit?.unit || service?.unit || 'per day';
+    const isMerged = currentUnit?.isMerged || service?.isMerged || false;
+    const mergedUnit = currentUnit?.mergedUnit || service?.mergedUnit || 'per day';
+    const effectiveTimeType = isMerged ? mergedUnit : unit;
 
-    if (unit.includes('hour') || unit === 'per person' || unit === 'per item' || unit === 'Other') {
+    if (effectiveTimeType.includes('hour') || (!isMerged && (unit === 'per person' || unit === 'per item' || unit === 'Other'))) {
       setSelectedDates([dateStr]);
       setFromDate(dateStr);
       setToDate(dateStr);
@@ -633,8 +691,11 @@ const handleBooking = async (e) => {
 
     const currentUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
     const unit = currentUnit?.unit || service.unit || 'per day';
+    const isMerged = currentUnit?.isMerged || service?.isMerged || false;
+    const mergedUnit = currentUnit?.mergedUnit || service?.mergedUnit || 'per day';
+    const effectiveTimeType = isMerged ? mergedUnit : unit;
 
-    if (unit.includes('day') || unit.includes('week') || unit.includes('month')) {
+    if (effectiveTimeType.includes('day') || effectiveTimeType.includes('week') || effectiveTimeType.includes('month')) {
       return (
         <div className="booking-controls" style={{ overflow: "visible", width: "100%" }}>
           <legend className="section-title">Select Dates</legend>
@@ -821,7 +882,9 @@ const handleBooking = async (e) => {
   if (!service) return <div>Service not found</div>;
 
   const currentUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
-  const displayUnit = currentUnit?.unit === "Other" ? currentUnit.customUnit : currentUnit?.unit || service.unit || 'per day';
+  const isMerged = currentUnit?.isMerged || service?.isMerged || false;
+  const mergedUnit = currentUnit?.mergedUnit || service?.mergedUnit || 'per day';
+  const displayUnit = getFirstUnit(currentUnit?.unit, currentUnit?.customUnit) || getFirstUnit(service.unit, service.customUnit) || 'per day';
   const effectiveRate = effectiveBaseRent(service, selectedServiceArea);
 
   return (
@@ -1098,7 +1161,7 @@ const handleBooking = async (e) => {
                   >
                     {availableUnits.map((unit, index) => (
                       <option key={index} value={index}>
-                        {unit.unit === 'Other' ? unit.customUnit : unit.unit} — ₹{unit.price} {unit.isDefault ? "✦" : ""}
+                        {getFirstUnit(unit.unit, unit.customUnit)} — ₹{unit.price} {unit.isDefault ? "✦" : ""}
                       </option>
                     ))}
                   </select>
@@ -1610,8 +1673,20 @@ const handleBooking = async (e) => {
                             let calculationBreakdown = '';
                             const inputUnit = input.unit || '';
 
+                            const isOptMerged = input.isMerged || false;
+                            const optMergedUnit = input.mergedUnit || 'per day';
+
                             if (input.isCountable && count > 0) {
-                              if (inputUnit.includes('day') || inputUnit === 'per-day') {
+                              if (isOptMerged) {
+                                if (optMergedUnit.includes('hour')) {
+                                  const slotCount = selectedSlots.length || 1;
+                                  itemTotal = count * optUnitRate * slotCount;
+                                  calculationBreakdown = `${count} × ₹${optUnitRate} × ${slotCount} slot${slotCount > 1 ? 's' : ''}`;
+                                } else {
+                                  itemTotal = count * optUnitRate * daysCount;
+                                  calculationBreakdown = `${count} × ₹${optUnitRate} × ${daysCount} day${daysCount > 1 ? 's' : ''}`;
+                                }
+                              } else if (inputUnit.includes('day') || inputUnit === 'per-day') {
                                 itemTotal = count * optUnitRate * daysCount;
                                 calculationBreakdown = `${count} × ₹${optUnitRate} × ${daysCount} day${daysCount > 1 ? 's' : ''}`;
                               } else if (inputUnit.includes('hour') || inputUnit === 'per-hour') {
@@ -1623,7 +1698,16 @@ const handleBooking = async (e) => {
                                 calculationBreakdown = `${count} × ₹${optUnitRate}`;
                               }
                             } else if (!input.isCountable && addedOptionalInputs[index]) {
-                              if (inputUnit.includes('day') || inputUnit === 'per-day') {
+                              if (isOptMerged) {
+                                if (optMergedUnit.includes('hour')) {
+                                  const slotCount = selectedSlots.length || 1;
+                                  itemTotal = optUnitRate * slotCount;
+                                  calculationBreakdown = `₹${optUnitRate} × ${slotCount} slot${slotCount > 1 ? 's' : ''}`;
+                                } else {
+                                  itemTotal = optUnitRate * daysCount;
+                                  calculationBreakdown = `₹${optUnitRate} × ${daysCount} day${daysCount > 1 ? 's' : ''}`;
+                                }
+                              } else if (inputUnit.includes('day') || inputUnit === 'per-day') {
                                 itemTotal = optUnitRate * daysCount;
                                 calculationBreakdown = `₹${optUnitRate} × ${daysCount} day${daysCount > 1 ? 's' : ''}`;
                               } else if (inputUnit.includes('hour') || inputUnit === 'per-hour') {
@@ -1660,20 +1744,20 @@ const handleBooking = async (e) => {
                 <div className="bill-pricing-card">
                   <div className="bill-pricing-line">
                     <span>Base Price</span>
-                    <span style={{ fontWeight: 600 }}>₹{effectiveRate}</span>
+                    <span style={{ fontWeight: 600 }}>₹{effectiveRate} / {displayUnit}</span>
                   </div>
 
-                  {service.unit?.includes('day') && daysCount > 1 && (
+                  {currentUnit?.isCountable !== false && quantity > 1 && (
                     <div className="bill-pricing-line sub">
-                      <span>× {daysCount} days</span>
-                      <span>₹{effectiveRate * daysCount}</span>
+                      <span>× {quantity} ({displayUnit.replace(/^per\s+/i, '') || 'quantity'})</span>
+                      <span>₹{effectiveRate * quantity}</span>
                     </div>
                   )}
 
-                  {service.isCountable && quantity > 1 && (
+                  {(isMerged || (currentUnit?.unit || service.unit || '').includes('day') || (currentUnit?.unit || service.unit || '').includes('week') || (currentUnit?.unit || service.unit || '').includes('month')) && daysCount > 1 && (
                     <div className="bill-pricing-line sub">
-                      <span>× {quantity} quantity</span>
-                      <span>₹{effectiveRate * daysCount * quantity}</span>
+                      <span>× {daysCount} days</span>
+                      <span>₹{effectiveRate * (isMerged && currentUnit?.isCountable !== false ? quantity : 1) * daysCount}</span>
                     </div>
                   )}
 

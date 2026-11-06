@@ -1314,26 +1314,27 @@ const BookingBillModal = ({ booking, onClose }) => {
         if (!booking) return null;
         
         const basePrice = booking.rentperday || 0;
-        const unit = booking.customUnit || booking.unit || 'per day';
+        let rawUnit = booking.customUnit || booking.unit || 'per day';
+        let unit = rawUnit;
+        if (typeof unit === 'string') {
+            const parts = unit.split(/\s*(?:and|\/|\+|&)\s*/i);
+            unit = parts[0].trim();
+        }
         const quantity = booking.quantity || 1;
         const daysCount = booking.daysCount || 1;
+        const isMerged = booking.isMerged || false;
         
         // Calculate base total
         let baseTotal = basePrice;
         let breakdownText = `₹${basePrice}`;
         
-        if (unit.includes('day') && daysCount > 1) {
-            baseTotal = basePrice * daysCount;
-            breakdownText = `₹${basePrice} × ${daysCount} days`;
-        }
-        
-        if (booking.isCountable && quantity > 1) {
-            baseTotal = baseTotal * quantity;
-            breakdownText += ` × ${quantity} qty`;
-        }
-        
-        // Multiply by quantity if countable and not already multiplied
-        if (booking.isCountable && quantity > 1 && !unit.includes('day')) {
+        if (isMerged) {
+            baseTotal = basePrice * (booking.isCountable ? quantity : 1) * (daysCount || 1);
+            breakdownText = `₹${basePrice} × ${quantity} qty × ${daysCount} days`;
+        } else if (unit.includes('day') && daysCount > 1) {
+            baseTotal = basePrice * daysCount * (booking.isCountable ? quantity : 1);
+            breakdownText = `₹${basePrice} × ${daysCount} days${booking.isCountable && quantity > 1 ? ` × ${quantity} qty` : ''}`;
+        } else if (booking.isCountable && quantity > 1) {
             baseTotal = basePrice * quantity;
             breakdownText = `₹${basePrice} × ${quantity}`;
         }
@@ -2224,12 +2225,14 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         }));
     };
 
-    // Helper function to format unit display
+    // Helper function to format unit display (only first unit if merged)
     const formatUnit = (service) => {
-        if (service.unit === "Other") {
-            return service.customUnit || "per unit";
+        const u = service.unit === "Other" ? (service.customUnit || "per unit") : (service.unit || "per day");
+        if (typeof u === 'string') {
+            const parts = u.split(/\s*(?:and|\/|\+|&)\s*/i);
+            return parts[0].trim();
         }
-        return service.unit || "per day";
+        return u;
     };
 
     // Delete service with proper error handling

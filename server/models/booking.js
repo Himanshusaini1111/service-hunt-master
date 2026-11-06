@@ -25,6 +25,8 @@ const bookingSchema = new mongoose.Schema({
     isCountable: { type: Boolean, default: true },
     quantity: { type: Number, default: 1 },
     daysCount: { type: Number, default: 1 },
+    isMerged: { type: Boolean, default: false },
+    mergedUnit: { type: String, default: 'per day' },
     
     optionalInputs: [{
         name: String,
@@ -33,6 +35,8 @@ const bookingSchema = new mongoose.Schema({
         count: Number,
         unit: String,
         customUnit: String,
+        isMerged: Boolean,
+        mergedUnit: String,
         isCountable: Boolean
     }],
     extraInputs: [{

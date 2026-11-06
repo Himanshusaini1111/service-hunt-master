@@ -62,6 +62,14 @@ const serviceSchema = mongoose.Schema({
         description: { 
             type: String, 
             default: '' 
+        },
+        isMerged: {
+            type: Boolean,
+            default: false
+        },
+        mergedUnit: {
+            type: String,
+            default: 'per day'
         }
     }],
     
@@ -79,6 +87,14 @@ const serviceSchema = mongoose.Schema({
     customUnit: {
         type: String,
         default: ""
+    },
+    isMerged: {
+        type: Boolean,
+        default: false
+    },
+    mergedUnit: {
+        type: String,
+        default: "per day"
     },
     isCountable: {
         type: Boolean,
@@ -136,6 +152,14 @@ const serviceSchema = mongoose.Schema({
         image: String,
         unit: String,
         customUnit: String,
+        isMerged: {
+            type: Boolean,
+            default: false
+        },
+        mergedUnit: {
+            type: String,
+            default: 'per day'
+        },
         isCountable: {
             type: Boolean,
             default: true

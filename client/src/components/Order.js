@@ -265,8 +265,11 @@ const MyOrders = () => {
         };
 
         const getUnitDisplay = () => {
-            if (selectedBooking.customUnit) return selectedBooking.customUnit;
-            const unit = selectedBooking.unit || 'per day';
+            let unit = selectedBooking.customUnit || selectedBooking.unit || 'per day';
+            if (typeof unit === 'string') {
+                const parts = unit.split(/\s*(?:and|\/|\+|&)\s*/i);
+                unit = parts[0].trim();
+            }
             if (unit.startsWith('per-')) {
                 return unit.replace('per-', '').replace(/-/g, ' ');
             }
@@ -573,8 +576,11 @@ const MyOrders = () => {
         };
 
         const getUnitDisplay = () => {
-            if (booking.customUnit) return booking.customUnit;
-            const unit = booking.unit || 'per day';
+            let unit = booking.customUnit || booking.unit || 'per day';
+            if (typeof unit === 'string') {
+                const parts = unit.split(/\s*(?:and|\/|\+|&)\s*/i);
+                unit = parts[0].trim();
+            }
             if (unit.startsWith('per-')) {
                 return unit.replace('per-', '').replace(/-/g, ' ');
             }

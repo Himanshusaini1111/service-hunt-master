@@ -48,6 +48,8 @@ function normalizeOptionalInputs(inputs) {
         unit: input.unit || 'per day',
         customUnit: input.customUnit || '',
         isCountable: input.isCountable !== false,
+        isMerged: !!input.isMerged,
+        mergedUnit: input.mergedUnit || 'per day',
         bookingType: input.bookingType || 'Automatic Booking' // Inherit from main service
     }));
 }
@@ -128,6 +130,8 @@ router.post("/addservice", async (req, res) => {
             rentperday, // Legacy - fallback
             unit, // Legacy - fallback
             customUnit, // Legacy - fallback
+            isMerged,
+            mergedUnit,
             isCountable,
             maxQuantityPerDay,
             maxUsersPerDay,
@@ -176,6 +180,8 @@ router.post("/addservice", async (req, res) => {
                 customUnit: u.unit === 'Other' ? (u.customUnit || '') : '',
                 isDefault: u.isDefault || false,
                 isCountable: u.isCountable !== false,
+                isMerged: !!u.isMerged,
+                mergedUnit: u.mergedUnit || 'per day',
                 maxQuantityPerDay: u.maxQuantityPerDay ? parseInt(u.maxQuantityPerDay) : null,
                 maxUsersPerDay: u.maxUsersPerDay ? parseInt(u.maxUsersPerDay) : null,
                 description: u.description || ''
@@ -193,6 +199,8 @@ router.post("/addservice", async (req, res) => {
                 customUnit: unit === 'Other' ? (customUnit || '') : '',
                 isDefault: true,
                 isCountable: isCountable !== false,
+                isMerged: !!isMerged,
+                mergedUnit: mergedUnit || 'per day',
                 maxQuantityPerDay: maxQuantityPerDay ? parseInt(maxQuantityPerDay) : null,
                 maxUsersPerDay: maxUsersPerDay ? parseInt(maxUsersPerDay) : null,
                 description: ''
@@ -221,6 +229,8 @@ router.post("/addservice", async (req, res) => {
             rentperday: defaultUnit.price,
             unit: defaultUnit.unit,
             customUnit: defaultUnit.customUnit || '',
+            isMerged: !!defaultUnit.isMerged,
+            mergedUnit: defaultUnit.mergedUnit || 'per day',
             isCountable: defaultUnit.isCountable !== false,
             maxQuantityPerDay: defaultUnit.maxQuantityPerDay || null,
             maxUsersPerDay: defaultUnit.maxUsersPerDay || null,

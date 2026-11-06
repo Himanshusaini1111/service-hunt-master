@@ -13,10 +13,20 @@ import {
     FaStore
 } from "react-icons/fa";
 
+// Helper to display only first unit if merged or combined
+const getFirstUnit = (unit, customUnit) => {
+    let u = unit === "Other" ? (customUnit || "Other") : (unit || "per day");
+    if (typeof u === 'string') {
+        const parts = u.split(/\s*(?:and|\/|\+|&)\s*/i);
+        return parts[0].trim();
+    }
+    return u;
+};
+
 function Service({ service, onClick, isLandingPage = false, bookingArea = null }) {
     // eslint-disable-next-line no-unused-vars
     const [averageRating, setAverageRating] = useState("No ratings yet");
-    const displayUnit = service.unit === "Other" ? service.customUnit : service.unit;
+    const displayUnit = getFirstUnit(service.unit, service.customUnit);
 
     // Direct price calculation based on bookingArea
     const calculateDisplayRent = () => {
