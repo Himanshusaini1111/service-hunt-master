@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
@@ -32,7 +32,6 @@ const LandingPage = () => {
     const [currentServiceIndex, setCurrentServiceIndex] = useState(0);
     const [allServices, setAllServices] = useState([]);
     const [locationBasedServices, setLocationBasedServices] = useState([]);
-    const [filteredServices, setFilteredServices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showSearchResults, setShowSearchResults] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -47,7 +46,7 @@ const LandingPage = () => {
     const [selectedDates, setSelectedDates] = useState([]);
     const [priceRange, setPriceRange] = useState([0, 10000]);
     const [sortOrder, setSortOrder] = useState("default");
-    const [searchResults, setSearchResults] = useState([]); // Store original search results
+    const [searchResults, setSearchResults] = useState([]); // Store search results before price/availability filters
     const { RangePicker } = DatePicker;
 
     const navigate = useNavigate();
@@ -110,6 +109,41 @@ const LandingPage = () => {
         return queryTerms.some(term => targets.some(target => target.includes(term)));
     }, []);
 
+    // Smart service name & category matcher
+    const isServiceMatchingSearch = useCallback((service, term) => {
+        if (!term || !term.trim()) return true;
+        if (!service) return false;
+
+        const searchableText = [
+            service.name || '',
+            service.category || '',
+            service.subCategory || '',
+            service.companyname || '',
+            service.description || '',
+            service.facility || ''
+        ].join(' ').toLowerCase();
+
+        const normalizedTerm = term.trim().toLowerCase();
+
+        // 1. Direct full phrase match
+        if (searchableText.includes(normalizedTerm)) return true;
+
+        // Filter out common stopwords to extract primary keywords
+        const stopwords = new Set(['service', 'services', 'expert', 'best', 'near', 'me', 'in', 'and', 'for', 'at', 'the', 'of', 'a', 'an']);
+        const allWords = normalizedTerm.split(/\s+/).filter(w => w.length > 1);
+        const keywords = allWords.filter(w => !stopwords.has(w));
+        const wordsToMatch = keywords.length > 0 ? keywords : allWords;
+
+        if (wordsToMatch.length === 0) return true;
+
+        // All key terms must match (either directly or via common word stems)
+        return wordsToMatch.every(word => {
+            if (searchableText.includes(word)) return true;
+            const stem = word.replace(/(ing|ers?|ed|es|s|ian)$/, '').trim();
+            return stem.length >= 3 && searchableText.includes(stem);
+        });
+    }, []);
+
     // Check if service is available today
     const isServiceAvailableToday = useCallback((service) => {
         const today = moment().format("YYYY-MM-DD");
@@ -129,7 +163,7 @@ const LandingPage = () => {
         return filtered;
     }, [isServiceInLocation]);
 
-    // Apply filters to search results
+    // Apply secondary filters (availability, price range, sort) to search results
     const applyFiltersToResults = useCallback((results) => {
         let filtered = [...results];
 
@@ -140,26 +174,23 @@ const LandingPage = () => {
 
         // Apply price range filter
         filtered = filtered.filter(
-            s => s.rentperday >= priceRange[0] && s.rentperday <= priceRange[1]
+            s => (Number(s.rentperday) || 0) >= priceRange[0] && (Number(s.rentperday) || 0) <= priceRange[1]
         );
 
         // Apply sorting
         if (sortOrder === "priceAsc") {
-            filtered.sort((a, b) => a.rentperday - b.rentperday);
+            filtered.sort((a, b) => (Number(a.rentperday) || 0) - (Number(b.rentperday) || 0));
         } else if (sortOrder === "priceDesc") {
-            filtered.sort((a, b) => b.rentperday - a.rentperday);
+            filtered.sort((a, b) => (Number(b.rentperday) || 0) - (Number(a.rentperday) || 0));
         }
 
         return filtered;
     }, [availability, priceRange, sortOrder, isServiceAvailableToday]);
 
-    // Update filtered services when filters change (only in search results mode)
-    useEffect(() => {
-        if (showSearchResults && searchResults.length > 0) {
-            const filtered = applyFiltersToResults(searchResults);
-            setFilteredServices(filtered);
-        }
-    }, [availability, priceRange, sortOrder, showSearchResults, searchResults, applyFiltersToResults]);
+    // Derived filtered services: automatically keeps in sync with searchResults and active filters
+    const filteredServices = useMemo(() => {
+        return applyFiltersToResults(searchResults);
+    }, [searchResults, applyFiltersToResults]);
 
     // Update location-based services when location or allServices changes
     useEffect(() => {
@@ -167,16 +198,10 @@ const LandingPage = () => {
             if (selectedLocation) {
                 const filtered = getLocationBasedServices(selectedLocation, allServices);
                 setLocationBasedServices(filtered);
-                if (!showSearchResults) {
-                    setFilteredServices(filtered);
-                }
                 setHasLocation(true);
                 console.log(`Location selected: ${selectedLocation.display_name || selectedLocation.city || selectedLocation}, Found ${filtered.length} services`);
             } else {
                 setLocationBasedServices(allServices);
-                if (!showSearchResults) {
-                    setFilteredServices(allServices);
-                }
                 setHasLocation(false);
             }
             setLoading(false);
@@ -302,30 +327,20 @@ const LandingPage = () => {
             results = results.filter(service => isServiceInLocation(service, targetLocation));
         }
 
-        // 2. Filter by search term
+        // 2. Filter strictly by search term (name, category, subcategory, company, description, facility)
         if (term) {
-            const searchTermLower = term.toLowerCase();
-            results = results.filter(service =>
-                (service.name && service.name.toLowerCase().includes(searchTermLower)) ||
-                (service.category && service.category.toLowerCase().includes(searchTermLower)) ||
-                (service.subCategory && service.subCategory.toLowerCase().includes(searchTermLower)) ||
-                (service.description && service.description.toLowerCase().includes(searchTermLower))
-            );
+            results = results.filter(service => isServiceMatchingSearch(service, term));
         }
 
-        console.log(`Search results: ${results.length} services found`);
+        console.log(`Search results: ${results.length} services found for term: "${term}" in location: "${targetLocation}"`);
 
         if (loc && !selectedLocation) {
             setSelectedLocation(loc);
             setHasLocation(true);
         }
 
-        // Store original search results
+        // Set search results (filteredServices derives automatically via useMemo)
         setSearchResults(results);
-
-        // Apply filters to results
-        const filtered = applyFiltersToResults(results);
-        setFilteredServices(filtered);
         setShowSearchResults(true);
 
         // Push state to history for back button handling
@@ -339,26 +354,17 @@ const LandingPage = () => {
         console.log("Navbar search triggered, term:", term);
 
         if (!term || term.trim() === "") {
-            setFilteredServices(locationBasedServices);
             setShowSearchResults(false);
             setSearchResults([]);
             return;
         }
 
         const pool = selectedLocation ? locationBasedServices : allServices;
-        const searchTermLower = term.toLowerCase();
-        const results = pool.filter(service =>
-            (service.name && service.name.toLowerCase().includes(searchTermLower)) ||
-            (service.category && service.category.toLowerCase().includes(searchTermLower)) ||
-            (service.subCategory && service.subCategory.toLowerCase().includes(searchTermLower)) ||
-            (service.description && service.description.toLowerCase().includes(searchTermLower))
-        );
+        const results = pool.filter(service => isServiceMatchingSearch(service, term));
 
-        console.log(`Search results: ${results.length} services found for term: ${term}`);
+        console.log(`Navbar search results: ${results.length} services found for term: ${term}`);
 
         setSearchResults(results);
-        const filtered = applyFiltersToResults(results);
-        setFilteredServices(filtered);
         setShowSearchResults(true);
 
         if (!showSearchResults) {
@@ -371,7 +377,6 @@ const LandingPage = () => {
         setSearchTerm('');
         setLocationSearch('');
         setSearchResults([]);
-        setFilteredServices(locationBasedServices);
         setShowSearchResults(false);
         // Reset filters
         setAvailability(true);
@@ -381,7 +386,7 @@ const LandingPage = () => {
         if (window.history.state?.searchActive) {
             window.history.back();
         }
-    }, [locationBasedServices]);
+    }, []);
 
     // Reset filters
     const resetFilters = () => {
@@ -389,20 +394,11 @@ const LandingPage = () => {
         setPriceRange([0, 10000]);
         setSortOrder("default");
         setAvailability(true);
-
-        if (searchResults.length > 0) {
-            const filtered = applyFiltersToResults(searchResults);
-            setFilteredServices(filtered);
-        }
     };
 
     // Apply filters modal
     const applyFiltersModal = () => {
         setIsFilterModalVisible(false);
-        if (searchResults.length > 0) {
-            const filtered = applyFiltersToResults(searchResults);
-            setFilteredServices(filtered);
-        }
     };
 
     const handleCategoryClick = (category) => {
