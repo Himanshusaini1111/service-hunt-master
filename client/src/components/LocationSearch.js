@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import debounce from "lodash.debounce";
 
-const LocationSearch = ({ onLocationSelect, placeholder = "Enter location..." }) => {
+const LocationSearch = ({ onLocationSelect, onInputChange, onEnter, placeholder = "Enter location..." }) => {
     const [searchQuery, setSearchQuery] = useState("");
     const [suggestions, setSuggestions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -50,6 +50,9 @@ const LocationSearch = ({ onLocationSelect, placeholder = "Enter location..." })
     const handleSearchChange = (e) => {
         const value = e.target.value;
         setSearchQuery(value);
+        if (onInputChange) {
+            onInputChange(value);
+        }
         debouncedSearch(value);
     };
 
@@ -57,13 +60,20 @@ const LocationSearch = ({ onLocationSelect, placeholder = "Enter location..." })
         setSearchQuery("");
         setSuggestions([]);
         setError(null);
+        if (onInputChange) {
+            onInputChange("");
+        }
         onLocationSelect?.(null);
     };
 
     const handleSelectLocation = (location) => {
         console.log("Location selected in LocationSearch:", location);
-        setSearchQuery(location.display_name);
+        const locName = location?.display_name || location?.name || "";
+        setSearchQuery(locName);
         setSuggestions([]);
+        if (onInputChange) {
+            onInputChange(locName);
+        }
         onLocationSelect?.(location);
     };
 
@@ -74,6 +84,11 @@ const LocationSearch = ({ onLocationSelect, placeholder = "Enter location..." })
                     type="text"
                     value={searchQuery}
                     onChange={handleSearchChange}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                            if (onEnter) onEnter();
+                        }
+                    }}
                     placeholder={placeholder}
                     style={{
                         width: "100%",

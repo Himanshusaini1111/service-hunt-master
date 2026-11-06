@@ -53,40 +53,61 @@ const LandingPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Check if service is available at a location using locationPricing
+    // Check if service is available at a location
     const isServiceInLocation = useCallback((service, location) => {
         if (!location) return true;
+        if (!service) return false;
 
-        if (!service.locationPricing || service.locationPricing.length === 0) {
-            return false;
-        }
-
-        let userLocationLower = '';
+        let queryStr = '';
         if (typeof location === 'string') {
-            userLocationLower = location.toLowerCase();
+            queryStr = location.toLowerCase();
         } else if (location.display_name) {
-            userLocationLower = location.display_name.toLowerCase();
+            queryStr = location.display_name.toLowerCase();
         } else if (location.city) {
-            userLocationLower = location.city.toLowerCase();
+            queryStr = location.city.toLowerCase();
         } else if (location.name) {
-            userLocationLower = location.name.toLowerCase();
+            queryStr = location.name.toLowerCase();
         } else {
-            userLocationLower = String(location).toLowerCase();
+            queryStr = String(location).toLowerCase();
         }
 
-        const userCity = userLocationLower.split(',')[0].trim();
+        queryStr = queryStr.trim();
+        if (!queryStr) return true;
 
-        const isAvailable = service.locationPricing.some(locationPrice => {
-            const locationName = (locationPrice.locationName || "").toLowerCase();
-            const locationAddress = (locationPrice.locationAddress || "").toLowerCase();
+        // Collect all location-related text for this service
+        const targets = [];
+        if (service.address) targets.push(service.address.toLowerCase());
+        if (service.location) targets.push(service.location.toLowerCase());
+        if (Array.isArray(service.locations)) {
+            service.locations.forEach(loc => {
+                if (loc) targets.push(String(loc).toLowerCase());
+            });
+        }
+        if (Array.isArray(service.locationPricing)) {
+            service.locationPricing.forEach(lp => {
+                if (lp.locationName) targets.push(lp.locationName.toLowerCase());
+                if (lp.locationAddress) targets.push(lp.locationAddress.toLowerCase());
+            });
+        }
 
-            return locationName.includes(userCity) ||
-                userCity.includes(locationName) ||
-                locationAddress.includes(userCity) ||
-                userCity.includes(locationAddress);
-        });
+        // If no location data is set on the service, consider it available everywhere
+        if (targets.length === 0) return true;
 
-        return isAvailable;
+        // Direct match with entire query string
+        if (targets.some(target => target.includes(queryStr) || queryStr.includes(target))) {
+            return true;
+        }
+
+        // Break query into terms (filter out common filler words and short tokens)
+        const filler = new Set(['india', 'road', 'street', 'near', 'the', 'and', 'city', 'state']);
+        const queryTerms = queryStr
+            .split(/[\s,]+/)
+            .map(t => t.trim())
+            .filter(t => t.length >= 2 && !filler.has(t));
+
+        if (queryTerms.length === 0) return true;
+
+        return queryTerms.some(term => targets.some(target => target.includes(term)));
     }, []);
 
     // Check if service is available today
@@ -102,9 +123,9 @@ const LandingPage = () => {
 
     // Get location-based services
     const getLocationBasedServices = useCallback((location, services) => {
-        if (!location) return [];
-        const filtered = services.filter(service => isServiceInLocation(service, location));
-        console.log(`Filtered ${filtered.length} services from ${services.length} for location:`, location);
+        if (!location) return services || [];
+        const filtered = (services || []).filter(service => isServiceInLocation(service, location));
+        console.log(`Filtered ${filtered.length} services from ${(services || []).length} for location:`, location);
         return filtered;
     }, [isServiceInLocation]);
 
@@ -150,15 +171,17 @@ const LandingPage = () => {
                     setFilteredServices(filtered);
                 }
                 setHasLocation(true);
-                console.log(`Location selected: ${selectedLocation.display_name || selectedLocation.city}, Found ${filtered.length} services`);
+                console.log(`Location selected: ${selectedLocation.display_name || selectedLocation.city || selectedLocation}, Found ${filtered.length} services`);
             } else {
-                setLocationBasedServices([]);
-                setFilteredServices([]);
+                setLocationBasedServices(allServices);
+                if (!showSearchResults) {
+                    setFilteredServices(allServices);
+                }
                 setHasLocation(false);
             }
             setLoading(false);
         }
-    }, [allServices, selectedLocation, getLocationBasedServices, showSearchResults]);
+    }, [allServices, selectedLocation, getLocationBasedServices]);
 
     // Get suggested services
     const getSuggestedServices = () => {
@@ -214,15 +237,18 @@ const LandingPage = () => {
                     try {
                         const location = JSON.parse(savedLocation);
                         setSelectedLocation(location);
+                        setHasLocation(true);
                         console.log("Loaded saved location:", location);
                     } catch (error) {
                         console.error("Error parsing saved location:", error);
                         setSelectedLocation(null);
+                        setHasLocation(false);
                     }
                 }
             } catch (error) {
                 console.error('Error fetching services:', error);
                 setAllServices([]);
+            } finally {
                 setLoading(false);
             }
         };
@@ -258,22 +284,27 @@ const LandingPage = () => {
 
     // Handle search from hero section
     const handleSearch = () => {
-        console.log("Search triggered, hasLocation:", hasLocation);
+        console.log("Search triggered, searchTerm:", searchTerm, "locationSearch:", locationSearch);
 
-        if (!hasLocation) {
-            alert("Please select a location first");
+        const term = searchTerm.trim();
+        const loc = locationSearch.trim();
+
+        if (!term && !loc && !selectedLocation) {
+            alert("Please enter a service name or location to search");
             return;
         }
 
-        if (!searchTerm.trim() && !locationSearch.trim()) {
-            alert("Please enter service name or location to search");
-            return;
+        let results = [...allServices];
+
+        // 1. Filter by location (prioritize user input locationSearch if given, otherwise selectedLocation)
+        const targetLocation = loc || selectedLocation;
+        if (targetLocation) {
+            results = results.filter(service => isServiceInLocation(service, targetLocation));
         }
 
-        let results = [...locationBasedServices];
-
-        if (searchTerm.trim()) {
-            const searchTermLower = searchTerm.trim().toLowerCase();
+        // 2. Filter by search term
+        if (term) {
+            const searchTermLower = term.toLowerCase();
             results = results.filter(service =>
                 (service.name && service.name.toLowerCase().includes(searchTermLower)) ||
                 (service.category && service.category.toLowerCase().includes(searchTermLower)) ||
@@ -282,11 +313,12 @@ const LandingPage = () => {
             );
         }
 
-        if (locationSearch.trim()) {
-            results = results.filter(service => isServiceInLocation(service, locationSearch.trim()));
-        }
-
         console.log(`Search results: ${results.length} services found`);
+
+        if (loc && !selectedLocation) {
+            setSelectedLocation(loc);
+            setHasLocation(true);
+        }
 
         // Store original search results
         setSearchResults(results);
@@ -304,12 +336,7 @@ const LandingPage = () => {
 
     // Filter by search term only (for navbar search)
     const filterBySearch = (term) => {
-        console.log("Navbar search triggered, hasLocation:", hasLocation);
-
-        if (!hasLocation) {
-            alert("Please select a location first");
-            return;
-        }
+        console.log("Navbar search triggered, term:", term);
 
         if (!term || term.trim() === "") {
             setFilteredServices(locationBasedServices);
@@ -318,8 +345,9 @@ const LandingPage = () => {
             return;
         }
 
+        const pool = selectedLocation ? locationBasedServices : allServices;
         const searchTermLower = term.toLowerCase();
-        const results = locationBasedServices.filter(service =>
+        const results = pool.filter(service =>
             (service.name && service.name.toLowerCase().includes(searchTermLower)) ||
             (service.category && service.category.toLowerCase().includes(searchTermLower)) ||
             (service.subCategory && service.subCategory.toLowerCase().includes(searchTermLower)) ||
@@ -339,7 +367,7 @@ const LandingPage = () => {
     };
 
     // Handle clear search
-    const handleClearSearch = () => {
+    const handleClearSearch = useCallback(() => {
         setSearchTerm('');
         setLocationSearch('');
         setSearchResults([]);
@@ -353,7 +381,7 @@ const LandingPage = () => {
         if (window.history.state?.searchActive) {
             window.history.back();
         }
-    };
+    }, [locationBasedServices]);
 
     // Reset filters
     const resetFilters = () => {
@@ -408,35 +436,20 @@ const LandingPage = () => {
     // Handle browser back/forward buttons
     useEffect(() => {
         const handlePopState = () => {
-            if (showSearchResults) {
-                setShowSearchResults(false);
-                setSearchResults([]);
-                setFilteredServices(locationBasedServices);
-                setSearchTerm('');
-                setLocationSearch('');
-                setAvailability(true);
-                setPriceRange([0, 10000]);
-                setSortOrder("default");
-            }
+            setShowSearchResults(false);
+            setSearchResults([]);
+            setSearchTerm('');
+            setLocationSearch('');
+            setAvailability(true);
+            setPriceRange([0, 10000]);
+            setSortOrder("default");
         };
 
         window.addEventListener('popstate', handlePopState);
         return () => {
             window.removeEventListener('popstate', handlePopState);
         };
-    }, [showSearchResults, locationBasedServices]);
-
-    // Handle route changes
-    useEffect(() => {
-        const unlisten = () => {
-            if (showSearchResults) {
-                setShowSearchResults(false);
-                setSearchResults([]);
-                setFilteredServices(locationBasedServices);
-            }
-        };
-        return unlisten;
-    }, [location.pathname, showSearchResults, locationBasedServices]);
+    }, []);
 
     const buttonLabels = [
         "Home Maintenance & Repair Services",
@@ -554,11 +567,6 @@ const LandingPage = () => {
                                         placeholder="Service name, trade, or category..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        onFocus={() => {
-                                            if (!hasLocation) {
-                                                alert("Please select a location first");
-                                            }
-                                        }}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') handleSearch();
                                         }}
@@ -568,12 +576,17 @@ const LandingPage = () => {
                                 <div className="lp-search-location-box">
                                     <LocationSearch
                                         onLocationSelect={(location) => {
-                                            if (!hasLocation) {
-                                                alert("Please select a location first");
-                                                return;
+                                            const locStr = location?.display_name || (typeof location === 'string' ? location : '');
+                                            setLocationSearch(locStr);
+                                            if (location) {
+                                                setSelectedLocation(location);
+                                                setHasLocation(true);
                                             }
-                                            setLocationSearch(location?.display_name || location || '');
                                         }}
+                                        onInputChange={(val) => {
+                                            setLocationSearch(val);
+                                        }}
+                                        onEnter={handleSearch}
                                         placeholder="City, area or pin code..."
                                     />
                                 </div>
@@ -619,7 +632,7 @@ const LandingPage = () => {
                                     <p className="lp-empty-desc">
                                         We currently don't have registered providers in{" "}
                                         <strong>
-                                            {selectedLocation?.display_name?.split(',')[0] || selectedLocation?.city || 'this location'}
+                                            {selectedLocation?.display_name?.split(',')[0] || selectedLocation?.city || selectedLocation || 'this location'}
                                         </strong>
                                         . Please select a neighboring area or check back soon.
                                     </p>
@@ -641,7 +654,7 @@ const LandingPage = () => {
                                                 <div className="lp-section-header">
                                                     <div>
                                                         <h2 className="lp-section-title">
-                                                            Suggested Services
+                                                             Suggested Services
                                                         </h2>
                                                         <p className="lp-section-sub">
                                                             Popular and top-rated offerings in your area
