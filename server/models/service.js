@@ -115,7 +115,7 @@ const serviceSchema = mongoose.Schema({
     // ✅ EXISTING FIELDS - Keep all your existing fields
     // ============================================
     phonenumber: {
-        type: Number,
+        type: mongoose.Schema.Types.Mixed,
         required: true
     },
     companyname: {
@@ -166,7 +166,7 @@ const serviceSchema = mongoose.Schema({
         },
         maxcount: {
             type: Number,
-            default: 1
+            default: null
         }
     }],
     category: {

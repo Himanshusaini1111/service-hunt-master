@@ -143,7 +143,11 @@ router.post("/bookservice", async (req, res) => {
         // ============================================
         // ✅ CHECK MAX QUANTITY PER DAY (Inventory Limit)
         // ============================================
-        if (serviceData.maxQuantityPerDay && selectedDateStr) {
+        const allowedMaxQuantity = (req.body.selectedUnit && req.body.selectedUnit.maxQuantityPerDay)
+            || (serviceData.pricingUnits && req.body.selectedUnitIndex !== undefined && serviceData.pricingUnits[req.body.selectedUnitIndex]?.maxQuantityPerDay)
+            || serviceData.maxQuantityPerDay;
+
+        if (allowedMaxQuantity && selectedDateStr) {
             // Find all confirmed bookings for this service on this date
             const existingBookingsForDate = await Booking.find({
                 serviceid: serviceid,
@@ -175,16 +179,40 @@ router.post("/bookservice", async (req, res) => {
             const requestedQuantity = quantity || 1;
             const newTotal = totalBookedQuantity + requestedQuantity;
             
-            if (newTotal > serviceData.maxQuantityPerDay) {
-                const remaining = serviceData.maxQuantityPerDay - totalBookedQuantity;
+            if (newTotal > allowedMaxQuantity) {
+                const remaining = allowedMaxQuantity - totalBookedQuantity;
                 return res.status(400).json({ 
-                    message: `Sorry, only ${remaining} ${serviceData.name} remaining for ${selectedDateStr}. Please reduce your quantity or choose another date.`,
-                    remainingQuantity: remaining,
+                    message: `Sorry, only ${remaining > 0 ? remaining : 0} ${serviceData.name} remaining for ${selectedDateStr}. Please reduce your quantity or choose another date.`,
+                    remainingQuantity: remaining > 0 ? remaining : 0,
                     totalBooked: totalBookedQuantity,
                     requestedQuantity: requestedQuantity,
-                    maxQuantityPerDay: serviceData.maxQuantityPerDay,
+                    maxQuantityPerDay: allowedMaxQuantity,
                     limitType: 'maxQuantityPerDay'
                 });
+            }
+        } else if (allowedMaxQuantity && (quantity || 1) > allowedMaxQuantity) {
+            return res.status(400).json({
+                message: `Maximum allowed quantity for this service is ${allowedMaxQuantity}.`,
+                remainingQuantity: allowedMaxQuantity,
+                totalBooked: 0,
+                requestedQuantity: quantity || 1,
+                maxQuantityPerDay: allowedMaxQuantity,
+                limitType: 'maxQuantityPerDay'
+            });
+        }
+
+        // ============================================
+        // ✅ CHECK OPTIONAL ADD-ONS MAX QUANTITY
+        // ============================================
+        if (serviceData.optionalInputs && req.body.optionalInputs && Array.isArray(req.body.optionalInputs)) {
+            for (const reqOpt of req.body.optionalInputs) {
+                const optDef = serviceData.optionalInputs.find(o => o.name === reqOpt.name);
+                if (optDef && optDef.maxcount && (reqOpt.count || 0) > optDef.maxcount) {
+                    return res.status(400).json({
+                        message: `Sorry, the maximum allowed quantity for "${optDef.name}" is ${optDef.maxcount}.`,
+                        limitType: 'optionalInputMaxCount'
+                    });
+                }
             }
         }
 

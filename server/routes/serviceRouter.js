@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const Service = require("../models/service");
 const Vendor = require("../models/vendor");
 const User = require("../models/user");
@@ -44,7 +45,7 @@ function normalizeOptionalInputs(inputs) {
         name: input.name,
         price: parseFloat(input.price) || 0,
         image: input.image || '',
-        maxcount: input.maxcount != null ? parseInt(input.maxcount, 10) : 1,
+        maxcount: (input.maxcount != null && input.maxcount !== '' && !isNaN(input.maxcount) && Number(input.maxcount) > 0) ? parseInt(input.maxcount, 10) : null,
         unit: input.unit || 'per day',
         customUnit: input.customUnit || '',
         isCountable: input.isCountable !== false,
@@ -151,21 +152,38 @@ router.post("/addservice", async (req, res) => {
         } = req.body;
 
         // Validate required fields
-        if (!service || !imageURLs || imageURLs.length < 3 || !facility || !bookingType) {
+        if (!service || !imageURLs || imageURLs.length < 3 || imageURLs.some(u => !u) || !facility || !bookingType) {
             return res.status(400).json({
-                message: "Service name, at least 3 images, facility, and booking type are required"
+                message: "Service name, at least 3 images, facility, and booking type are required",
+                error: "Service name, at least 3 images, facility, and booking type are required"
+            });
+        }
+
+        if (!companyname || !companyname.toString().trim()) {
+            return res.status(400).json({
+                message: "Company / Business name is required",
+                error: "Company / Business name is required"
+            });
+        }
+
+        if (!phonenumber || !phonenumber.toString().trim()) {
+            return res.status(400).json({
+                message: "Contact phone number is required",
+                error: "Contact phone number is required"
             });
         }
 
         if (!address) {
             return res.status(400).json({
-                message: "Service location address is required"
+                message: "Service location address is required",
+                error: "Service location address is required"
             });
         }
 
-        if (!userid) {
+        if (!userid || userid === "undefined" || !mongoose.Types.ObjectId.isValid(userid)) {
             return res.status(400).json({
-                message: "User ID is required to create a service"
+                message: "A valid User ID is required to create a service. Please ensure you are logged in.",
+                error: "A valid User ID is required to create a service. Please ensure you are logged in."
             });
         }
 
@@ -267,7 +285,7 @@ router.post("/addservice", async (req, res) => {
         });
     } catch (error) {
         console.error("Add service error:", error);
-        res.status(400).json({ error: error.message });
+        res.status(400).json({ error: error.message, message: error.message });
     }
 });
 // Delete service

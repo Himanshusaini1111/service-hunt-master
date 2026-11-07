@@ -1329,8 +1329,16 @@ const BookingBillModal = ({ booking, onClose }) => {
         let breakdownText = `₹${basePrice}`;
         
         if (isMerged) {
-            baseTotal = basePrice * (booking.isCountable ? quantity : 1) * (daysCount || 1);
-            breakdownText = `₹${basePrice} × ${quantity} qty × ${daysCount} days`;
+            const mergedUnit = (booking.mergedUnit || '').toLowerCase();
+            const isHour = mergedUnit.includes('hour') || mergedUnit.includes('hr') || mergedUnit.includes('hor') || (booking.slots && booking.slots.length > 0);
+            if (isHour) {
+                const slotCount = (booking.slots && booking.slots.length) || 1;
+                baseTotal = basePrice * (booking.isCountable ? quantity : 1) * slotCount;
+                breakdownText = `₹${basePrice} × ${quantity} qty × ${slotCount} hour${slotCount > 1 ? 's' : ''}`;
+            } else {
+                baseTotal = basePrice * (booking.isCountable ? quantity : 1) * (daysCount || 1);
+                breakdownText = `₹${basePrice} × ${quantity} qty × ${daysCount} days`;
+            }
         } else if (unit.includes('day') && daysCount > 1) {
             baseTotal = basePrice * daysCount * (booking.isCountable ? quantity : 1);
             breakdownText = `₹${basePrice} × ${daysCount} days${booking.isCountable && quantity > 1 ? ` × ${quantity} qty` : ''}`;

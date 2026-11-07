@@ -28,6 +28,20 @@ const getFirstUnit = (unit, customUnit) => {
   return u;
 };
 
+// Helper to check if a unit string represents hours (e.g., per hour, hour, hours, hr, hrs, hor)
+const isHourUnit = (unit) => {
+  if (!unit || typeof unit !== 'string') return false;
+  const val = unit.toLowerCase().trim();
+  return val.includes('hour') || val.includes('hr') || val.includes('hor') || val === 'h' || val.includes('slot') || val.includes('time');
+};
+
+// Helper to check if a unit string represents days or longer duration
+const isDayOrLongerUnit = (unit) => {
+  if (!unit || typeof unit !== 'string') return false;
+  const val = unit.toLowerCase().trim();
+  return val.includes('day') || val.includes('week') || val.includes('month') || val.includes('year');
+};
+
 function Bookingscreen() {
   const { serviceid } = useParams();
   const locationRoute = useLocation();
@@ -69,6 +83,24 @@ function Bookingscreen() {
   const [selectedServiceArea, setSelectedServiceArea] = useState(null);
   const [selectedUnitIndex, setSelectedUnitIndex] = useState(0);
   const [availableUnits, setAvailableUnits] = useState([]);
+
+  // Max quantity calculation from pricing unit or service configured by admin in Add Service
+  const activeUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
+  const rawMaxQuantity = (activeUnit && activeUnit.maxQuantityPerDay != null && activeUnit.maxQuantityPerDay !== '')
+    ? activeUnit.maxQuantityPerDay
+    : (service && service.maxQuantityPerDay != null && service.maxQuantityPerDay !== '')
+      ? service.maxQuantityPerDay
+      : null;
+  const maxAllowedQuantity = (rawMaxQuantity != null && !isNaN(rawMaxQuantity) && Number(rawMaxQuantity) > 0)
+    ? Number(rawMaxQuantity)
+    : null;
+
+  // Clamp quantity if it exceeds max allowed quantity configured in Add Service
+  useEffect(() => {
+    if (maxAllowedQuantity && quantity > maxAllowedQuantity) {
+      setQuantity(Math.max(1, maxAllowedQuantity));
+    }
+  }, [maxAllowedQuantity, quantity]);
 
   // Time slots
   const timeSlots = [
@@ -252,7 +284,7 @@ function Bookingscreen() {
     const mergedUnit = currentUnit?.mergedUnit || service?.mergedUnit || 'per day';
     const effectiveTimeType = isMerged ? mergedUnit : unitType;
 
-    if (effectiveTimeType.includes('hour') || (!isMerged && (unitType === 'per person' || unitType === 'per item' || unitType === 'Other'))) {
+    if (isHourUnit(effectiveTimeType) || (!isMerged && (unitType === 'per person' || unitType === 'per item' || unitType === 'Other'))) {
       setDaysCount(1);
     } else if (selectedDates.length > 1) {
       setDaysCount(selectedDates.length);
@@ -321,7 +353,7 @@ function Bookingscreen() {
         const optMergedUnit = input.mergedUnit || 'per day';
 
         if (isOptMerged) {
-          if (optMergedUnit.includes('hour')) {
+          if (isHourUnit(optMergedUnit)) {
             multiplier = (selectedSlots.length || 1);
           } else {
             multiplier = daysCount;
@@ -348,7 +380,7 @@ function Bookingscreen() {
         const optMergedUnit = input.mergedUnit || 'per day';
 
         if (isOptMerged) {
-          if (optMergedUnit.includes('hour')) {
+          if (isHourUnit(optMergedUnit)) {
             multiplier = (selectedSlots.length || 1);
           } else {
             multiplier = daysCount;
@@ -393,11 +425,16 @@ function Bookingscreen() {
     setOptionalInputCounts((prevCounts) => {
       const newCounts = { ...prevCounts };
       const currentCount = newCounts[index] || 0;
-      const input = service.optionalInputs[index];
-      const maxAllowed = input.maxcount || 5;
+      const input = service?.optionalInputs ? service.optionalInputs[index] : null;
+      const rawMax = input ? input.maxcount : null;
+      const maxAllowed = (rawMax != null && !isNaN(rawMax) && Number(rawMax) > 0)
+        ? Number(rawMax)
+        : null;
 
-      if (increment && currentCount < maxAllowed) {
-        newCounts[index] = currentCount + 1;
+      if (increment) {
+        if (!maxAllowed || currentCount < maxAllowed) {
+          newCounts[index] = currentCount + 1;
+        }
       } else if (!increment && currentCount > 0) {
         newCounts[index] = currentCount - 1;
       }
@@ -452,11 +489,11 @@ const handleBooking = async (e) => {
       const mergedUnit = currentUnit?.mergedUnit || service?.mergedUnit || 'per day';
       const effectiveTimeType = isMerged ? mergedUnit : unitType;
 
-      if ((effectiveTimeType.includes('day') || effectiveTimeType.includes('week') || effectiveTimeType.includes('month')) && selectedDates.length === 0) {
+      if (isDayOrLongerUnit(effectiveTimeType) && selectedDates.length === 0) {
         Swal.fire('Error', 'Please select at least one date', 'error');
         return;
       }
-      if (effectiveTimeType.includes('hour') && selectedSlots.length === 0) {
+      if (isHourUnit(effectiveTimeType) && selectedSlots.length === 0) {
         Swal.fire('Error', 'Please select at least one time slot', 'error');
         return;
       }
@@ -474,6 +511,24 @@ const handleBooking = async (e) => {
         return;
       }
     }
+
+      if (maxAllowedQuantity && quantity > maxAllowedQuantity) {
+        Swal.fire('Error', `Maximum allowed quantity for this service is ${maxAllowedQuantity}.`, 'error');
+        return;
+      }
+
+      if (service?.optionalInputs && Array.isArray(service.optionalInputs)) {
+        for (let i = 0; i < service.optionalInputs.length; i++) {
+          const opt = service.optionalInputs[i];
+          const rawOptMax = opt ? opt.maxcount : null;
+          const optMax = (rawOptMax != null && !isNaN(rawOptMax) && Number(rawOptMax) > 0) ? Number(rawOptMax) : null;
+          const count = optionalInputCounts[i] || 0;
+          if (optMax && count > optMax) {
+            Swal.fire('Error', `Maximum allowed quantity for add-on "${opt.name || 'Option ' + (i + 1)}" is ${optMax}.`, 'error');
+            return;
+          }
+        }
+      }
 
     setShowBill(true);
     return;
@@ -523,6 +578,7 @@ const handleBooking = async (e) => {
       daysCount,
       selectedDates: bookingDates,
       slots: formattedSlots,
+      time: formattedSlots.length > 0 ? formattedSlots.map(s => s.slot).join(', ') : '',
       bookingType: service.bookingType || 'Automatic Booking',
       optionalInputs: (service.optionalInputs || [])
         .map((input, index) => {
@@ -613,10 +669,11 @@ const handleBooking = async (e) => {
     const mergedUnit = currentUnit?.mergedUnit || service?.mergedUnit || 'per day';
     const effectiveTimeType = isMerged ? mergedUnit : unit;
 
-    if (effectiveTimeType.includes('hour') || (!isMerged && (unit === 'per person' || unit === 'per item' || unit === 'Other'))) {
+    if (isHourUnit(effectiveTimeType) || (!isMerged && (unit === 'per person' || unit === 'per item' || unit === 'Other'))) {
       setSelectedDates([dateStr]);
       setFromDate(dateStr);
       setToDate(dateStr);
+      setIsCalendarOpen(false);
     } else {
       setSelectedDates(prev => {
         if (prev.includes(dateStr)) {
@@ -638,8 +695,8 @@ const handleBooking = async (e) => {
       });
     }
 
-    if (unit.includes('hour')) {
-      setSelectedSlots([]);
+    if (isHourUnit(effectiveTimeType)) {
+      setSelectedSlots(prev => prev.filter(s => s.date === dateStr));
     }
   };
 
@@ -695,7 +752,7 @@ const handleBooking = async (e) => {
     const mergedUnit = currentUnit?.mergedUnit || service?.mergedUnit || 'per day';
     const effectiveTimeType = isMerged ? mergedUnit : unit;
 
-    if (effectiveTimeType.includes('day') || effectiveTimeType.includes('week') || effectiveTimeType.includes('month')) {
+    if (isDayOrLongerUnit(effectiveTimeType)) {
       return (
         <div className="booking-controls" style={{ overflow: "visible", width: "100%" }}>
           <legend className="section-title">Select Dates</legend>
@@ -765,7 +822,9 @@ const handleBooking = async (e) => {
           )}
         </div>
       );
-    } else if (unit.includes('hour')) {
+    } else if (isHourUnit(effectiveTimeType)) {
+      const activeDate = selectedDates[0] || fromDate || moment().format('YYYY-MM-DD');
+
       return (
         <div className="booking-controls">
           <legend className="section-title">Select Date & Time</legend>
@@ -790,51 +849,57 @@ const handleBooking = async (e) => {
               <div>
                 <small style={{ fontSize: "0.8em", color: "#666" }}>Select Date</small>
                 <div style={{ fontSize: "1em", color: "#333", fontWeight: "bold" }}>
-                  {selectedDates[0] || "Choose a date"}
+                  {activeDate}
                 </div>
               </div>
             </div>
             <span>▾</span>
           </div>
-          {selectedDates.length > 0 && (
-            <div className="time-slots-container" style={{ marginTop: "15px" }}>
-              <p><b>Available Time Slots:</b></p>
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
-                gap: "8px",
-                marginTop: "10px"
-              }}>
-                {timeSlots.map((slot, index) => {
-                  const isSelected = selectedSlots.some(s =>
-                    s.date === selectedDates[0] && s.slot === slot
-                  );
-                  const isUnavailable = service?.unavailableDates?.some(d =>
-                    d.date === selectedDates[0] && d.slots?.includes(slot)
-                  );
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => handleSlotSelect(selectedDates[0], slot)}
-                      disabled={isUnavailable}
-                      style={{
-                        padding: "8px 5px",
-                        border: `1px solid ${isSelected ? '#007bff' : '#ddd'}`,
-                        borderRadius: "5px",
-                        background: isSelected ? '#007bff' : 'white',
-                        color: isSelected ? 'white' : isUnavailable ? '#999' : '#333',
-                        cursor: isUnavailable ? 'not-allowed' : 'pointer',
-                        fontSize: "0.9em",
-                        textDecoration: isUnavailable ? 'line-through' : 'none'
-                      }}
-                    >
-                      {slot} {isUnavailable && '✗'}
-                    </button>
-                  );
-                })}
-              </div>
+          <div className="time-slots-container" style={{ marginTop: "15px" }}>
+            <p><b>Available Time Slots:</b></p>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+              gap: "8px",
+              marginTop: "10px"
+            }}>
+              {timeSlots.map((slot, index) => {
+                const isSelected = selectedSlots.some(s =>
+                  s.date === activeDate && s.slot === slot
+                );
+                const isUnavailable = service?.unavailableDates?.some(d =>
+                  d.date === activeDate && d.slots?.includes(slot)
+                );
+                return (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => {
+                      if (selectedDates.length === 0 || selectedDates[0] !== activeDate) {
+                        setSelectedDates([activeDate]);
+                        setFromDate(activeDate);
+                        setToDate(activeDate);
+                      }
+                      handleSlotSelect(activeDate, slot);
+                    }}
+                    disabled={isUnavailable}
+                    style={{
+                      padding: "8px 5px",
+                      border: `1px solid ${isSelected ? '#007bff' : '#ddd'}`,
+                      borderRadius: "5px",
+                      background: isSelected ? '#007bff' : 'white',
+                      color: isSelected ? 'white' : isUnavailable ? '#999' : '#333',
+                      cursor: isUnavailable ? 'not-allowed' : 'pointer',
+                      fontSize: "0.9em",
+                      textDecoration: isUnavailable ? 'line-through' : 'none'
+                    }}
+                  >
+                    {slot} {isUnavailable && '✗'}
+                  </button>
+                );
+              })}
             </div>
-          )}
+          </div>
         </div>
       );
     } else {
@@ -884,6 +949,7 @@ const handleBooking = async (e) => {
   const currentUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
   const isMerged = currentUnit?.isMerged || service?.isMerged || false;
   const mergedUnit = currentUnit?.mergedUnit || service?.mergedUnit || 'per day';
+  const effectiveTimeType = isMerged ? mergedUnit : (currentUnit?.unit || service?.unit || 'per day');
   const displayUnit = getFirstUnit(currentUnit?.unit, currentUnit?.customUnit) || getFirstUnit(service.unit, service.customUnit) || 'per day';
   const effectiveRate = effectiveBaseRent(service, selectedServiceArea);
 
@@ -1028,7 +1094,10 @@ const handleBooking = async (e) => {
                     const inputPrice = effectiveOptionalUnitPrice(input, selectedServiceArea);
                     const optUnit = getOptionalDisplayUnit(input);
                     const inputImage = input.image || '';
-                    const inputMaxCount = input.maxcount || 5;
+                    const rawInputMax = input ? input.maxcount : null;
+                    const inputMaxCount = (rawInputMax != null && !isNaN(rawInputMax) && Number(rawInputMax) > 0)
+                      ? Number(rawInputMax)
+                      : null;
                     const inputIsCountable = input.isCountable !== false;
 
                     return (
@@ -1041,13 +1110,21 @@ const handleBooking = async (e) => {
                             onError={(e) => { e.target.style.display = 'none'; }}
                           />
                         )}
-                        <h5 className="bs-addon-name">{inputName}</h5>
+                        <h5 className="bs-addon-name">
+                          {inputName}
+                          {inputMaxCount ? (
+                            <span style={{ fontSize: "11px", color: "#64748b", fontWeight: "normal", marginLeft: "6px" }}>
+                              (Max: {inputMaxCount})
+                            </span>
+                          ) : null}
+                        </h5>
                         <p className="bs-addon-price">
                           ₹{inputPrice} {optUnit && <span className="bs-addon-unit">/ {optUnit}</span>}
                         </p>
                         {inputIsCountable ? (
                           <div className="bs-addon-stepper">
                             <button
+                              type="button"
                               className="bs-addon-step-btn"
                               onClick={() => handleChange(index, false)}
                               disabled={!optionalInputCounts[index]}
@@ -1056,9 +1133,11 @@ const handleBooking = async (e) => {
                             </button>
                             <span className="bs-addon-count">{optionalInputCounts[index] || 0}</span>
                             <button
+                              type="button"
                               className="bs-addon-step-btn"
                               onClick={() => handleChange(index, true)}
-                              disabled={optionalInputCounts[index] >= inputMaxCount}
+                              disabled={!!inputMaxCount && (optionalInputCounts[index] || 0) >= inputMaxCount}
+                              title={inputMaxCount && (optionalInputCounts[index] || 0) >= inputMaxCount ? `Maximum quantity is ${inputMaxCount}` : "Increase"}
                             >
                               +
                             </button>
@@ -1157,7 +1236,16 @@ const handleBooking = async (e) => {
                   <select
                     className="bs-select"
                     value={selectedUnitIndex}
-                    onChange={(e) => setSelectedUnitIndex(parseInt(e.target.value))}
+                    onChange={(e) => {
+                      const newIdx = parseInt(e.target.value);
+                      setSelectedUnitIndex(newIdx);
+                      const newUnit = availableUnits[newIdx];
+                      const newMerged = newUnit?.mergedUnit || service?.mergedUnit || 'per day';
+                      const newType = (newUnit?.isMerged || service?.isMerged) ? newMerged : (newUnit?.unit || 'per day');
+                      if (!isHourUnit(newType)) {
+                        setSelectedSlots([]);
+                      }
+                    }}
                   >
                     {availableUnits.map((unit, index) => (
                       <option key={index} value={index}>
@@ -1187,11 +1275,36 @@ const handleBooking = async (e) => {
               {/* Quantity Control */}
               {bookingType !== 'Inquari Booking' && currentUnit?.isCountable !== false && (
                 <div className="bs-qty-wrap">
-                  <span className="bs-qty-label">Quantity</span>
+                  <span className="bs-qty-label">
+                    Quantity
+                    {maxAllowedQuantity ? (
+                      <span style={{ fontSize: "11px", color: "#64748b", fontWeight: "500", marginLeft: "6px" }}>
+                        (Max: {maxAllowedQuantity})
+                      </span>
+                    ) : null}
+                  </span>
                   <div className="bs-qty-control">
-                    <button className="bs-qty-btn" onClick={() => setQuantity(Math.max(1, quantity - 1))} disabled={quantity <= 1}>-</button>
+                    <button
+                      type="button"
+                      className="bs-qty-btn"
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      disabled={quantity <= 1}
+                    >
+                      -
+                    </button>
                     <span className="bs-qty-val">{quantity}</span>
-                    <button className="bs-qty-btn" onClick={() => setQuantity(quantity + 1)}>+</button>
+                    <button
+                      type="button"
+                      className="bs-qty-btn"
+                      onClick={() => {
+                        if (maxAllowedQuantity && quantity >= maxAllowedQuantity) return;
+                        setQuantity(prev => (maxAllowedQuantity ? Math.min(maxAllowedQuantity, prev + 1) : prev + 1));
+                      }}
+                      disabled={!!maxAllowedQuantity && quantity >= maxAllowedQuantity}
+                      title={maxAllowedQuantity && quantity >= maxAllowedQuantity ? `Maximum quantity is ${maxAllowedQuantity}` : 'Increase quantity'}
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
               )}
@@ -1678,7 +1791,7 @@ const handleBooking = async (e) => {
 
                             if (input.isCountable && count > 0) {
                               if (isOptMerged) {
-                                if (optMergedUnit.includes('hour')) {
+                                if (isHourUnit(optMergedUnit)) {
                                   const slotCount = selectedSlots.length || 1;
                                   itemTotal = count * optUnitRate * slotCount;
                                   calculationBreakdown = `${count} × ₹${optUnitRate} × ${slotCount} slot${slotCount > 1 ? 's' : ''}`;
@@ -1686,10 +1799,10 @@ const handleBooking = async (e) => {
                                   itemTotal = count * optUnitRate * daysCount;
                                   calculationBreakdown = `${count} × ₹${optUnitRate} × ${daysCount} day${daysCount > 1 ? 's' : ''}`;
                                 }
-                              } else if (inputUnit.includes('day') || inputUnit === 'per-day') {
+                              } else if (isDayOrLongerUnit(inputUnit)) {
                                 itemTotal = count * optUnitRate * daysCount;
                                 calculationBreakdown = `${count} × ₹${optUnitRate} × ${daysCount} day${daysCount > 1 ? 's' : ''}`;
-                              } else if (inputUnit.includes('hour') || inputUnit === 'per-hour') {
+                              } else if (isHourUnit(inputUnit)) {
                                 const slotCount = selectedSlots.length || 1;
                                 itemTotal = count * optUnitRate * slotCount;
                                 calculationBreakdown = `${count} × ₹${optUnitRate} × ${slotCount} slot${slotCount > 1 ? 's' : ''}`;
@@ -1699,7 +1812,7 @@ const handleBooking = async (e) => {
                               }
                             } else if (!input.isCountable && addedOptionalInputs[index]) {
                               if (isOptMerged) {
-                                if (optMergedUnit.includes('hour')) {
+                                if (isHourUnit(optMergedUnit)) {
                                   const slotCount = selectedSlots.length || 1;
                                   itemTotal = optUnitRate * slotCount;
                                   calculationBreakdown = `₹${optUnitRate} × ${slotCount} slot${slotCount > 1 ? 's' : ''}`;
@@ -1707,10 +1820,10 @@ const handleBooking = async (e) => {
                                   itemTotal = optUnitRate * daysCount;
                                   calculationBreakdown = `₹${optUnitRate} × ${daysCount} day${daysCount > 1 ? 's' : ''}`;
                                 }
-                              } else if (inputUnit.includes('day') || inputUnit === 'per-day') {
+                              } else if (isDayOrLongerUnit(inputUnit)) {
                                 itemTotal = optUnitRate * daysCount;
                                 calculationBreakdown = `₹${optUnitRate} × ${daysCount} day${daysCount > 1 ? 's' : ''}`;
-                              } else if (inputUnit.includes('hour') || inputUnit === 'per-hour') {
+                              } else if (isHourUnit(inputUnit)) {
                                 const slotCount = selectedSlots.length || 1;
                                 itemTotal = optUnitRate * slotCount;
                                 calculationBreakdown = `₹${optUnitRate} × ${slotCount} slot${slotCount > 1 ? 's' : ''}`;
@@ -1754,7 +1867,14 @@ const handleBooking = async (e) => {
                     </div>
                   )}
 
-                  {(isMerged || (currentUnit?.unit || service.unit || '').includes('day') || (currentUnit?.unit || service.unit || '').includes('week') || (currentUnit?.unit || service.unit || '').includes('month')) && daysCount > 1 && (
+                  {isHourUnit(effectiveTimeType) && selectedSlots.length > 0 && (
+                    <div className="bill-pricing-line sub">
+                      <span>× {selectedSlots.length} hour{selectedSlots.length > 1 ? 's' : ''}</span>
+                      <span>₹{effectiveRate * (currentUnit?.isCountable !== false ? quantity : 1) * selectedSlots.length}</span>
+                    </div>
+                  )}
+
+                  {isDayOrLongerUnit(effectiveTimeType) && daysCount > 1 && (
                     <div className="bill-pricing-line sub">
                       <span>× {daysCount} days</span>
                       <span>₹{effectiveRate * (isMerged && currentUnit?.isCountable !== false ? quantity : 1) * daysCount}</span>

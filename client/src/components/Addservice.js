@@ -466,6 +466,22 @@ export function Addservice({ userId }) {
             .map(point => point.startsWith('→') ? point : `→ ${point}`)
             .join('\n');
         
+        const activeUserId = userId || JSON.parse(localStorage.getItem("currentUser") || "{}")?._id;
+        if (!activeUserId || activeUserId === "undefined") {
+            Swal.fire("Error", "User session expired or User ID missing. Please log in again.", "error");
+            return;
+        }
+
+        if (!companyname || !companyname.trim()) {
+            Swal.fire("Error", "Please enter your Company / Business Name.", "error");
+            return;
+        }
+
+        if (!phonenumber || !phonenumber.toString().trim()) {
+            Swal.fire("Error", "Please enter a valid Contact Phone Number.", "error");
+            return;
+        }
+
         if (!address) {
             Swal.fire("Error", "Please select a service location", "error");
             return;
@@ -514,7 +530,7 @@ export function Addservice({ userId }) {
                 name: input.name,
                 price: parseFloat(input.price) || 0,
                 image: input.image,
-                maxcount: input.maxcount || null,
+                maxcount: input.maxcount && !isNaN(input.maxcount) && Number(input.maxcount) > 0 ? parseInt(input.maxcount, 10) : null,
                 unit: input.unit,
                 customUnit: input.unit === "Other" ? input.customUnit : "",
                 isCountable: input.isCountable !== false,
@@ -564,7 +580,7 @@ export function Addservice({ userId }) {
                 locationPricing: locationsList,
             };
             
-            await axios.post(`/api/service/addservice?userid=${userId}`, payload, {
+            await axios.post(`/api/service/addservice?userid=${activeUserId}`, payload, {
                 headers: { "Content-Type": "application/json" },
             });
             
@@ -617,7 +633,7 @@ export function Addservice({ userId }) {
             
         } catch (error) {
             console.error("Error adding service:", error);
-            const errorMessage = error.response?.data?.message || error.message || "Unknown error";
+            const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Unknown error";
             Swal.fire("Error", `Failed to add service: ${errorMessage}`, "error");
         } finally {
             setUploading(false);
@@ -1561,23 +1577,49 @@ export function Addservice({ userId }) {
                                             </select>
                                         </div>
                                     </div>
-                                    <div className="as-field" style={{ marginTop: 12, marginBottom: 0 }}>
-                                        <label className="as-label">Optional Add-on Image</label>
-                                        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                    {input.unit === 'Other' && (
+                                        <div className="as-field" style={{ marginTop: 10 }}>
+                                            <label className="as-label">Custom Unit Name</label>
                                             <input
-                                                type="file"
+                                                type="text"
                                                 className="as-input"
-                                                accept="image/*"
-                                                onChange={(e) => handleOptionalImageUpload(index, e.target.files[0])}
-                                                disabled={!!input.image && !optionalInputImages[index]}
+                                                placeholder="e.g. per piece"
+                                                value={input.customUnit || ''}
+                                                onChange={(e) => handleInputChange(index, "customUnit", e.target.value)}
                                             />
-                                            {optionalInputPreviews[index] && (
-                                                <img
-                                                    src={optionalInputPreviews[index]}
-                                                    alt="Addon preview"
-                                                    style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8 }}
+                                        </div>
+                                    )}
+
+                                    <div className="as-grid-2" style={{ marginTop: 12 }}>
+                                        <div className="as-field" style={{ marginBottom: 0 }}>
+                                            <label className="as-label">Max Quantity (Optional)</label>
+                                            <input
+                                                type="number"
+                                                className="as-input"
+                                                placeholder="Unlimited (e.g. 5)"
+                                                min="1"
+                                                value={input.maxcount || ''}
+                                                onChange={(e) => handleInputChange(index, "maxcount", e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="as-field" style={{ marginBottom: 0 }}>
+                                            <label className="as-label">Optional Add-on Image</label>
+                                            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                                <input
+                                                    type="file"
+                                                    className="as-input"
+                                                    accept="image/*"
+                                                    onChange={(e) => handleOptionalImageUpload(index, e.target.files[0])}
+                                                    disabled={!!input.image && !optionalInputImages[index]}
                                                 />
-                                            )}
+                                                {optionalInputPreviews[index] && (
+                                                    <img
+                                                        src={optionalInputPreviews[index]}
+                                                        alt="Addon preview"
+                                                        style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8 }}
+                                                    />
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 
