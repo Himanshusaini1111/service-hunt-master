@@ -1,13 +1,15 @@
 // Addservice.js - Updated with multiple units
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import LocationSearch from './LocationSearch';
-import { FaStore, FaInfoCircle, FaRupeeSign, FaImage, FaListUl, FaMapMarkerAlt, FaPlusCircle, FaCheckCircle, FaTrash, FaPlus, FaLink, FaChevronDown } from 'react-icons/fa';
+import { FaStore, FaInfoCircle, FaRupeeSign, FaImage, FaListUl, FaMapMarkerAlt, FaPlusCircle, FaCheckCircle, FaTrash, FaPlus, FaLink, FaChevronDown, FaRobot, FaMagic, FaDice } from 'react-icons/fa';
+import { getRandomDemoService } from './demoServiceAgent';
 import './Addservice.css';
 
 export function Addservice({ userId }) {
+    const lastDemoIndexRef = useRef(-1);
     const [service, setService] = useState("");
     const [phonenumber, setPhonenumber] = useState("");
     const [companyname, setCompanyName] = useState("");
@@ -364,6 +366,12 @@ export function Addservice({ userId }) {
         setAddress(location.display_name);
     };
 
+    const handleSelectLocationType = (type) => {
+        setSelectedLocationType(type);
+        setLocations([type]);
+        setLocationAdded(true);
+    };
+
     const handleAddLocation = () => {
         if (selectedLocationType) {
             setLocations([selectedLocationType]);
@@ -453,6 +461,72 @@ export function Addservice({ userId }) {
     };
 
     // Main submit function - UPDATED for multiple units
+        // Agent: Auto-fill dynamic demo data with unique content each time
+    const handleFillDemoData = () => {
+        if (imagePreview1) URL.revokeObjectURL(imagePreview1);
+        if (imagePreview2) URL.revokeObjectURL(imagePreview2);
+        if (imagePreview3) URL.revokeObjectURL(imagePreview3);
+        Object.values(optionalInputPreviews).forEach(preview => {
+            if (preview) URL.revokeObjectURL(preview);
+        });
+
+        const demo = getRandomDemoService(lastDemoIndexRef.current);
+        lastDemoIndexRef.current = demo.index;
+
+        setService(demo.service);
+        setCompanyName(demo.companyname);
+        setPhonenumber(demo.phonenumber);
+        setBookingType(demo.bookingType);
+        setCategory(demo.category);
+        setSubCategory(demo.subCategory);
+
+        setImage1(demo.image1);
+        setImage2(demo.image2);
+        setImage3(demo.image3);
+        setImageFile1(null);
+        setImageFile2(null);
+        setImageFile3(null);
+        setImagePreview1("");
+        setImagePreview2("");
+        setImagePreview3("");
+
+        setDescriptionPoints(demo.descriptionPoints);
+        setFacilityPoints(demo.facilityPoints);
+
+        setPricingUnits(demo.pricingUnits);
+        setShowUnitControls(demo.pricingUnits.length > 1);
+
+        setInputs(demo.inputs);
+        setShowOptionalInputs(demo.inputs.length > 0);
+        setOptionalInputImages({});
+        setOptionalInputPreviews({});
+
+        setAddress(demo.address);
+        setSelectedLocationType(demo.locationType);
+        setLocations([demo.locationType]);
+        setLocationAdded(true);
+        setShowLocationOptions(true);
+
+        if (demo.locationsList && demo.locationsList.length > 0) {
+            setLocationsList(demo.locationsList);
+            setShowLocationPricing(true);
+        } else {
+            setLocationsList([]);
+            setShowLocationPricing(false);
+        }
+
+        Swal.fire({
+            toast: true,
+            position: "top-end",
+            icon: "success",
+            title: "🤖 Agent Filled Demo Data!",
+            html: `<div style="font-size:13px;text-align:left;margin-top:4px;"><b>${demo.service}</b><br/><span style="color:#64748b;">${demo.category} &bull; ${demo.subCategory}</span><br/><span style="color:#16a34a;font-weight:600;">₹${demo.pricingUnits[0]?.price} ${demo.pricingUnits[0]?.unit}</span></div>`,
+            timer: 3500,
+            showConfirmButton: false,
+            timerProgressBar: true
+        });
+    };
+
     async function addService() {
         const formattedDescription = descriptionPoints
             .split('\n')
@@ -576,7 +650,8 @@ export function Addservice({ userId }) {
                 category,
                 subCategory,
                 bookingType,
-                locations: locations,
+                locations: [selectedLocationType || (locations && locations.length > 0 ? locations[0] : 'Simple')],
+                locationType: selectedLocationType || (locations && locations.length > 0 ? locations[0] : 'Simple'),
                 locationPricing: locationsList,
             };
             
@@ -659,8 +734,21 @@ export function Addservice({ userId }) {
                     <h2>Create Service Offering</h2>
                     <p>Configure pricing, media portfolio, coverage areas and booking rules for your new service.</p>
                 </div>
-                <div className="as-hero-badge">
-                    <FaStore style={{ marginRight: 6 }} /> Vendor Partner Studio
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <button
+                        type="button"
+                        className="as-demo-agent-btn"
+                        onClick={handleFillDemoData}
+                        title="Click to auto-populate all form fields with fresh random demo data"
+                    >
+                        <span className="as-agent-pulse-dot" />
+                        <FaRobot style={{ fontSize: 16 }} />
+                        <span>Fill Demo Data (Agent)</span>
+                        <FaMagic style={{ fontSize: 13, opacity: 0.9 }} />
+                    </button>
+                    <div className="as-hero-badge">
+                        <FaStore style={{ marginRight: 6 }} /> Vendor Partner Studio
+                    </div>
                 </div>
             </div>
 
@@ -1348,7 +1436,7 @@ export function Addservice({ userId }) {
                             <div className="as-location-cards-row">
                                 <div
                                     className={`as-loc-type-card ${selectedLocationType === "Simple" ? "selected" : ""}`}
-                                    onClick={() => setSelectedLocationType("Simple")}
+                                    onClick={() => handleSelectLocationType("Simple")}
                                 >
                                     <div className="as-loc-type-title">Single On-Site Address</div>
                                     <p className="as-loc-type-desc">Customer provides one delivery / doorstep service address.</p>
@@ -1357,7 +1445,7 @@ export function Addservice({ userId }) {
 
                                 <div
                                     className={`as-loc-type-card ${selectedLocationType === "No" ? "selected" : ""}`}
-                                    onClick={() => setSelectedLocationType("No")}
+                                    onClick={() => handleSelectLocationType("No")}
                                 >
                                     <div className="as-loc-type-title">No Location Required</div>
                                     <p className="as-loc-type-desc">For virtual, digital, walk-in or pass-based events.</p>
@@ -1366,7 +1454,7 @@ export function Addservice({ userId }) {
 
                                 <div
                                     className={`as-loc-type-card ${selectedLocationType === "Rental" ? "selected" : ""}`}
-                                    onClick={() => setSelectedLocationType("Rental")}
+                                    onClick={() => handleSelectLocationType("Rental")}
                                 >
                                     <div className="as-loc-type-title">Multi-Point / Transit Route</div>
                                     <p className="as-loc-type-desc">Customer specifies pickup, drop-off and return destinations.</p>
@@ -1612,9 +1700,9 @@ export function Addservice({ userId }) {
                                                     onChange={(e) => handleOptionalImageUpload(index, e.target.files[0])}
                                                     disabled={!!input.image && !optionalInputImages[index]}
                                                 />
-                                                {optionalInputPreviews[index] && (
+                                                {(optionalInputPreviews[index] || input.image) && (
                                                     <img
-                                                        src={optionalInputPreviews[index]}
+                                                        src={optionalInputPreviews[index] || input.image}
                                                         alt="Addon preview"
                                                         style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8 }}
                                                     />
@@ -1706,9 +1794,18 @@ export function Addservice({ userId }) {
                         <div style={{ fontSize: 13, color: '#64748b' }}>Make sure service title, category, 3 photos, and base price are provided.</div>
                     </div>
 
-                    <button
-                        type="button"
-                        className="as-publish-btn"
+                    <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                        <button
+                            type="button"
+                            className="as-demo-agent-btn-secondary"
+                            onClick={handleFillDemoData}
+                            title="Generate another set of dynamic demo data"
+                        >
+                            <FaDice style={{ marginRight: 6 }} /> Fill Different Demo Data
+                        </button>
+                        <button
+                            type="button"
+                            className="as-publish-btn"
                         onClick={addService}
                         disabled={uploading}
                     >
@@ -1723,6 +1820,7 @@ export function Addservice({ userId }) {
                             </>
                         )}
                     </button>
+                    </div>
                 </div>
             </div>
         </div>

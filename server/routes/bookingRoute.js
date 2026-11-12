@@ -28,20 +28,28 @@ async function sendPushNotification(userIds, bookingData) {
         console.log(`📤 Sending push to ${uniqueTokens.length} devices`);
         
         // Prepare notification payload - CORRECT FORMAT
+        const isAuto = !bookingData.bookingType || 
+                       bookingData.bookingType === 'Automatic Booking' || 
+                       (typeof bookingData.bookingType === 'string' && bookingData.bookingType.toLowerCase().includes('auto'));
+
+        const webpushNotification = {
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            vibrate: isAuto ? [] : [200, 100, 200]
+        };
+
+        if (!isAuto) {
+            webpushNotification.sound = 'default';
+            webpushNotification.requireInteraction = true;
+        }
+
         const payload = {
             notification: {
                 title: '📢 New Booking!',
                 body: `${bookingData.service} - ₹${bookingData.totalAmount || 0}`
-                // sound goes in webpush.notification, not here
             },
             webpush: {
-                notification: {
-                    icon: '/icon-192.png',
-                    badge: '/icon-192.png',
-                    vibrate: [200, 100, 200],
-                    sound: 'default',  // ✅ Sound is correct here
-                    requireInteraction: true
-                },
+                notification: webpushNotification,
                 fcmOptions: {
                     link: '/admin'
                 }
@@ -49,6 +57,7 @@ async function sendPushNotification(userIds, bookingData) {
             data: {
                 bookingId: bookingData._id.toString(),
                 type: 'new_booking',
+                bookingType: bookingData.bookingType || 'Automatic Booking',
                 click_action: 'OPEN_ADMIN_PANEL'
             }
         };
@@ -404,6 +413,14 @@ router.post("/cancelbooking", async (req, res) => {
             return res.status(404).json({ message: "Booking not found" });
         }
 
+        const s = String(booking.status || '').trim().toLowerCase();
+        if (s === 'in-progress' || s === 'in_progress' || s === 'inprogress' || s === 'completed') {
+            return res.status(400).json({ message: "Cannot cancel a booking that is in progress or completed." });
+        }
+        if (s === 'cancelled') {
+            return res.status(400).json({ message: "Booking is already cancelled." });
+        }
+
         // Update service availability
         if (booking.fromDate) {
             const service = await Service.findById(serviceid);
@@ -437,7 +454,11 @@ router.post("/cancelbooking", async (req, res) => {
             }
         }
 
-        await Booking.findByIdAndDelete(bookingid);
+        await Booking.findByIdAndUpdate(bookingid, {
+            status: 'cancelled',
+            cancelledAt: new Date(),
+            cancelledBy: 'user'
+        });
         res.json({ message: "Booking cancelled successfully" });
 
     } catch (error) {

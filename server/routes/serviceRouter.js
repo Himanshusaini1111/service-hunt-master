@@ -148,6 +148,7 @@ router.post("/addservice", async (req, res) => {
             subCategory,
             bookingType,
             locations,
+            locationType,
             locationPricing
         } = req.body;
 
@@ -237,7 +238,8 @@ router.post("/addservice", async (req, res) => {
             }))
         }));
 
-        const processedLocations = (locations && locations.length > 0) ? locations : ['Simple'];
+        const effectiveLocType = (locations && locations.length > 0 && locations[0]) || locationType || 'Simple';
+        const processedLocations = (locations && locations.length > 0) ? locations : [effectiveLocType];
 
         const newService = new Service({
             name: service,
@@ -258,6 +260,7 @@ router.post("/addservice", async (req, res) => {
             address: address,
             facility: facility || '',
             locations: processedLocations,
+            locationType: effectiveLocType,
             locationPricing: processedLocationPricing,
             imageurls: imageURLs,
             optionalInputs: normalizeOptionalInputs(optionalInputs),

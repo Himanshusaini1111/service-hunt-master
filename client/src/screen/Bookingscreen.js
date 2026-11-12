@@ -121,9 +121,19 @@ function Bookingscreen() {
     }));
   };
 
+  const getUnitEffectivePrice = (unit, selectedArea) => {
+    const basePrice = Number(unit?.price) || 0;
+    if (!selectedArea) return basePrice;
+    const extraPrice = Number(selectedArea.extraPrice) || 0;
+    return basePrice + extraPrice;
+  };
+
   const effectiveBaseRent = (service, selectedArea) => {
     const currentUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
-    const basePrice = Number(currentUnit?.price) || Number(service?.rentperday) || 0;
+    if (currentUnit) {
+      return getUnitEffectivePrice(currentUnit, selectedArea);
+    }
+    const basePrice = Number(service?.rentperday) || 0;
     if (!selectedArea) return basePrice;
     const extraPrice = Number(selectedArea.extraPrice) || 0;
     return basePrice + extraPrice;
@@ -306,14 +316,14 @@ function Bookingscreen() {
     }
 
     const currentUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
-    const unitRent = currentUnit.price || 0;
-    const unitType = currentUnit.unit || 'per day';
+    const unitRent = effectiveBaseRent(service, selectedServiceArea);
+    const unitType = currentUnit?.unit || 'per day';
     const mainUnit = unitType;
-    const isCountable = currentUnit.isCountable !== false;
-    const currentBookingType = bookingType || service.bookingType || 'Automatic Booking';
+    const isCountable = currentUnit?.isCountable !== false;
+    const currentBookingType = bookingType || service?.bookingType || 'Automatic Booking';
 
-    const isMerged = currentUnit.isMerged || service.isMerged || false;
-    const mergedUnit = currentUnit.mergedUnit || service.mergedUnit || 'per day';
+    const isMerged = currentUnit?.isMerged || service?.isMerged || false;
+    const mergedUnit = currentUnit?.mergedUnit || service?.mergedUnit || 'per day';
 
     let baseTotal = 0;
 
@@ -348,7 +358,6 @@ function Bookingscreen() {
         const count = optionalInputCounts[i] || 0;
         let multiplier = 1;
         const inputUnit = input.unit || '';
-        const mainUnit = unitType;
         const isOptMerged = input.isMerged || false;
         const optMergedUnit = input.mergedUnit || 'per day';
 
@@ -358,11 +367,9 @@ function Bookingscreen() {
           } else {
             multiplier = daysCount;
           }
-        } else if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
-            (mainUnit.includes('day') || mainUnit === 'per-day')) {
+        } else if (isDayOrLongerUnit(inputUnit)) {
           multiplier = daysCount;
-        } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
-                   (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
+        } else if (isHourUnit(inputUnit)) {
           multiplier = (selectedSlots.length || 1);
         }
         return acc + (count * inputPrice * multiplier);
@@ -385,11 +392,9 @@ function Bookingscreen() {
           } else {
             multiplier = daysCount;
           }
-        } else if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
-            (mainUnit.includes('day') || mainUnit === 'per-day')) {
+        } else if (isDayOrLongerUnit(inputUnit)) {
           multiplier = daysCount;
-        } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
-                   (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
+        } else if (isHourUnit(inputUnit)) {
           multiplier = (selectedSlots.length || 1);
         }
         return acc + (inputPrice * multiplier);
@@ -403,13 +408,10 @@ function Bookingscreen() {
         const inputPrice = input.price || 0;
         let multiplier = 1;
         const inputUnit = input.unit || '';
-        const mainUnit = unitType;
 
-        if ((inputUnit.includes('day') || inputUnit === 'per-day') &&
-            (mainUnit.includes('day') || mainUnit === 'per-day')) {
+        if (isDayOrLongerUnit(inputUnit)) {
           multiplier = daysCount;
-        } else if ((inputUnit.includes('hour') || inputUnit === 'per-hour') &&
-                   (mainUnit.includes('hour') || mainUnit === 'per-hour')) {
+        } else if (isHourUnit(inputUnit)) {
           multiplier = (selectedSlots.length || 1);
         }
         return acc + (inputPrice * multiplier);
@@ -566,7 +568,10 @@ const handleBooking = async (e) => {
       mergedUnit: currentUnit.mergedUnit || service.mergedUnit || 'per day',
       rentperday: effectiveRentSnapshot,
       selectedUnitIndex: selectedUnitIndex,
-      selectedUnit: currentUnit,
+      selectedUnit: currentUnit ? {
+        ...currentUnit,
+        price: effectiveRentSnapshot
+      } : currentUnit,
       selectedServiceArea: selectedServiceArea ? {
         locationName: selectedServiceArea.locationName,
         locationAddress: selectedServiceArea.locationAddress,
@@ -1247,11 +1252,14 @@ const handleBooking = async (e) => {
                       }
                     }}
                   >
-                    {availableUnits.map((unit, index) => (
-                      <option key={index} value={index}>
-                        {getFirstUnit(unit.unit, unit.customUnit)} — ₹{unit.price} {unit.isDefault ? "✦" : ""}
-                      </option>
-                    ))}
+                    {availableUnits.map((unit, index) => {
+                      const unitEffectivePrice = getUnitEffectivePrice(unit, selectedServiceArea);
+                      return (
+                        <option key={index} value={index}>
+                          {getFirstUnit(unit.unit, unit.customUnit)} — ₹{unitEffectivePrice} {unit.isDefault ? "✦" : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               )}

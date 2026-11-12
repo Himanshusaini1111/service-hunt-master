@@ -63,22 +63,41 @@ const MyOrders = () => {
         }
     };
 
-    const handleCancelBooking = async (bookingId, serviceId) => {
-        try {
-            const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-            if (!currentUser?._id) throw new Error("User not authenticated");
-
-            await axios.post("/api/bookings/cancelbooking", {
-                bookingid: bookingId,
-                serviceid: serviceId,
-                userid: currentUser._id
-            });
-
-            message.success("Booking cancelled successfully!");
-            fetchBookings();
-        } catch (err) {
-            message.error(err.response?.data?.message || "Failed to cancel booking");
+    const canCancelBooking = (booking) => {
+        if (!booking || !booking.status) return false;
+        const s = String(booking.status).trim().toLowerCase();
+        // Cancel button is removed when in-progress or completed (or already cancelled/rejected)
+        if (s === 'in-progress' || s === 'in_progress' || s === 'inprogress' || s === 'completed' || s === 'cancelled' || s === 'rejected') {
+            return false;
         }
+        return true;
+    };
+
+    const handleCancelBooking = (bookingId, serviceId) => {
+        Modal.confirm({
+            title: "Cancel Booking",
+            content: "Are you sure you want to cancel this booking?",
+            okText: "Yes, Cancel",
+            okType: "danger",
+            cancelText: "No, Keep",
+            onOk: async () => {
+                try {
+                    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+                    if (!currentUser?._id) throw new Error("User not authenticated");
+
+                    await axios.post("/api/bookings/cancelbooking", {
+                        bookingid: bookingId,
+                        serviceid: serviceId,
+                        userid: currentUser._id
+                    });
+
+                    message.success("Booking cancelled successfully!");
+                    fetchBookings();
+                } catch (err) {
+                    message.error(err.response?.data?.message || "Failed to cancel booking");
+                }
+            }
+        });
     };
 
     const renderBookingStatus = (status) => {
@@ -248,6 +267,8 @@ const MyOrders = () => {
                 return `${moment(selectedBooking.fromdate).format("dddd, MMMM D, YYYY")} - ${moment(selectedBooking.todate).format("dddd, MMMM D, YYYY")}`;
             } else if (selectedBooking.fromdate) {
                 return moment(selectedBooking.fromdate).format("dddd, MMMM D, YYYY");
+            } else if (selectedBooking.createdAt) {
+                return moment(selectedBooking.createdAt).format("dddd, MMMM D, YYYY");
             }
             return "Date not specified";
         };
@@ -255,8 +276,8 @@ const MyOrders = () => {
         const formatTimeSlots = () => {
             if (selectedBooking.slots && selectedBooking.slots.length > 0) {
                 return selectedBooking.slots.map(slot => 
-                    typeof slot === 'object' ? slot.slot : slot
-                ).join(', ');
+                    typeof slot === 'object' ? (slot.slot || slot.date || '') : slot
+                ).filter(Boolean).join(', ');
             }
             if (selectedBooking.time && selectedBooking.time !== 'N/A') {
                 return selectedBooking.time;
@@ -276,8 +297,15 @@ const MyOrders = () => {
             return unit;
         };
 
-        const isInquiry = selectedBooking.status === 'inquiry';
-        const bookingType = selectedBooking.bookingType || selectedBooking.type || 'standard';
+        const isInquiry = 
+            selectedBooking.status === 'inquiry' || 
+            selectedBooking.bookingType === 'inquiry' || 
+            selectedBooking.bookingType === 'Inquari Booking' || 
+            (typeof selectedBooking.bookingType === 'string' && selectedBooking.bookingType.toLowerCase().includes('inqu'));
+
+        const basePrice = selectedBooking.rentperday !== undefined && selectedBooking.rentperday !== null 
+            ? selectedBooking.rentperday 
+            : (selectedBooking.price || 0);
 
         return (
             <Modal
@@ -293,10 +321,7 @@ const MyOrders = () => {
                     <Button key="close" onClick={handleModalClose} style={{ borderRadius: '8px' }}>
                         Close
                     </Button>,
-                    selectedBooking.status !== "confirmed" && 
-                    selectedBooking.status !== "rejected" && 
-                    selectedBooking.status !== "completed" &&
-                    selectedBooking.status !== "inquiry" && (
+                    canCancelBooking(selectedBooking) && (
                         <Button
                             key="cancel"
                             type="primary"
@@ -311,242 +336,249 @@ const MyOrders = () => {
                         </Button>
                     )
                 ]}
-                width={window.innerWidth < 600 ? "95%" : 760}
-                style={{ top: 20 }}
+                width={720}
+                style={{ maxWidth: '95vw', top: 20 }}
             >
-                <div style={{ 
-                    background: isInquiry ? 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)' : 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-                    color: 'white',
-                    padding: '20px 24px',
-                    borderRadius: '12px',
-                    marginBottom: '20px'
-                }}>
-                    <Title level={3} style={{ color: 'white', margin: 0, fontSize: '20px' }}>
-                        {selectedBooking.service}
-                    </Title>
-                    <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: '13px' }}>
-                        Booking ID: {selectedBooking._id}
-                    </Text>
-                </div>
-
-                <Descriptions bordered column={{ xs: 1, sm: 2 }} size="middle">
-                    <Descriptions.Item label="Status" span={2}>
-                        {renderBookingStatus(selectedBooking.status)}
-                    </Descriptions.Item>
-
-                    <Descriptions.Item label="Booking Type" span={2}>
-                        {renderBookingType(bookingType)}
-                    </Descriptions.Item>
-                    
-                    {!isInquiry && (
-                        <Descriptions.Item label="Total Amount">
-                            <Text strong style={{ fontSize: '18px', color: '#2563eb' }}>
-                                ₹{selectedBooking.totalAmount?.toFixed(2) || 0}
-                            </Text>
-                        </Descriptions.Item>
-                    )}
-
-                    {isInquiry && (
-                        <Descriptions.Item label="Status Note" span={2}>
-                            <Alert
-                                message="Inquiry Request"
-                                description="The service provider will review your requirements and provide pricing and availability details."
-                                type="info"
-                                showIcon
-                                icon={<QuestionCircleOutlined />}
-                            />
-                        </Descriptions.Item>
-                    )}
-
-                    {(!isInquiry || (selectedBooking.unit && selectedBooking.quantity)) && (
-                        <>
-                            <Descriptions.Item label="Unit">
-                                {getUnitDisplay()}
-                            </Descriptions.Item>
-                            
-                            <Descriptions.Item label="Quantity">
-                                {selectedBooking.quantity || 1}
-                            </Descriptions.Item>
-                        </>
-                    )}
-
-                    <Descriptions.Item label="Service Date" span={2}>
-                        <Space direction="vertical" size="small">
-                            <div>
-                                <CalendarOutlined style={{ marginRight: '8px', color: '#2563eb' }} />
-                                {formatDateRange()}
-                            </div>
-                            {selectedBooking.daysCount > 1 && (
-                                <Text type="secondary">
-                                    Duration: {selectedBooking.daysCount} days
-                                </Text>
-                            )}
-                        </Space>
-                    </Descriptions.Item>
-
-                    {formatTimeSlots() && (
-                        <Descriptions.Item label="Time Slots" span={2}>
-                            <ClockCircleOutlined style={{ marginRight: '8px', color: '#2563eb' }} />
-                            {formatTimeSlots()}
-                        </Descriptions.Item>
-                    )}
-
-                    <Descriptions.Item label="Customer">
-                        <Space>
-                            <UserOutlined />
-                            {selectedBooking.name}
-                        </Space>
-                    </Descriptions.Item>
-                    
-                    <Descriptions.Item label="Phone">
-                        <Space>
-                            <PhoneOutlined />
-                            {selectedBooking.phone}
-                        </Space>
-                    </Descriptions.Item>
-
-                    {selectedBooking.email && (
-                        <Descriptions.Item label="Email" span={2}>
-                            <Space>
-                                <MailOutlined />
-                                {selectedBooking.email}
-                            </Space>
-                        </Descriptions.Item>
-                    )}
-
-                    {selectedBooking.description && (
-                        <Descriptions.Item label="Description" span={2}>
-                            <Paragraph style={{ margin: 0, color: '#334155' }}>
-                                {selectedBooking.description}
-                            </Paragraph>
-                        </Descriptions.Item>
-                    )}
-
-                    {selectedBooking.locationType === 'Simple' && selectedBooking.address && (
-                        <Descriptions.Item label="Address" span={2}>
-                            <EnvironmentOutlined style={{ marginRight: '8px', color: '#2563eb' }} />
-                            {selectedBooking.address}
-                        </Descriptions.Item>
-                    )}
-
-                    {selectedBooking.locationType === 'Rental' && (
-                        <>
-                            <Descriptions.Item label="Pickup Address" span={2}>
-                                <EnvironmentOutlined style={{ marginRight: '8px', color: '#2563eb' }} />
-                                {selectedBooking.pickupAddress}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Drop Address" span={2}>
-                                <EnvironmentOutlined style={{ marginRight: '8px', color: '#dc2626' }} />
-                                {selectedBooking.dropAddress}
-                            </Descriptions.Item>
-                            <Descriptions.Item label="Return Trip" span={2}>
-                                {selectedBooking.returnTrip ? 'Yes' : 'No'}
-                            </Descriptions.Item>
-                        </>
-                    )}
-
-                    {selectedBooking.optionalInputs && selectedBooking.optionalInputs.length > 0 && (
-                        <Descriptions.Item label="Optional Services" span={2}>
-                            <div style={{ width: '100%' }}>
-                                {selectedBooking.optionalInputs.map((input, index) => (
-                                    <div key={index} style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        padding: '8px 0',
-                                        borderBottom: index < selectedBooking.optionalInputs.length - 1 ? '1px solid #e2e8f0' : 'none'
-                                    }}>
-                                        <span>
-                                            <strong>{input.name}:</strong> {input.count} x ₹{input.price}
-                                            {input.unit && ` /${input.unit.replace('per-', '')}`}
-                                        </span>
-                                        <span style={{ color: '#2563eb', fontWeight: 'bold' }}>
-                                            ₹{(input.count * input.price * (selectedBooking.daysCount || 1)).toFixed(2)}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </Descriptions.Item>
-                    )}
-
-                    {selectedBooking.extraInputs && selectedBooking.extraInputs.length > 0 && (
-                        <Descriptions.Item label="Additional Services" span={2}>
-                            <div style={{ width: '100%' }}>
-                                {selectedBooking.extraInputs.map((input, index) => (
-                                    <div key={index} style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        padding: '8px 0',
-                                        borderBottom: index < selectedBooking.extraInputs.length - 1 ? '1px solid #e2e8f0' : 'none'
-                                    }}>
-                                        <span>
-                                            <strong>{input.name}</strong>
-                                            {input.unit && <span style={{ color: '#64748b' }}> ({input.unit.replace('per-', '')})</span>}
-                                        </span>
-                                        <span style={{ color: '#ea580c', fontWeight: 'bold' }}>
-                                            ₹{input.price}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </Descriptions.Item>
-                    )}
-                </Descriptions>
-
-                {!isInquiry && selectedBooking.totalAmount > 0 && (
-                    <>
-                        <Divider style={{ margin: '18px 0' }} />
-                        <div style={{
-                            background: '#f8fafc',
-                            border: '1px solid #e2e8f0',
-                            padding: '16px',
-                            borderRadius: '10px'
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
-                                <span style={{ color: '#64748b' }}>Base Price:</span>
-                                <span>₹{selectedBooking.rentperday || 0} / {getUnitDisplay()}</span>
-                            </div>
-                            {selectedBooking.quantity > 1 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
-                                    <span style={{ color: '#64748b' }}>Quantity:</span>
-                                    <span>× {selectedBooking.quantity}</span>
-                                </div>
-                            )}
-                            {selectedBooking.daysCount > 1 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
-                                    <span style={{ color: '#64748b' }}>Duration:</span>
-                                    <span>{selectedBooking.daysCount} days</span>
-                                </div>
-                            )}
-                            <Divider style={{ margin: '10px 0' }} />
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '17px', fontWeight: 'bold' }}>
-                                <span>Total Amount:</span>
-                                <span style={{ color: '#2563eb' }}>₹{selectedBooking.totalAmount?.toFixed(2) || 0}</span>
+                <div className="order-modal-body-wrapper">
+                    {/* 1. Header Hero with Service Title & Status Badge (No Booking ID, No Booking Type) */}
+                    <div className={`order-modal-hero ${isInquiry ? 'order-modal-hero-inquiry' : ''}`}>
+                        <div className="order-modal-hero-top">
+                            <h2 className="order-modal-title">{selectedBooking.service}</h2>
+                            <div className="order-modal-status">
+                                {renderBookingStatus(selectedBooking.status)}
                             </div>
                         </div>
-                    </>
-                )}
+                    </div>
 
-                {selectedBooking.assignedHelpers && selectedBooking.assignedHelpers.length > 0 && (
-                    <>
-                        <Divider style={{ margin: '18px 0' }} />
-                        <Title level={4} style={{ marginBottom: '14px', fontSize: '16px' }}>
-                            <TeamOutlined style={{ marginRight: '8px', color: '#059669' }} />
-                            Assigned Specialists ({selectedBooking.assignedHelpers.length})
-                        </Title>
-                        <List
-                            grid={{
-                                gutter: 16,
-                                xs: 1,
-                                sm: 2,
-                                md: 2,
-                                lg: 2,
-                                xl: 2,
-                            }}
-                            dataSource={selectedBooking.assignedHelpers}
-                            renderItem={renderHelperItem}
-                        />
-                    </>
-                )}
+                    {/* 2. Service & Pricing Details */}
+                    <div className="order-modal-card">
+                        <div className="order-modal-card-title">
+                            <ShoppingOutlined className="order-modal-card-icon" />
+                            <span>Service & Pricing Details</span>
+                        </div>
+                        <div className="order-modal-fields-grid">
+                            <div className="order-modal-field">
+                                <span className="order-modal-field-label">Base Price</span>
+                                <span className="order-modal-field-value price-highlight">
+                                    ₹{Number(basePrice).toLocaleString()}
+                                    <span className="order-modal-unit-text"> / {getUnitDisplay()}</span>
+                                </span>
+                            </div>
+
+                            <div className="order-modal-field">
+                                <span className="order-modal-field-label">Unit</span>
+                                <span className="order-modal-field-value">{getUnitDisplay()}</span>
+                            </div>
+
+                            <div className="order-modal-field">
+                                <span className="order-modal-field-label">Quantity</span>
+                                <span className="order-modal-field-value">{selectedBooking.quantity || 1}</span>
+                            </div>
+
+                            {selectedBooking.daysCount > 1 && (
+                                <div className="order-modal-field">
+                                    <span className="order-modal-field-label">Duration</span>
+                                    <span className="order-modal-field-value">{selectedBooking.daysCount} days</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 3. Schedule & Timing */}
+                    <div className="order-modal-card">
+                        <div className="order-modal-card-title">
+                            <CalendarOutlined className="order-modal-card-icon" />
+                            <span>Schedule & Timing</span>
+                        </div>
+                        <div className="order-modal-fields-grid">
+                            <div className="order-modal-field full-width">
+                                <span className="order-modal-field-label">Service Date</span>
+                                <span className="order-modal-field-value">
+                                    <CalendarOutlined style={{ marginRight: 6, color: '#2563eb' }} />
+                                    {formatDateRange()}
+                                </span>
+                            </div>
+
+                            {formatTimeSlots() && (
+                                <div className="order-modal-field full-width">
+                                    <span className="order-modal-field-label">Time Slots</span>
+                                    <span className="order-modal-field-value">
+                                        <ClockCircleOutlined style={{ marginRight: 6, color: '#2563eb' }} />
+                                        {formatTimeSlots()}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 4. Customer Information */}
+                    <div className="order-modal-card">
+                        <div className="order-modal-card-title">
+                            <UserOutlined className="order-modal-card-icon" />
+                            <span>Customer Information</span>
+                        </div>
+                        <div className="order-modal-fields-grid">
+                            <div className="order-modal-field">
+                                <span className="order-modal-field-label">Customer Name</span>
+                                <span className="order-modal-field-value">
+                                    <UserOutlined style={{ marginRight: 6, color: '#64748b' }} />
+                                    {selectedBooking.name}
+                                </span>
+                            </div>
+
+                            <div className="order-modal-field">
+                                <span className="order-modal-field-label">Phone Number</span>
+                                <span className="order-modal-field-value">
+                                    <PhoneOutlined style={{ marginRight: 6, color: '#64748b' }} />
+                                    {selectedBooking.phone}
+                                </span>
+                            </div>
+
+                            {selectedBooking.email && (
+                                <div className="order-modal-field full-width">
+                                    <span className="order-modal-field-label">Email Address</span>
+                                    <span className="order-modal-field-value">
+                                        <MailOutlined style={{ marginRight: 6, color: '#64748b' }} />
+                                        {selectedBooking.email}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 5. Location / Address (if available) */}
+                    {((selectedBooking.locationType === 'Simple' && selectedBooking.address) || selectedBooking.locationType === 'Rental') && (
+                        <div className="order-modal-card">
+                            <div className="order-modal-card-title">
+                                <EnvironmentOutlined className="order-modal-card-icon" />
+                                <span>Service Location</span>
+                            </div>
+                            <div className="order-modal-fields-grid">
+                                {selectedBooking.locationType === 'Simple' && selectedBooking.address && (
+                                    <div className="order-modal-field full-width">
+                                        <span className="order-modal-field-label">Address</span>
+                                        <span className="order-modal-field-value">
+                                            <EnvironmentOutlined style={{ marginRight: 6, color: '#2563eb' }} />
+                                            {selectedBooking.address}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {selectedBooking.locationType === 'Rental' && (
+                                    <>
+                                        <div className="order-modal-field full-width">
+                                            <span className="order-modal-field-label">Pickup Address</span>
+                                            <span className="order-modal-field-value">
+                                                <EnvironmentOutlined style={{ marginRight: 6, color: '#2563eb' }} />
+                                                {selectedBooking.pickupAddress}
+                                            </span>
+                                        </div>
+                                        <div className="order-modal-field full-width">
+                                            <span className="order-modal-field-label">Drop Address</span>
+                                            <span className="order-modal-field-value">
+                                                <EnvironmentOutlined style={{ marginRight: 6, color: '#dc2626' }} />
+                                                {selectedBooking.dropAddress}
+                                            </span>
+                                        </div>
+                                        <div className="order-modal-field">
+                                            <span className="order-modal-field-label">Return Trip</span>
+                                            <span className="order-modal-field-value">{selectedBooking.returnTrip ? 'Yes' : 'No'}</span>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 6. Special Notes / Description (if available) */}
+                    {selectedBooking.description && (
+                        <div className="order-modal-card">
+                            <div className="order-modal-card-title">
+                                <span>Description / Special Instructions</span>
+                            </div>
+                            <p className="order-modal-description-text">
+                                {selectedBooking.description}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* 7. Optional / Extra Services (if available) */}
+                    {((selectedBooking.optionalInputs && selectedBooking.optionalInputs.length > 0) || (selectedBooking.extraInputs && selectedBooking.extraInputs.length > 0)) && (
+                        <div className="order-modal-card">
+                            <div className="order-modal-card-title">
+                                <span>Addon & Optional Services</span>
+                            </div>
+                            {selectedBooking.optionalInputs && selectedBooking.optionalInputs.length > 0 && (
+                                <div className="order-modal-addon-list">
+                                    {selectedBooking.optionalInputs.map((input, index) => (
+                                        <div key={index} className="order-modal-addon-row">
+                                            <span>
+                                                <strong>{input.name}:</strong> {input.count} × ₹{input.price}
+                                                {input.unit && ` /${input.unit.replace('per-', '')}`}
+                                            </span>
+                                            <span className="order-modal-addon-price">
+                                                {isInquiry ? 'Quote on inquiry' : `₹${(input.count * input.price * (selectedBooking.daysCount || 1)).toFixed(2)}`}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            {selectedBooking.extraInputs && selectedBooking.extraInputs.length > 0 && (
+                                <div className="order-modal-addon-list">
+                                    {selectedBooking.extraInputs.map((input, index) => (
+                                        <div key={index} className="order-modal-addon-row">
+                                            <span>
+                                                <strong>{input.name}</strong>
+                                                {input.unit && <span style={{ color: '#64748b' }}> ({input.unit.replace('per-', '')})</span>}
+                                            </span>
+                                            <span className="order-modal-addon-price" style={{ color: '#ea580c' }}>
+                                                {isInquiry ? 'Quote on inquiry' : `₹${input.price}`}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* 8. Bottom Notice for Inquiry Service (Shows it is an inquiry service without a total amount) */}
+                    {isInquiry && (
+                        <div className="order-modal-inquiry-banner">
+                            <div className="order-modal-inquiry-header">
+                                <div className="order-modal-inquiry-title-wrap">
+                                    <QuestionCircleOutlined className="order-modal-inquiry-icon" />
+                                    <span className="order-modal-inquiry-title">Inquiry Service</span>
+                                </div>
+                                <span className="order-modal-inquiry-pill">No Total Amount</span>
+                            </div>
+                            <p className="order-modal-inquiry-desc">
+                                This is an inquiry-based service and does not have a fixed total amount. Final pricing and schedule will be confirmed directly with you after requirement review.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* 9. Assigned Specialists (if assigned) */}
+                    {selectedBooking.assignedHelpers && selectedBooking.assignedHelpers.length > 0 && (
+                        <div className="order-modal-card">
+                            <div className="order-modal-card-title">
+                                <TeamOutlined className="order-modal-card-icon" style={{ color: '#059669' }} />
+                                <span>Assigned Specialists ({selectedBooking.assignedHelpers.length})</span>
+                            </div>
+                            <List
+                                grid={{
+                                    gutter: 12,
+                                    xs: 1,
+                                    sm: 2,
+                                    md: 2,
+                                    lg: 2,
+                                    xl: 2,
+                                }}
+                                dataSource={selectedBooking.assignedHelpers}
+                                renderItem={renderHelperItem}
+                            />
+                        </div>
+                    )}
+                </div>
             </Modal>
         );
     };
@@ -562,15 +594,20 @@ const MyOrders = () => {
                 }
             } else if (booking.fromdate) {
                 return moment(booking.fromdate).format("MMM D, YYYY");
+            } else if (booking.createdAt) {
+                return moment(booking.createdAt).format("MMM D, YYYY");
             }
             return "Date TBD";
         };
 
         const formatTimeSlots = () => {
             if (booking.slots && booking.slots.length > 0) {
-                const slots = booking.slots.map(slot => typeof slot === 'object' ? slot.slot : slot);
+                const slots = booking.slots.map(slot => typeof slot === 'object' ? (slot.slot || slot.date || '') : slot).filter(Boolean);
                 if (slots.length === 1) return slots[0];
-                if (slots.length > 1) return `${slots[0]} +${slots.length - 1}`;
+                if (slots.length > 1) return `${slots[0]} (+${slots.length - 1} more)`;
+            }
+            if (booking.time && booking.time !== 'N/A') {
+                return booking.time;
             }
             return null;
         };
@@ -587,85 +624,89 @@ const MyOrders = () => {
             return unit;
         };
 
-        const isInquiry = booking.status === 'inquiry';
-        const bookingType = booking.bookingType || booking.type || 'standard';
+        const isInquiry = 
+            booking.status === 'inquiry' || 
+            booking.bookingType === 'inquiry' || 
+            booking.bookingType === 'Inquari Booking' || 
+            (typeof booking.bookingType === 'string' && booking.bookingType.toLowerCase().includes('inqu'));
+
+        const basePrice = booking.rentperday !== undefined && booking.rentperday !== null 
+            ? booking.rentperday 
+            : (booking.price || 0);
 
         const getAccentColor = () => {
-            if (bookingType === 'automatic') return '#2563eb';
-            if (bookingType === 'manual') return '#f59e0b';
-            if (bookingType === 'inquiry') return '#7c3aed';
-            return '#10b981';
+            if (isInquiry) return '#7c3aed';
+            if (booking.status === 'confirmed' || booking.status === 'completed') return '#059669';
+            if (booking.status === 'rejected' || booking.status === 'cancelled') return '#dc2626';
+            if (booking.status === 'pending') return '#d97706';
+            if (booking.status === 'in-progress' || booking.status === 'assigned') return '#0891b2';
+            return '#2563eb';
         };
 
         return (
             <div
                 key={booking._id}
-                className="order-card"
+                className={`order-card ${isInquiry ? 'order-card-inquiry' : ''}`}
                 onClick={() => handleBookingClick(booking)}
             >
                 <div className="order-card-accent" style={{ background: getAccentColor() }} />
 
                 <div className="order-card-body">
-                    {/* Header */}
+                    {/* Header: Service Name & Status Badge (No Booking ID, No Booking Type) */}
                     <div className="order-card-header">
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            <h3 className="order-card-service-name">
-                                {booking.service}
-                            </h3>
-                            <div className="order-card-type-row">
-                                {renderBookingType(bookingType)}
-                            </div>
-                        </div>
-                        <div>
+                        <h3 className="order-card-service-name" title={booking.service}>
+                            {booking.service}
+                        </h3>
+                        <div className="order-card-status-wrap">
                             {renderBookingStatus(booking.status)}
                         </div>
                     </div>
 
-                    {/* Schedule Box */}
+                    {/* Schedule / Timing Information */}
                     <div className="order-meta-box">
                         <div className="order-meta-item">
                             <CalendarOutlined className="order-meta-icon" />
-                            <span>{getDateDisplay()}</span>
+                            <span className="order-meta-text">{getDateDisplay()}</span>
                         </div>
                         {formatTimeSlots() && (
                             <div className="order-meta-item">
                                 <ClockCircleOutlined className="order-meta-icon" />
-                                <span>{formatTimeSlots()}</span>
+                                <span className="order-meta-text">{formatTimeSlots()}</span>
                             </div>
                         )}
                     </div>
 
-                    {/* Price or Inquiry Note */}
-                    {!isInquiry && booking.totalAmount > 0 ? (
-                        <div className="order-price-strip">
-                            <span className="order-price-label">Total Amount</span>
-                            <div>
-                                <span className="order-price-val">₹{booking.totalAmount?.toFixed(2) || 0}</span>
-                                <span className="order-price-unit">/ {getUnitDisplay()}</span>
-                            </div>
+                    {/* Base Price Strip (Replacing Total Amount) */}
+                    <div className="order-price-strip">
+                        <span className="order-price-label">Base Price</span>
+                        <div className="order-price-val-box">
+                            <span className="order-price-currency">₹</span>
+                            <span className="order-price-val">{Number(basePrice).toLocaleString()}</span>
+                            <span className="order-price-unit">/ {getUnitDisplay()}</span>
                         </div>
-                    ) : isInquiry ? (
-                        <div style={{
-                            padding: '8px 12px',
-                            background: '#f5f3ff',
-                            borderRadius: '8px',
-                            border: '1px solid #ddd6fe',
-                            fontSize: '12px',
-                            color: '#7c3aed',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                        }}>
-                            <QuestionCircleOutlined />
-                            <span>Inquiry awaiting quote</span>
-                        </div>
-                    ) : null}
+                    </div>
 
-                    {/* Helpers indicator */}
+                    {/* Helpers indicator (if assigned) */}
                     {booking.assignedHelpers && booking.assignedHelpers.length > 0 && (
                         <div className="order-helpers-strip">
-                            <TeamOutlined />
-                            <span>{booking.assignedHelpers.length} Specialist(s) Assigned</span>
+                            <TeamOutlined className="order-helpers-icon" />
+                            <span>{booking.assignedHelpers.length} Specialist{booking.assignedHelpers.length > 1 ? 's' : ''} Assigned</span>
+                        </div>
+                    )}
+
+                    {/* Bottom Inquiry Notice for inquiry services without a total amount */}
+                    {isInquiry && (
+                        <div className="order-inquiry-bottom-banner">
+                            <div className="order-inquiry-header-row">
+                                <div className="order-inquiry-badge-tag">
+                                    <QuestionCircleOutlined className="order-inquiry-icon" />
+                                    <span>Inquiry Service</span>
+                                </div>
+                                <span className="order-inquiry-no-amount-tag">No Total Amount</span>
+                            </div>
+                            <p className="order-inquiry-desc">
+                                This is an inquiry service without a fixed total amount. Final pricing will be confirmed after requirement discussion.
+                            </p>
                         </div>
                     )}
                 </div>
@@ -673,6 +714,7 @@ const MyOrders = () => {
                 {/* Footer Action Buttons */}
                 <div className="order-card-footer">
                     <button
+                        type="button"
                         className="order-btn-view"
                         onClick={(e) => {
                             e.stopPropagation();
@@ -682,11 +724,9 @@ const MyOrders = () => {
                         View Details
                     </button>
 
-                    {booking.status !== "confirmed" && 
-                     booking.status !== "rejected" && 
-                     booking.status !== "completed" &&
-                     booking.status !== "inquiry" && (
+                    {canCancelBooking(booking) && (
                         <button
+                            type="button"
                             className="order-btn-cancel"
                             onClick={(e) => {
                                 e.stopPropagation();

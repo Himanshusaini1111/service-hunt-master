@@ -133,6 +133,10 @@ const serviceSchema = mongoose.Schema({
         type: String
     },
     locations: [String],
+    locationType: {
+        type: String,
+        default: 'Simple'
+    },
     
     locationPricing: [{
         locationName: String,

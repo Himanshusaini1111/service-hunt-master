@@ -60,8 +60,15 @@ export function onMessageListener() {
         onMessage(messaging, (payload) => {
             console.log('📢 Notification received while app open:', payload);
             
-         const audio = new Audio('/sounds/booking.mp3');
-            audio.play().catch(e => console.log('Sound play failed:', e));
+            const bookingType = payload.data?.bookingType || '';
+            const isAuto = bookingType === 'Automatic Booking' || 
+                           (typeof bookingType === 'string' && bookingType.toLowerCase().includes('auto'));
+
+            // Only play audio alert sound for manual and inquiry bookings, NOT for automatic bookings
+            if (!isAuto) {
+                const audio = new Audio('/sounds/booking.mp3');
+                audio.play().catch(e => console.log('Sound play failed:', e));
+            }
             
             // Show browser notification
             if (Notification.permission === 'granted') {
@@ -69,9 +76,12 @@ export function onMessageListener() {
                     body: payload.notification?.body || 'A new booking has arrived',
                     icon: '/icon-192.png',
                     badge: '/icon-192.png',
-                    vibrate: [200, 100, 200]
+                    vibrate: isAuto ? [] : [200, 100, 200]
                 });
             }
+            
+            // Dispatch event for foreground booking reception
+            window.dispatchEvent(new CustomEvent('fcmBookingReceived', { detail: payload }));
             
             resolve(payload);
         });

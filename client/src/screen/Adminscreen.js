@@ -16,6 +16,22 @@ import { requestNotificationPermission, onMessageListener } from '../firebase';
 const { TabPane } = Tabs;
 
 
+// Helper functions to identify booking type
+const isAutomaticBookingType = (type) => {
+    if (!type) return true; // Default to automatic
+    const lower = String(type).trim().toLowerCase();
+    if (lower.includes('manual') || lower.includes('inqu')) {
+        return false;
+    }
+    return true;
+};
+
+const isManualOrInquiryBookingType = (type) => {
+    if (!type) return false;
+    const lower = String(type).trim().toLowerCase();
+    return lower.includes('manual') || lower.includes('inqu');
+};
+
 function Adminscreen() {
     const user = JSON.parse(localStorage.getItem("currentUser"));
     const isSuperAdmin = user?.email === 'himanshufa875@gmail.com' && (user?.role === 'superadmin' || user?.isAdmin);
@@ -35,14 +51,24 @@ function Adminscreen() {
     const [dashboardLoading, setDashboardLoading] = useState(true);
     
     // ✅ Notification states
-    const [lastCheckedTime, setLastCheckedTime] = useState(localStorage.getItem('adminLastCheckedTime') || Date.now().toString());
+    const [, setLastCheckedTime] = useState(localStorage.getItem('adminLastCheckedTime') || Date.now().toString());
     const [soundEnabled, setSoundEnabled] = useState(localStorage.getItem('adminSoundEnabled') !== 'false');
     const [isPlayingSound, setIsPlayingSound] = useState(false);
     const [newBookingAlert, setNewBookingAlert] = useState(null);
-    const [notifiedBookingIds, setNotifiedBookingIds] = useState(
+    const [, setNotifiedBookingIds] = useState(
         new Set(JSON.parse(localStorage.getItem('adminNotifiedBookings') || '[]'))
     );
     const [refreshKey, setRefreshKey] = useState(0);
+
+    // Refs to avoid stale closures in polling interval
+    const lastCheckedTimeRef = useRef(localStorage.getItem('adminLastCheckedTime') || Date.now().toString());
+    const notifiedBookingIdsRef = useRef(
+        new Set(JSON.parse(localStorage.getItem('adminNotifiedBookings') || '[]'))
+    );
+    const newBookingAlertRef = useRef(null);
+    const soundEnabledRef = useRef(soundEnabled);
+    soundEnabledRef.current = soundEnabled;
+    newBookingAlertRef.current = newBookingAlert;
     
     // Global service visibility control state
     const [allServices, setAllServices] = useState([]);
@@ -91,62 +117,83 @@ function Adminscreen() {
             const response = await axios.get(`/api/bookings/check-new`, {
                 params: { 
                     userid: user._id, 
-                    lastCheckedTime: lastCheckedTime
+                    lastCheckedTime: lastCheckedTimeRef.current
                 }
             });
             
             const newBookings = response.data || [];
             
             if (newBookings.length > 0) {
+                // Filter truly new bookings that haven't been notified yet using ref
                 const trulyNewBookings = newBookings.filter(booking => 
-                    !notifiedBookingIds.has(booking._id)
+                    !notifiedBookingIdsRef.current.has(booking._id)
                 );
                 
                 if (trulyNewBookings.length > 0) {
-                    const newNotifiedIds = new Set(notifiedBookingIds);
+                    // Mark as notified in ref and localStorage so they are never notified again
                     trulyNewBookings.forEach(booking => {
-                        newNotifiedIds.add(booking._id);
+                        notifiedBookingIdsRef.current.add(booking._id);
                     });
-                    setNotifiedBookingIds(newNotifiedIds);
+                    localStorage.setItem('adminNotifiedBookings', JSON.stringify([...notifiedBookingIdsRef.current]));
+                    setNotifiedBookingIds(new Set(notifiedBookingIdsRef.current));
                     
-                    localStorage.setItem('adminNotifiedBookings', JSON.stringify([...newNotifiedIds]));
-                    
-                    const count = trulyNewBookings.length;
-                    
-                    const currentAlertBookingIds = newBookingAlert?.bookings?.map(b => b._id) || [];
-                    const isDuplicateAlert = trulyNewBookings.some(b => 
-                        currentAlertBookingIds.includes(b._id)
-                    );
-                    
-                    if (!isDuplicateAlert) {
-                        const newBookingInfo = {
-                            count: count,
-                            bookings: trulyNewBookings,
-                            timestamp: new Date()
-                        };
+                    const manualOrInquiryBookings = trulyNewBookings.filter(b => isManualOrInquiryBookingType(b.bookingType));
+                    const automaticBookings = trulyNewBookings.filter(b => isAutomaticBookingType(b.bookingType));
+
+                    // 1. For Manual and Inquiry Bookings: keep alert and looping sound EXACTLY the same
+                    if (manualOrInquiryBookings.length > 0) {
+                        const currentAlertBookingIds = newBookingAlertRef.current?.bookings?.map(b => b._id) || [];
+                        const isDuplicateAlert = manualOrInquiryBookings.some(b => 
+                            currentAlertBookingIds.includes(b._id)
+                        );
                         
-                        setNewBookingAlert(newBookingInfo);
-                        
-                        if (soundEnabled) {
-                            playNotificationSound(true);
+                        if (!isDuplicateAlert) {
+                            const newBookingInfo = {
+                                count: manualOrInquiryBookings.length,
+                                bookings: manualOrInquiryBookings,
+                                timestamp: new Date()
+                            };
+                            
+                            setNewBookingAlert(newBookingInfo);
+                            
+                            if (soundEnabledRef.current) {
+                                playNotificationSound(true);
+                            }
+                            
+                            if (Notification.permission === 'granted') {
+                                new Notification(`📢 New Booking${manualOrInquiryBookings.length > 1 ? 's' : ''}!`, {
+                                    body: `${manualOrInquiryBookings.length} new booking${manualOrInquiryBookings.length > 1 ? 's have' : ' has'} been received`,
+                                    icon: '/icon-192.png',
+                                    vibrate: [200, 100, 200]
+                                });
+                            }
+                            
+                            message.info(`${manualOrInquiryBookings.length} new booking${manualOrInquiryBookings.length > 1 ? 's' : ''} received!`);
                         }
+                    }
+
+                    // 2. For Automatic Bookings:
+                    // Alert does NOT start (no sound, no alert banner)
+                    // Message occurs only ONCE and never repeats
+                    if (automaticBookings.length > 0 && manualOrInquiryBookings.length === 0) {
+                        const autoCount = automaticBookings.length;
+                        message.info(`${autoCount} new booking${autoCount > 1 ? 's' : ''} received!`);
                         
                         if (Notification.permission === 'granted') {
-                            new Notification(`📢 New Booking${count > 1 ? 's' : ''}!`, {
-                                body: `${count} new booking${count > 1 ? 's have' : ' has'} been received`,
-                                icon: '/icon-192.png',
-                                vibrate: [200, 100, 200]
+                            new Notification(`📢 New Booking${autoCount > 1 ? 's' : ''}!`, {
+                                body: `${autoCount} new booking${autoCount > 1 ? 's have' : ' has'} been received`,
+                                icon: '/icon-192.png'
                             });
                         }
-                        
-                        setRefreshKey(prev => prev + 1);
-                        
-                        message.info(`${count} new booking${count > 1 ? 's' : ''} received!`);
                     }
+                    
+                    // Always refresh the bookings table so the admin sees the new booking
+                    setRefreshKey(prev => prev + 1);
                 }
             }
             
             const newCheckedTime = Date.now().toString();
+            lastCheckedTimeRef.current = newCheckedTime;
             setLastCheckedTime(newCheckedTime);
             localStorage.setItem('adminLastCheckedTime', newCheckedTime);
             
@@ -215,12 +262,9 @@ function Adminscreen() {
         const handleBookingConfirmed = (event) => {
             const { bookingId } = event.detail || {};
             if (bookingId) {
-                setNotifiedBookingIds(prev => {
-                    const newSet = new Set(prev);
-                    newSet.delete(bookingId);
-                    localStorage.setItem('adminNotifiedBookings', JSON.stringify([...newSet]));
-                    return newSet;
-                });
+                notifiedBookingIdsRef.current.delete(bookingId);
+                localStorage.setItem('adminNotifiedBookings', JSON.stringify([...notifiedBookingIdsRef.current]));
+                setNotifiedBookingIds(new Set(notifiedBookingIdsRef.current));
             }
         };
         
@@ -275,6 +319,7 @@ function Adminscreen() {
                 
                 if (cleanedIds.length !== storedIds.length) {
                     localStorage.setItem('adminNotifiedBookings', JSON.stringify(cleanedIds));
+                    notifiedBookingIdsRef.current = new Set(cleanedIds);
                     setNotifiedBookingIds(new Set(cleanedIds));
                     console.log('Cleaned old notifications:', storedIds.length - cleanedIds.length, 'removed');
                 }
@@ -299,6 +344,12 @@ function Adminscreen() {
                 checkNewBookings();
                 setRefreshKey(prev => prev + 1);
             });
+
+            const handleFcmBooking = () => {
+                checkNewBookings();
+                setRefreshKey(prev => prev + 1);
+            };
+            window.addEventListener('fcmBookingReceived', handleFcmBooking);
             
             pollingIntervalRef.current = setInterval(checkNewBookings, 60000);
             
@@ -308,6 +359,7 @@ function Adminscreen() {
                 if (pollingIntervalRef.current) {
                     clearInterval(pollingIntervalRef.current);
                 }
+                window.removeEventListener('fcmBookingReceived', handleFcmBooking);
             };
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -869,6 +921,73 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
         setShowBillModal(true);
     };
 
+    const formatLocationDateTime = (loc) => {
+        if (!loc) return 'N/A';
+
+        // Extract dates
+        let dates = [];
+        if (Array.isArray(loc.selectedDates) && loc.selectedDates.length > 0) {
+            dates = loc.selectedDates.filter(Boolean);
+        } else if (loc.fromDate && loc.toDate && loc.fromDate !== loc.toDate) {
+            dates = [loc.fromDate, loc.toDate];
+        } else if (loc.fromDate) {
+            dates = [loc.fromDate];
+        } else if (loc.toDate) {
+            dates = [loc.toDate];
+        }
+
+        const formatDateStr = (d) => {
+            if (!d) return '';
+            try {
+                const parsed = new Date(d);
+                if (isNaN(parsed.getTime())) return String(d);
+                return parsed.toLocaleDateString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                });
+            } catch {
+                return String(d);
+            }
+        };
+
+        let dateStr = '';
+        if (dates.length > 1) {
+            dateStr = `${formatDateStr(dates[0])} to ${formatDateStr(dates[dates.length - 1])}`;
+        } else if (dates.length === 1) {
+            dateStr = formatDateStr(dates[0]);
+        }
+
+        // Extract time / slots
+        let timeStr = '';
+        if (Array.isArray(loc.slots) && loc.slots.length > 0) {
+            const slotTexts = loc.slots.map(s => {
+                if (typeof s === 'object' && s !== null) {
+                    return s.slot || s.time || '';
+                }
+                return String(s);
+            }).filter(Boolean);
+            if (slotTexts.length > 0) {
+                timeStr = slotTexts.join(', ');
+            }
+        }
+
+        if (!timeStr && loc.time && loc.time !== 'N/A' && loc.time !== 'null' && loc.time !== 'undefined' && String(loc.time).trim() !== '') {
+            timeStr = String(loc.time);
+        }
+
+        if (dateStr && timeStr) {
+            return `${dateStr} (${timeStr})`;
+        } else if (dateStr) {
+            return dateStr;
+        } else if (timeStr) {
+            return timeStr;
+        } else if (loc.createdAt) {
+            return formatDateStr(loc.createdAt);
+        }
+        return 'N/A';
+    };
+
     const ServiceLink = ({ serviceId, serviceName }) => (
         <Link
             to={`/service/${serviceId}`}
@@ -1069,6 +1188,16 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
                                         {isNewBooking(booking._id, booking.bookingType) && (
                                             <span className="new-badge">NEW</span>
                                         )}
+                                        {booking.optionalInputs && booking.optionalInputs.length > 0 && (
+                                            <div style={{ fontSize: '11px', color: '#1d4ed8', marginTop: '3px', lineHeight: '1.3' }}>
+                                                <strong>Options:</strong> {booking.optionalInputs.map(opt => `${opt.name}${opt.count > 1 ? ` (${opt.count})` : ''}`).join(', ')}
+                                            </div>
+                                        )}
+                                        {booking.extraInputs && booking.extraInputs.length > 0 && (
+                                            <div style={{ fontSize: '11px', color: '#c2410c', marginTop: '2px', lineHeight: '1.3' }}>
+                                                <strong>Extra:</strong> {booking.extraInputs.map(ext => ext.name).join(', ')}
+                                            </div>
+                                        )}
                                     </div>
                                 </td>
                                 <td onClick={(e) => { e.stopPropagation(); setSelectedLocation(booking); }} style={{ textDecoration: 'underline', color: '#0d6efd', cursor: 'pointer' }}>
@@ -1092,7 +1221,16 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
                                         View Bill 📄
                                     </button>
                                 </td>
-                                <td className="amount-cell">₹{booking.totalAmount?.toFixed(2) ?? 0}</td>
+                                <td className="amount-cell">
+                                    {booking.bookingType === 'Inquari Booking' ? (
+                                        <div>
+                                            <span style={{ fontWeight: '600', color: '#16a34a' }}>₹{booking.rentperday || 0}</span>
+                                            <span style={{ fontSize: '0.78em', color: '#64748b', display: 'block' }}>Main Price</span>
+                                        </div>
+                                    ) : (
+                                        `₹${booking.totalAmount?.toFixed(2) ?? 0}`
+                                    )}
+                                </td>
                                 <td><StatusBadge status={booking.status} /></td>
                                 <td>
                                     <div className="contact-info">
@@ -1157,6 +1295,14 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
                             <table className="info-table">
                                 <tbody>
                                     <tr>
+                                        <td className="label-cell">Service Booked</td>
+                                        <td className="value-cell">
+                                            <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                                                {selectedLocation.service || 'N/A'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
                                         <td className="label-cell">Location Type</td>
                                         <td className="value-cell">
                                             <span className={`badge ${selectedLocation.locationType === 'Rental' ? 'badge-rental' : 'badge-simple'}`}>
@@ -1170,8 +1316,8 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
                                             <div className="address-cell">
                                                 <span className="address-icon">📍</span>
                                                 {selectedLocation.locationType === 'Simple' 
-                                                    ? selectedLocation.address 
-                                                    : selectedLocation.pickupAddress}
+                                                    ? (selectedLocation.address || 'N/A')
+                                                    : (selectedLocation.pickupAddress || 'N/A')}
                                             </div>
                                         </td>
                                     </tr>
@@ -1191,15 +1337,7 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
                                         <td className="value-cell">
                                             <div className="datetime-cell">
                                                 <span className="datetime-icon">📅</span>
-                                                {selectedLocation.time 
-                                                    ? new Date(selectedLocation.time).toLocaleString('en-US', {
-                                                        year: 'numeric',
-                                                        month: 'long',
-                                                        day: 'numeric',
-                                                        hour: '2-digit',
-                                                        minute: '2-digit'
-                                                      })
-                                                    : 'N/A'}
+                                                {formatLocationDateTime(selectedLocation)}
                                             </div>
                                         </td>
                                     </tr>
@@ -1210,6 +1348,48 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
                                                 <span className={`status-badge ${selectedLocation.returnTrip ? 'status-yes' : 'status-no'}`}>
                                                     {selectedLocation.returnTrip ? '✓ Yes' : '✗ No'}
                                                 </span>
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {selectedLocation.optionalInputs && selectedLocation.optionalInputs.length > 0 && (
+                                        <tr>
+                                            <td className="label-cell">Optional Services</td>
+                                            <td className="value-cell">
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                    {selectedLocation.optionalInputs.map((opt, idx) => (
+                                                        <span key={idx} style={{
+                                                            background: '#eff6ff',
+                                                            color: '#1d4ed8',
+                                                            padding: '2px 8px',
+                                                            borderRadius: '4px',
+                                                            fontSize: '0.85em',
+                                                            border: '1px solid #bfdbfe'
+                                                        }}>
+                                                            {opt.name} {opt.count > 1 ? `× ${opt.count}` : ''}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {selectedLocation.extraInputs && selectedLocation.extraInputs.length > 0 && (
+                                        <tr>
+                                            <td className="label-cell">Extra Services</td>
+                                            <td className="value-cell">
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                                    {selectedLocation.extraInputs.map((ext, idx) => (
+                                                        <span key={idx} style={{
+                                                            background: '#fff7ed',
+                                                            color: '#c2410c',
+                                                            padding: '2px 8px',
+                                                            borderRadius: '4px',
+                                                            fontSize: '0.85em',
+                                                            border: '1px solid #fed7aa'
+                                                        }}>
+                                                            {ext.name}
+                                                        </span>
+                                                    ))}
+                                                </div>
                                             </td>
                                         </tr>
                                     )}
@@ -1347,22 +1527,71 @@ const BookingBillModal = ({ booking, onClose }) => {
             breakdownText = `₹${basePrice} × ${quantity}`;
         }
         
-        // For inquiry bookings, don't show breakdown
+        // For inquiry bookings, show inquiry info with requested service & options summary
         if (booking.bookingType === 'Inquari Booking') {
             return (
                 <div style={{
                     background: '#fff3e0',
-                    padding: '25px',
+                    padding: '20px',
                     borderRadius: '8px',
-                    textAlign: 'center'
                 }}>
-                    <p style={{ margin: '0 0 10px 0', color: '#f57c00', fontSize: '1.2em', fontWeight: 'bold' }}>
+                    <p style={{ margin: '0 0 8px 0', color: '#f57c00', fontSize: '1.15em', fontWeight: 'bold', textAlign: 'center' }}>
                         📋 Inquiry Required
                     </p>
-                    <p style={{ margin: '10px 0 0 0', color: '#666', fontSize: '1em' }}>
+                    <p style={{ margin: '0 0 15px 0', color: '#666', fontSize: '0.92em', textAlign: 'center' }}>
                         This is an inquiry-based booking. The final price will be discussed and confirmed after inquiry.
-                        Our team will contact the customer shortly to provide the final quote.
                     </p>
+                    <div style={{ background: '#ffffff', padding: '14px 16px', borderRadius: '6px', border: '1px solid #fed7aa', fontSize: '0.92em' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px dashed #eee' }}>
+                            <span><strong>Service:</strong></span>
+                            <span>{booking.service}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px dashed #eee' }}>
+                            <span><strong>Main Price (Base Rate):</strong></span>
+                            <span style={{ fontWeight: 'bold', color: '#16a34a', fontSize: '1.05em' }}>
+                                ₹{booking.rentperday != null ? booking.rentperday : 0} {booking.customUnit || booking.unit ? ` / ${booking.customUnit || booking.unit}` : ''}
+                            </span>
+                        </div>
+                        {booking.unit && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px dashed #eee' }}>
+                                <span><strong>Unit:</strong></span>
+                                <span>{booking.customUnit || booking.unit}</span>
+                            </div>
+                        )}
+                        {booking.quantity > 1 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px dashed #eee' }}>
+                                <span><strong>Quantity:</strong></span>
+                                <span>{booking.quantity}</span>
+                            </div>
+                        )}
+                        {booking.daysCount > 1 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px dashed #eee' }}>
+                                <span><strong>Duration:</strong></span>
+                                <span>{booking.daysCount} days</span>
+                            </div>
+                        )}
+
+                        {booking.optionalInputs && booking.optionalInputs.length > 0 && (
+                            <div style={{ padding: '6px 0', borderBottom: '1px dashed #eee' }}>
+                                <div><strong>Optional Services Selected:</strong></div>
+                                <div style={{ marginTop: '4px', paddingLeft: '10px', color: '#1976d2' }}>
+                                    {booking.optionalInputs.map((opt, i) => (
+                                        <div key={i}>• {opt.name} {opt.count > 1 ? `(Qty: ${opt.count})` : ''}</div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {booking.extraInputs && booking.extraInputs.length > 0 && (
+                            <div style={{ padding: '6px 0' }}>
+                                <div><strong>Extra Options Selected:</strong></div>
+                                <div style={{ marginTop: '4px', paddingLeft: '10px', color: '#f57c00' }}>
+                                    {booking.extraInputs.map((ext, i) => (
+                                        <div key={i}>• {ext.name}</div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         }
@@ -1690,6 +1919,21 @@ const BookingBillModal = ({ booking, onClose }) => {
                         }}>Service Name:</td>
                         <td style={{ padding: '8px 0', wordBreak: 'break-word' }}>{booking.service}</td>
                     </tr>
+                    {booking.rentperday != null && (
+                        <tr>
+                            <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Main Price:</td>
+                            <td style={{ padding: '8px 0', wordBreak: 'break-word' }}>
+                                <span style={{ fontWeight: 'bold', color: '#16a34a' }}>
+                                    ₹{booking.rentperday} {booking.customUnit || booking.unit ? ` / ${booking.customUnit || booking.unit}` : ''}
+                                </span>
+                                {booking.bookingType === 'Inquari Booking' && (
+                                    <span style={{ fontSize: '0.85em', color: '#64748b', marginLeft: '8px' }}>
+                                        (Base Rate / Idea of Price)
+                                    </span>
+                                )}
+                            </td>
+                        </tr>
+                    )}
                     {booking.unit && (
                         <tr>
                             <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Unit:</td>
@@ -1831,7 +2075,7 @@ const BookingBillModal = ({ booking, onClose }) => {
         </div>
 
         {/* Optional Services */}
-        {booking.optionalInputs && booking.optionalInputs.length > 0 && booking.bookingType !== 'Inquari Booking' && (
+        {booking.optionalInputs && booking.optionalInputs.length > 0 && (
             <div style={{ marginBottom: '25px' }}>
                 <h4 style={{
                     borderBottom: '1px solid #ddd',
@@ -1839,7 +2083,7 @@ const BookingBillModal = ({ booking, onClose }) => {
                     color: '#444',
                     marginBottom: '15px',
                     fontSize: 'clamp(1rem, 2.5vw, 1.1rem)'
-                }}>Optional Services</h4>
+                }}>Optional Services {booking.bookingType === 'Inquari Booking' ? '(Requested)' : ''}</h4>
                 <div style={{
                     background: '#f5f5f5',
                     padding: '15px',
@@ -1923,7 +2167,7 @@ const BookingBillModal = ({ booking, onClose }) => {
         )}
 
         {/* Extra Services */}
-        {booking.extraInputs && booking.extraInputs.length > 0 && booking.bookingType !== 'Inquari Booking' && (
+        {booking.extraInputs && booking.extraInputs.length > 0 && (
             <div style={{ marginBottom: '25px' }}>
                 <h4 style={{
                     borderBottom: '1px solid #ddd',
@@ -1931,7 +2175,7 @@ const BookingBillModal = ({ booking, onClose }) => {
                     color: '#444',
                     marginBottom: '15px',
                     fontSize: 'clamp(1rem, 2.5vw, 1.1rem)'
-                }}>Extra Services</h4>
+                }}>Extra Services {booking.bookingType === 'Inquari Booking' ? '(Requested)' : ''}</h4>
                 <div style={{
                     background: '#f5f5f5',
                     padding: '15px',
