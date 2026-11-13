@@ -2631,44 +2631,80 @@ const styleElement = document.createElement('style');
 styleElement.textContent = billModalStyles;
 document.head.appendChild(styleElement);
 
-// Update the Services component to accept onServicesUpdate prop
-// Update the Services component to show area-wise pricing
 // Update the Services component to show area-wise pricing
 export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
-    const [services, setServices] =useState([]);
-    const [loading, setLoading] =useState(false);
+    const [services, setServices] = useState([]);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'hidden', 'blocked'
+
+    // Calendar Modal State
     const [selectedService, setSelectedService] = useState(null);
     const [unavailableDates, setUnavailableDates] = useState([]);
     const [selectedDate, setSelectedDate] = useState(null);
     const [selectedSlots, setSelectedSlots] = useState([]);
+    const [isFullDay, setIsFullDay] = useState(false);
+    const [calendarMode, setCalendarMode] = useState('single'); // 'single' or 'range'
+    const [rangeStartDate, setRangeStartDate] = useState('');
+    const [rangeEndDate, setRangeEndDate] = useState('');
+
+    // Assign Helpers Modal State
     const [helpers, setHelpers] = useState([]);
     const [selectedHelpers, setSelectedHelpers] = useState([]);
     const [useOwn, setUseOwn] = useState(false);
     const [showHelperModal, setShowHelperModal] = useState(false);
     const [alertIfNoOneAccepts, setAlertIfNoOneAccepts] = useState(false);
     const [helperSearchTerm, setHelperSearchTerm] = useState('');
+    const [helperFilterTab, setHelperFilterTab] = useState('all'); // 'all', 'selected', 'online'
+    const [isSavingHelperAssignment, setIsSavingHelperAssignment] = useState(false);
     const [currentService, setCurrentService] = useState(null);
-    const [isFullDay, setIsFullDay] = useState(false);
-    const [expandedPriceRows, setExpandedPriceRows] = useState({}); // Track expanded rows
+
+    // Price expansion state
+    const [expandedPriceRows, setExpandedPriceRows] = useState({});
 
     const timeSlots = Array.from({ length: 10 }, (_, i) => {
         const hour = i + 9;
         return `${hour}:00 - ${hour + 1}:00`;
     });
 
+    // Format Date to YYYY-MM-DD in LOCAL timezone (fixes UTC offset backwards day shift)
+    const formatDateLocal = (date) => {
+        if (!date) return '';
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    // Safely format YYYY-MM-DD string to user-friendly local date display
+    const formatDisplayDate = (ymdStr, options) => {
+        if (!ymdStr) return '';
+        const parts = String(ymdStr).split('-');
+        if (parts.length === 3) {
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const day = parseInt(parts[2], 10);
+            return new Date(year, month, day).toLocaleDateString('en-US', options || {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+        return ymdStr;
+    };
+
     useEffect(() => {
         const fetchServices = async () => {
             try {
                 setLoading(true);
                 setError(null);
-                console.log('Fetching services for userId:', userId);
                 const { data } = await axios.get(`/api/service/getvisible?userid=${userId}`);
-                console.log('Fetched services:', data);
-                setServices(data);
-                // Update parent component with services data for visibility toggle
+                setServices(data || []);
                 if (onServicesUpdate) {
-                    onServicesUpdate(data);
+                    onServicesUpdate(data || []);
                 }
             } catch (error) {
                 console.error("Fetch services error:", error);
@@ -2680,14 +2716,12 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         fetchServices();
     }, [userId, onServicesUpdate]);
 
-    // Update parent when services change
     useEffect(() => {
         if (onServicesUpdate && services.length > 0) {
             onServicesUpdate(services);
         }
     }, [services, onServicesUpdate]);
 
-    // Toggle expanded price view
     const togglePriceExpansion = (serviceId) => {
         setExpandedPriceRows(prev => ({
             ...prev,
@@ -2695,17 +2729,6 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         }));
     };
 
-    // Helper function to format unit display (only first unit if merged)
-    const formatUnit = (service) => {
-        const u = service.unit === "Other" ? (service.customUnit || "per unit") : (service.unit || "per day");
-        if (typeof u === 'string') {
-            const parts = u.split(/\s*(?:and|\/|\+|&)\s*/i);
-            return parts[0].trim();
-        }
-        return u;
-    };
-
-    // Helper function to get all pricing plans for a service
     const getPricingPlans = (service) => {
         if (service?.pricingUnits && Array.isArray(service.pricingUnits) && service.pricingUnits.length > 0) {
             return service.pricingUnits;
@@ -2722,7 +2745,6 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         }];
     };
 
-    // Helper function to format unit display for an individual plan
     const formatPlanUnit = (plan) => {
         if (!plan) return 'per day';
         const u = plan.unit === "Other" ? (plan.customUnit || "per unit") : (plan.unit || "per day");
@@ -2733,24 +2755,19 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         return u;
     };
 
-    // Delete service with proper error handling
     const deleteService = async (id) => {
         if (!window.confirm("Are you sure you want to delete this service?")) return;
-
         try {
             setLoading(true);
             await axios.delete(`/api/service/deleteservice/${id}`);
-
             setServices(prevServices => {
                 const updatedServices = prevServices.filter(service => service._id !== id);
                 if (onServicesUpdate) onServicesUpdate(updatedServices);
                 return updatedServices;
             });
-
             if (selectedService?._id === id) {
                 setSelectedService(null);
             }
-
             message.success("Service deleted successfully");
         } catch (error) {
             console.error("Delete service error:", error);
@@ -2760,13 +2777,11 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         }
     };
 
-    // Toggle individual service visibility
     const toggleVisibility = async (id, currentVisibility) => {
         try {
             await axios.put(`/api/service/togglevisibility/${id}`, {
                 isVisible: !currentVisibility
             });
-
             setServices(prevServices => {
                 const updatedServices = prevServices.map(service =>
                     service._id === id ? { ...service, isVisible: !currentVisibility } : service
@@ -2774,7 +2789,6 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                 if (onServicesUpdate) onServicesUpdate(updatedServices);
                 return updatedServices;
             });
-
             message.success(`Visibility ${!currentVisibility ? 'enabled' : 'disabled'}`);
         } catch (error) {
             console.error("Toggle visibility error:", error);
@@ -2782,18 +2796,21 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         }
     };
 
-    // Handle calendar open
+    // Calendar Modal Open
     const handleCalendarOpen = (service) => {
         setSelectedService(service);
         setUnavailableDates(service.unavailableDates || []);
         setSelectedDate(null);
         setIsFullDay(false);
         setSelectedSlots([]);
+        setCalendarMode('single');
+        setRangeStartDate('');
+        setRangeEndDate('');
     };
 
-    // Handle date click
+    // Handle single date click - Uses local date to prevent timezone backward day shift
     const handleDateClick = (date) => {
-        const dateString = date.toISOString().split("T")[0];
+        const dateString = formatDateLocal(date);
         setSelectedDate(dateString);
 
         const existingDate = unavailableDates.find(d => d.date === dateString);
@@ -2801,7 +2818,6 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         setIsFullDay(existingDate?.fullDay || false);
     };
 
-    // Handle slot toggle
     const handleSlotToggle = (slot) => {
         if (isFullDay) return;
         setSelectedSlots(prev =>
@@ -2811,18 +2827,26 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         );
     };
 
-    // Save slots/availability
+    const handleSelectAllSlots = () => {
+        setSelectedSlots([...timeSlots]);
+    };
+
+    const handleClearSlots = () => {
+        setSelectedSlots([]);
+    };
+
+    // Save single date availability
     const saveSlots = async () => {
         if (!selectedService || !selectedDate) return;
 
         try {
-            const updatedDates = unavailableDates.filter(d => d.date !== selectedDate);
+            let updatedDates = unavailableDates.filter(d => d.date !== selectedDate);
 
             if (selectedSlots.length > 0 || isFullDay) {
                 const newEntry = {
                     date: selectedDate,
                     slots: isFullDay ? timeSlots : selectedSlots,
-                    fullDay: isFullDay
+                    fullDay: !!isFullDay
                 };
                 updatedDates.push(newEntry);
             }
@@ -2840,14 +2864,134 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                 )
             );
 
-            setSelectedDate(null);
-            setIsFullDay(false);
-            setSelectedSlots([]);
-
-            message.success("Availability updated successfully");
+            message.success(isFullDay || selectedSlots.length > 0 
+                ? `Updated availability for ${formatDisplayDate(selectedDate)}` 
+                : `Marked ${formatDisplayDate(selectedDate)} as fully available`
+            );
         } catch (error) {
             console.error("Error updating availability:", error);
             message.error("Failed to update availability");
+        }
+    };
+
+    // Remove block for a specific date (1-click unblock)
+    const removeDateBlock = async (dateStr) => {
+        if (!selectedService || !dateStr) return;
+        try {
+            const updatedDates = unavailableDates.filter(d => d.date !== dateStr);
+            await axios.put(`/api/service/updateavailability/${selectedService._id}`, {
+                unavailableDates: updatedDates
+            });
+
+            setUnavailableDates(updatedDates);
+            setServices(prevServices =>
+                prevServices.map(service =>
+                    service._id === selectedService._id
+                        ? { ...service, unavailableDates: updatedDates }
+                        : service
+                )
+            );
+
+            if (selectedDate === dateStr) {
+                setSelectedDate(null);
+                setIsFullDay(false);
+                setSelectedSlots([]);
+            }
+
+            message.success(`Unblocked ${formatDisplayDate(dateStr)}`);
+        } catch (error) {
+            console.error("Error unblocking date:", error);
+            message.error("Failed to unblock date");
+        }
+    };
+
+    // Handle Date Range Multi-Day Block or Unblock
+    const handleRangeBlock = async (shouldBlockFullDay = true) => {
+        if (!selectedService || !rangeStartDate || !rangeEndDate) {
+            message.warning("Please choose both Start Date and End Date");
+            return;
+        }
+        if (rangeStartDate > rangeEndDate) {
+            message.warning("Start Date cannot be after End Date");
+            return;
+        }
+
+        try {
+            const startParts = rangeStartDate.split('-').map(Number);
+            const endParts = rangeEndDate.split('-').map(Number);
+            const start = new Date(startParts[0], startParts[1] - 1, startParts[2]);
+            const end = new Date(endParts[0], endParts[1] - 1, endParts[2]);
+
+            const dateList = [];
+            const cur = new Date(start);
+            while (cur <= end) {
+                dateList.push(formatDateLocal(cur));
+                cur.setDate(cur.getDate() + 1);
+            }
+
+            let updatedDates = [...unavailableDates];
+            const setOfDates = new Set(dateList);
+            updatedDates = updatedDates.filter(d => !setOfDates.has(d.date));
+
+            if (shouldBlockFullDay) {
+                dateList.forEach(dStr => {
+                    updatedDates.push({
+                        date: dStr,
+                        slots: timeSlots,
+                        fullDay: true
+                    });
+                });
+            }
+
+            await axios.put(`/api/service/updateavailability/${selectedService._id}`, {
+                unavailableDates: updatedDates
+            });
+
+            setUnavailableDates(updatedDates);
+            setServices(prevServices =>
+                prevServices.map(service =>
+                    service._id === selectedService._id
+                        ? { ...service, unavailableDates: updatedDates }
+                        : service
+                )
+            );
+
+            message.success(shouldBlockFullDay 
+                ? `${dateList.length} days marked as Full Off`
+                : `${dateList.length} days unblocked`
+            );
+            setRangeStartDate('');
+            setRangeEndDate('');
+        } catch (error) {
+            console.error("Error setting date range availability:", error);
+            message.error("Failed to update date range");
+        }
+    };
+
+    // Clear all blocked dates
+    const clearAllBlockedDates = async () => {
+        if (!selectedService) return;
+        if (!window.confirm(`Clear all blocked dates for "${selectedService.name}"? Service will be available on all dates.`)) return;
+
+        try {
+            await axios.put(`/api/service/updateavailability/${selectedService._id}`, {
+                unavailableDates: []
+            });
+            setUnavailableDates([]);
+            setServices(prevServices =>
+                prevServices.map(service =>
+                    service._id === selectedService._id
+                        ? { ...service, unavailableDates: [] }
+                        : service
+                )
+            );
+            setSelectedDate(null);
+            setIsFullDay(false);
+            setSelectedSlots([]);
+            message.success("All blocked dates cleared");
+        } catch (error) {
+            console.error("Error clearing blocked dates:", error);
+            message.error("Failed to clear blocked dates");
         }
     };
 
@@ -2866,7 +3010,6 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         fetchHelpers();
     }, [userId]);
 
-    // Handle helper selection
     const handleHelperSelect = (helperId, isChecked) => {
         const idStr = String(helperId);
         setSelectedHelpers(prev =>
@@ -2876,16 +3019,31 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         );
     };
 
-    // Handle select all helpers
     const handleSelectAllHelpers = () => {
-        if (selectedHelpers.length === helpers.length) {
-            setSelectedHelpers([]);
+        const visibleHelpers = helpers.filter(h => {
+            if (helperFilterTab === 'selected' && !selectedHelpers.includes(String(h._id))) return false;
+            if (helperFilterTab === 'online' && !h.isConnected) return false;
+            if (helperSearchTerm.trim()) {
+                const q = helperSearchTerm.trim().toLowerCase();
+                const matchName = h.name && h.name.toLowerCase().includes(q);
+                const matchSkills = h.skills && h.skills.toLowerCase().includes(q);
+                const matchPhone = h.phone && h.phone.includes(q);
+                if (!matchName && !matchSkills && !matchPhone) return false;
+            }
+            return true;
+        });
+
+        const targetList = visibleHelpers.length > 0 ? visibleHelpers : helpers;
+        const targetIds = targetList.map(h => String(h._id));
+        const allTargetSelected = targetIds.length > 0 && targetIds.every(id => selectedHelpers.includes(id));
+
+        if (allTargetSelected) {
+            setSelectedHelpers(prev => prev.filter(id => !targetIds.includes(id)));
         } else {
-            setSelectedHelpers(helpers.map(h => String(h._id)));
+            setSelectedHelpers(prev => Array.from(new Set([...prev, ...targetIds])));
         }
     };
 
-    // Handle job assignment modal open
     const handleJobAssignment = (service) => {
         setCurrentService(service);
         const existingIds = (service.assignedHelpers || []).map(h => 
@@ -2895,13 +3053,14 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         setUseOwn(!!service.useOwn);
         setAlertIfNoOneAccepts(!!service.alertIfNoOneAccepts);
         setHelperSearchTerm('');
+        setHelperFilterTab('all');
         setShowHelperModal(true);
     };
 
-    // Save job assignment
     const saveJobAssignment = async () => {
         if (!currentService) return;
         try {
+            setIsSavingHelperAssignment(true);
             const payload = {
                 assignedHelpers: useOwn ? [] : selectedHelpers,
                 useOwn: !!useOwn,
@@ -2921,529 +3080,746 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
         } catch (error) {
             console.error("Error updating job assignment:", error);
             message.error("Failed to update job assignment");
+        } finally {
+            setIsSavingHelperAssignment(false);
         }
     };
 
-    // Calendar and pricing styling moved to Adminscreen.css
+    // Filter services based on search and status
+    const filteredServices = services.filter(service => {
+        const query = searchTerm.trim().toLowerCase();
+        const matchesSearch = !query || 
+            service.name?.toLowerCase().includes(query) ||
+            service.phonenumber?.includes(query) ||
+            (service.locationPricing && service.locationPricing.some(l => l.locationName?.toLowerCase().includes(query)));
+
+        if (!matchesSearch) return false;
+
+        if (statusFilter === 'active') return service.isVisible !== false;
+        if (statusFilter === 'hidden') return service.isVisible === false;
+        if (statusFilter === 'blocked') return service.unavailableDates && service.unavailableDates.length > 0;
+        return true;
+    });
+
+    const totalCount = services.length;
+    const activeCount = services.filter(s => s.isVisible !== false).length;
+    const hiddenCount = services.filter(s => s.isVisible === false).length;
+    const blockedCount = services.filter(s => s.unavailableDates && s.unavailableDates.length > 0).length;
 
     return (
         <div className='services-card-wrap'>
-            <div className='d-flex justify-content-between align-items-center mb-4'>
-                <h1 className="mb-0">Services Management</h1>
+            {/* Header & Quick Stats */}
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+                <div>
+                    <h1 className="mb-1 fw-bold text-dark">Services Management</h1>
+                    <p className="text-muted small mb-0">
+                        Manage your service offerings, rates, scheduled availability, and helper assignments.
+                    </p>
+                </div>
             </div>
 
-                    {/* Loading State */}
-                    {loading && !error && (
-                        <div className="alert alert-info text-center">
-                            <div className="spinner-border" role="status">
-                                <span className="visually-hidden">Loading...</span>
-                            </div>
-                            <span className="ms-2">Loading services...</span>
-                        </div>
-                    )}
+            {/* Quick Stats Grid */}
+            <div className="services-stats-grid">
+                <div className="service-stat-card">
+                    <div>
+                        <div className="stat-label">Total Services</div>
+                        <div className="stat-val">{totalCount}</div>
+                    </div>
+                    <i className="bi bi-grid-3x3-gap text-primary fs-3 opacity-75"></i>
+                </div>
+                <div className="service-stat-card">
+                    <div>
+                        <div className="stat-label">Active / Live</div>
+                        <div className="stat-val text-success">{activeCount}</div>
+                    </div>
+                    <i className="bi bi-check-circle text-success fs-3 opacity-75"></i>
+                </div>
+                <div className="service-stat-card">
+                    <div>
+                        <div className="stat-label">Hidden / Draft</div>
+                        <div className="stat-val text-secondary">{hiddenCount}</div>
+                    </div>
+                    <i className="bi bi-eye-slash text-secondary fs-3 opacity-75"></i>
+                </div>
+                <div className="service-stat-card">
+                    <div>
+                        <div className="stat-label">Dates Blocked</div>
+                        <div className="stat-val text-warning">{blockedCount}</div>
+                    </div>
+                    <i className="bi bi-calendar-x text-warning fs-3 opacity-75"></i>
+                </div>
+            </div>
 
-                    {/* Error State */}
-                    {error && (
-                        <div className="alert alert-danger text-center">
-                            {error}
-                            <button
-                                className="btn btn-sm btn-outline-light ms-3"
-                                onClick={() => window.location.reload()}
-                            >
-                                Retry
-                            </button>
-                        </div>
-                    )}
+            {/* Search & Filter Bar */}
+            <div className="services-filter-bar">
+                <div className="services-search-box">
+                    <i className="bi bi-search search-icon"></i>
+                    <input
+                        type="text"
+                        placeholder="Search services by name, phone or location..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                <div className="services-filter-pills">
+                    <button
+                        className={`filter-pill ${statusFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setStatusFilter('all')}
+                    >
+                        All ({totalCount})
+                    </button>
+                    <button
+                        className={`filter-pill ${statusFilter === 'active' ? 'active' : ''}`}
+                        onClick={() => setStatusFilter('active')}
+                    >
+                        Active ({activeCount})
+                    </button>
+                    <button
+                        className={`filter-pill ${statusFilter === 'hidden' ? 'active' : ''}`}
+                        onClick={() => setStatusFilter('hidden')}
+                    >
+                        Hidden ({hiddenCount})
+                    </button>
+                    <button
+                        className={`filter-pill ${statusFilter === 'blocked' ? 'active' : ''}`}
+                        onClick={() => setStatusFilter('blocked')}
+                    >
+                        Has Blocked Dates ({blockedCount})
+                    </button>
+                </div>
+            </div>
 
-                    {/* Services Table */}
-                    {!error && !loading && (
-                        <div className="table-responsive rounded shadow">
-                            <table className='table table-bordered table-hover table-dark mb-0'>
-                                <thead className='bg-secondary'>
-                                    <tr>
-                                        {/* <th>Service ID</th> */}
-                                        <th>Name</th>
-                                        <th>Daily Rate & Location Pricing</th>
-                                        <th>Contact</th>
-                                        <th className='text-center'>Visibility</th>
-                                        <th className='text-center'>Availability</th>
-                                        <th className='text-center'>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {services.length === 0 ? (
+            {/* Loading State */}
+            {loading && !error && (
+                <div className="alert alert-info text-center py-4 rounded-3 border-0 shadow-sm">
+                    <div className="spinner-border spinner-border-sm text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                    </div>
+                    <span className="ms-2 fw-semibold">Loading services...</span>
+                </div>
+            )}
+
+            {/* Error State */}
+            {error && (
+                <div className="alert alert-danger text-center py-3 rounded-3 shadow-sm">
+                    <span>{error}</span>
+                    <button
+                        className="btn btn-sm btn-outline-danger ms-3 fw-semibold"
+                        onClick={() => window.location.reload()}
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
+
+            {/* Services Content */}
+            {!error && !loading && (
+                <>
+                    {filteredServices.length === 0 ? (
+                        <div className="text-center py-5 bg-light rounded-4 border border-dashed my-3">
+                            <i className="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
+                            <h5 className="text-dark fw-bold mb-1">No services found</h5>
+                            <p className="text-muted small mb-0">
+                                {searchTerm || statusFilter !== 'all' 
+                                    ? "Try adjusting your search query or status filter." 
+                                    : "Add your first service to get started."}
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Desktop / Tablet Table View */}
+                            <div className="table-responsive rounded-3 shadow-sm border d-none d-md-block">
+                                <table className='services-modern-table mb-0'>
+                                    <thead>
                                         <tr>
-                                            <td colSpan="7" className="text-center py-4">
-                                                No services found. Add your first service.
-                                            </td>
+                                            <th>Service Details</th>
+                                            <th>Pricing & Rates</th>
+                                            <th>Contact</th>
+                                            <th className='text-center'>Visibility</th>
+                                            <th className='text-center'>Schedule Status</th>
+                                            <th className='text-center'>Actions</th>
                                         </tr>
-                                    ) : (
-                                        services.map(service => (
-                                            <React.Fragment key={service._id}>
-                                                <tr>
-                                                    {/* <td>{service._id.substring(0, 8)}...</td> */}
-                                                    <td>
-                                                        <Link
-                                                            to={`/book/${service._id}`}
-                                                            className="text-white text-decoration-underline"
-                                                            target="_blank"
-                                                        >
-                                                            {service.name}
-                                                        </Link>
-                                                    </td>
-                                                    <td style={{ minWidth: '260px' }}>
-                                                        {(() => {
-                                                            const plans = getPricingPlans(service);
-                                                            const hasLocations = service.locationPricing && service.locationPricing.length > 0;
-                                                            const isExpanded = !!expandedPriceRows[service._id];
-                                                            const canExpand = hasLocations || plans.length > 1;
+                                    </thead>
+                                    <tbody>
+                                        {filteredServices.map(service => {
+                                            const plans = getPricingPlans(service);
+                                            const hasLocations = service.locationPricing && service.locationPricing.length > 0;
+                                            const isExpanded = !!expandedPriceRows[service._id];
+                                            const canExpand = hasLocations || plans.length > 1;
 
-                                                            return (
-                                                                <div className="price-summary">
-                                                                    {/* Price Plans Section */}
-                                                                    <div className="price-plans-section">
-                                                                        {plans.length === 1 ? (
-                                                                            <div className="d-flex align-items-center flex-wrap gap-1">
-                                                                                <span className="text-muted small"><strong>Rate:</strong></span>
-                                                                                <span className="price-tag base fw-bold ms-1">₹{plans[0].price}</span>
-                                                                                <small className="text-muted">/{formatPlanUnit(plans[0])}</small>
-                                                                                <span className="badge bg-success ms-1" style={{ fontSize: '9px', padding: '2px 5px' }}>
-                                                                                    Default
-                                                                                </span>
-                                                                                {plans[0].isCountable && (
-                                                                                    <small className="text-warning ms-1" style={{ fontSize: '10px' }}>
-                                                                                        (Countable{plans[0].maxQuantityPerDay ? `: max ${plans[0].maxQuantityPerDay}/day` : ''})
-                                                                                    </small>
-                                                                                )}
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div className="price-plans-list">
-                                                                                <div className="d-flex align-items-center justify-content-between mb-1">
-                                                                                    <span className="badge bg-info text-dark fw-bold" style={{ fontSize: '10px' }}>
-                                                                                        <i className="bi bi-tags-fill me-1"></i>{plans.length} Price Plans
-                                                                                    </span>
-                                                                                </div>
-                                                                                <div className="d-flex flex-column gap-1">
-                                                                                    {plans.map((p, pIdx) => (
-                                                                                        <div 
-                                                                                            key={pIdx} 
-                                                                                            className="d-flex align-items-center justify-content-between px-2 py-1 rounded"
-                                                                                            style={{
-                                                                                                background: '#282828',
-                                                                                                borderLeft: p.isDefault ? '3px solid #16a34a' : '3px solid #6c757d',
-                                                                                                fontSize: '11.5px'
-                                                                                            }}
-                                                                                        >
-                                                                                            <div className="d-flex align-items-center flex-wrap">
-                                                                                                <span className="price-tag base fw-bold">₹{p.price}</span>
-                                                                                                <small className="text-light opacity-75 ms-1">/{formatPlanUnit(p)}</small>
-                                                                                                {p.isDefault && (
-                                                                                                    <span className="badge bg-success ms-1" style={{ fontSize: '8.5px', padding: '1px 4px' }}>
-                                                                                                        Default
-                                                                                                    </span>
-                                                                                                )}
-                                                                                            </div>
-                                                                                            {p.isCountable && p.maxQuantityPerDay && (
-                                                                                                <small className="text-secondary ms-1" style={{ fontSize: '10px' }}>
-                                                                                                    Max: {p.maxQuantityPerDay}
-                                                                                                </small>
-                                                                                            )}
-                                                                                        </div>
-                                                                                    ))}
-                                                                                </div>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-
-                                                                    {/* Location Pricing Summary & Expand Toggle */}
-                                                                    <div className="d-flex align-items-center justify-content-between mt-2 pt-1 border-top border-secondary">
-                                                                        {hasLocations ? (
-                                                                            <span className="badge bg-primary" style={{ fontSize: '10px' }}>
-                                                                                <i className="bi bi-geo-alt-fill me-1"></i>{service.locationPricing.length} {service.locationPricing.length === 1 ? 'Location' : 'Locations'}
-                                                                            </span>
-                                                                        ) : (
-                                                                            <span className="text-muted small" style={{ fontSize: '11px' }}>
-                                                                                <i className="bi bi-geo-alt me-1"></i>No location pricing
-                                                                            </span>
-                                                                        )}
-
-                                                                        {canExpand && (
-                                                                            <button
-                                                                                className="expand-btn"
-                                                                                onClick={() => togglePriceExpansion(service._id)}
-                                                                                style={{ fontSize: '11px', padding: '2px 8px' }}
-                                                                            >
-                                                                                {isExpanded ? '▲ Hide Details' : '▼ View All Plans & Rates'}
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })()}
-                                                    </td>
-                                                    <td>{service.phonenumber}</td>
-
-                                                    {/* Visibility Status */}
-                                                    <td className='text-center'>
-                                                        <button
-                                                            className={`btn ${service.isVisible ? "btn-success" : "btn-secondary"} btn-sm px-3`}
-                                                            onClick={() => toggleVisibility(service._id, service.isVisible)}
-                                                            disabled={loading}
-                                                        >
-                                                            {service.isVisible ? "ACTIVE" : "HIDDEN"}
-                                                        </button>
-                                                    </td>
-
-                                                    {/* Availability Status */}
-                                                    <td className='text-center align-middle'>
-                                                        {service.unavailableDates && service.unavailableDates.length > 0 ? (
-                                                            <span className="badge bg-warning">
-                                                                {service.unavailableDates.length} blocked dates
+                                            return (
+                                                <React.Fragment key={service._id}>
+                                                    <tr>
+                                                        <td>
+                                                            <div className="d-flex flex-column">
+                                                                <Link
+                                                                    to={`/book/${service._id}`}
+                                                                    className="fw-bold text-dark text-decoration-none hover-primary"
+                                                                    target="_blank"
+                                                                    style={{ fontSize: '15px' }}
+                                                                >
+                                                                    {service.name}
+                                                                    <i className="bi bi-box-arrow-up-right ms-1 text-muted" style={{ fontSize: '11px' }}></i>
+                                                                </Link>
+                                                                <small className="text-muted" style={{ fontSize: '11px' }}>
+                                                                    ID: {service._id.substring(0, 10)}...
+                                                                </small>
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ minWidth: '230px' }}>
+                                                            <div className="d-flex align-items-center flex-wrap gap-1">
+                                                                <span className="price-tag base fw-bold">₹{plans[0].price}</span>
+                                                                <small className="text-muted">/{formatPlanUnit(plans[0])}</small>
+                                                                {plans.length > 1 && (
+                                                                    <span className="badge bg-light text-primary border ms-1" style={{ fontSize: '10px' }}>
+                                                                        +{plans.length - 1} more plan{plans.length > 2 ? 's' : ''}
+                                                                    </span>
+                                                                )}
+                                                                {hasLocations && (
+                                                                    <span className="badge bg-light text-dark border ms-1" style={{ fontSize: '10px' }}>
+                                                                        <i className="bi bi-geo-alt-fill text-primary me-1"></i>{service.locationPricing.length} locations
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {canExpand && (
+                                                                <button
+                                                                    className="expand-btn mt-1 text-primary p-0 text-decoration-none fw-semibold"
+                                                                    onClick={() => togglePriceExpansion(service._id)}
+                                                                    style={{ fontSize: '11.5px' }}
+                                                                >
+                                                                    {isExpanded ? '▲ Hide breakdown' : '▼ View plans & location rates'}
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                        <td>
+                                                            <span className="text-dark small d-flex align-items-center">
+                                                                <i className="bi bi-telephone text-muted me-1"></i>
+                                                                {service.phonenumber || 'N/A'}
                                                             </span>
-                                                        ) : (
-                                                            <span className="badge bg-success">Fully Available</span>
-                                                        )}
-                                                    </td>
-
-                                                    {/* Action Buttons */}
-                                                    <td className='text-center'>
-                                                        <div className="d-flex gap-2 justify-content-center">
+                                                        </td>
+                                                        <td className='text-center'>
                                                             <button
-                                                                className="btn btn-danger btn-sm"
-                                                                onClick={() => deleteService(service._id)}
+                                                                className={`btn btn-sm px-3 fw-bold rounded-pill ${service.isVisible ? "btn-success" : "btn-outline-secondary"}`}
+                                                                onClick={() => toggleVisibility(service._id, service.isVisible)}
                                                                 disabled={loading}
+                                                                style={{ fontSize: '11.5px' }}
+                                                                title="Click to toggle visibility"
                                                             >
-                                                                <i className="bi bi-trash"></i> Delete
+                                                                {service.isVisible ? "ACTIVE" : "HIDDEN"}
                                                             </button>
-                                                            <button
-                                                                className="btn btn-primary btn-sm"
-                                                                onClick={() => handleCalendarOpen(service)}
-                                                                disabled={loading}
-                                                            >
-                                                                <i className="bi bi-calendar-event"></i> Calendar
-                                                            </button>
-                                                            <button
-                                                                className={`btn btn-sm ${service.useOwn ? 'btn-outline-info' : (service.assignedHelpers && service.assignedHelpers.length > 0 ? 'btn-info' : 'btn-outline-secondary')}`}
-                                                                onClick={() => handleJobAssignment(service)}
-                                                                disabled={loading}
-                                                                title="Assign helpers for this service"
-                                                                style={{ whiteSpace: 'nowrap' }}
-                                                            >
-                                                                <i className="bi bi-people me-1"></i>
-                                                                {service.useOwn 
-                                                                    ? "Assign (Own)" 
-                                                                    : (service.assignedHelpers && service.assignedHelpers.length > 0 
-                                                                        ? `Assign (${service.assignedHelpers.length})` 
-                                                                        : "Assign")}
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-
-                                                {/* Expanded Price Plans & Location Pricing Row */}
-                                                {expandedPriceRows[service._id] && (
-                                                    <tr className="location-pricing-row">
-                                                        <td colSpan="6" style={{ padding: 0 }}>
-                                                            <div className="expanded-pricing-container p-3" style={{ background: '#1c1c1c', borderTop: '1px solid #333', borderBottom: '2px solid #444' }}>
-                                                                {(() => {
-                                                                    const plans = getPricingPlans(service);
-                                                                    const hasLocations = service.locationPricing && service.locationPricing.length > 0;
-
-                                                                    return (
-                                                                        <div>
-                                                                            {/* SECTION 1: All Price Plans */}
-                                                                            <div className="mb-4">
-                                                                                <div className="d-flex align-items-center justify-content-between mb-2">
-                                                                                    <h6 className="text-light mb-0 d-flex align-items-center">
-                                                                                        <i className="bi bi-card-checklist text-success me-2"></i>
-                                                                                        <span>Price Plans for <strong className="text-info">{service.name}</strong></span>
-                                                                                        <span className="badge bg-success ms-2" style={{ fontSize: '10px' }}>
-                                                                                            {plans.length} {plans.length === 1 ? 'Plan' : 'Plans'} Available
-                                                                                        </span>
-                                                                                    </h6>
-                                                                                </div>
-                                                                                <div className="table-responsive">
-                                                                                    <table className="table table-sm table-dark table-bordered mb-0" style={{ fontSize: '12px', background: '#252525' }}>
-                                                                                        <thead style={{ background: '#181818' }}>
-                                                                                            <tr>
-                                                                                                <th style={{ width: '40px' }}>#</th>
-                                                                                                <th>Plan / Billing Unit</th>
-                                                                                                <th>Base Price</th>
-                                                                                                <th>Status</th>
-                                                                                                <th>Quantity / Capacity</th>
-                                                                                                <th>Max Bookings / Day</th>
-                                                                                                <th>Description</th>
-                                                                                            </tr>
-                                                                                        </thead>
-                                                                                        <tbody>
-                                                                                            {plans.map((p, idx) => (
-                                                                                                <tr key={idx} style={{ background: p.isDefault ? '#222d22' : 'inherit' }}>
-                                                                                                    <td>{idx + 1}</td>
-                                                                                                    <td>
-                                                                                                        <strong className="text-light">{formatPlanUnit(p)}</strong>
-                                                                                                        {p.unit === 'Other' && p.customUnit && (
-                                                                                                            <span className="text-muted ms-1">({p.customUnit})</span>
-                                                                                                        )}
-                                                                                                    </td>
-                                                                                                    <td>
-                                                                                                        <span className="price-tag base fw-bold">₹{p.price}</span>
-                                                                                                        <small className="text-muted ms-1">/{formatPlanUnit(p)}</small>
-                                                                                                    </td>
-                                                                                                    <td>
-                                                                                                        {p.isDefault ? (
-                                                                                                            <span className="badge bg-success">Default Plan</span>
-                                                                                                        ) : (
-                                                                                                            <span className="badge bg-secondary">Standard Plan</span>
-                                                                                                        )}
-                                                                                                    </td>
-                                                                                                    <td>
-                                                                                                        {p.isCountable ? (
-                                                                                                            <span className="text-warning">
-                                                                                                                Countable {p.maxQuantityPerDay ? `(Max: ${p.maxQuantityPerDay} units/day)` : '(Unlimited qty)'}
-                                                                                                            </span>
-                                                                                                        ) : (
-                                                                                                            <span className="text-muted">Fixed (Single Unit)</span>
-                                                                                                        )}
-                                                                                                    </td>
-                                                                                                    <td>
-                                                                                                        {p.maxUsersPerDay ? (
-                                                                                                            <span>{p.maxUsersPerDay} users/day</span>
-                                                                                                        ) : (
-                                                                                                            <span className="text-muted">Unlimited</span>
-                                                                                                        )}
-                                                                                                    </td>
-                                                                                                    <td>
-                                                                                                        {p.description ? (
-                                                                                                            <span>{p.description}</span>
-                                                                                                        ) : (
-                                                                                                            <span className="text-muted">—</span>
-                                                                                                        )}
-                                                                                                    </td>
-                                                                                                </tr>
-                                                                                            ))}
-                                                                                        </tbody>
-                                                                                    </table>
-                                                                                </div>
-                                                                            </div>
-
-                                                                            {/* SECTION 2: Location-Based Pricing */}
-                                                                            <div>
-                                                                                <div className="d-flex align-items-center justify-content-between mb-2">
-                                                                                    <h6 className="text-light mb-0 d-flex align-items-center">
-                                                                                        <i className="bi bi-geo-alt-fill text-primary me-2"></i>
-                                                                                        <span>Location Pricing & Rates Breakdown</span>
-                                                                                        {hasLocations && (
-                                                                                            <span className="badge bg-primary ms-2" style={{ fontSize: '10px' }}>
-                                                                                                {service.locationPricing.length} {service.locationPricing.length === 1 ? 'Location' : 'Locations'}
-                                                                                            </span>
-                                                                                        )}
-                                                                                    </h6>
-                                                                                </div>
-
-                                                                                {hasLocations ? (
-                                                                                    <div className="table-responsive">
-                                                                                        <table className="table table-sm table-dark table-bordered mb-0" style={{ fontSize: '12px', background: '#252525' }}>
-                                                                                            <thead style={{ background: '#181818' }}>
-                                                                                                <tr>
-                                                                                                    <th>Location Name</th>
-                                                                                                    <th>Address</th>
-                                                                                                    <th>Extra Charge</th>
-                                                                                                    <th>Rates Across All Price Plans (Base + Extra = Total)</th>
-                                                                                                    <th>Optional Services Extra</th>
-                                                                                                </tr>
-                                                                                            </thead>
-                                                                                            <tbody>
-                                                                                                {service.locationPricing.map((location, lIdx) => (
-                                                                                                    <tr key={lIdx}>
-                                                                                                        <td className="location-name align-middle">
-                                                                                                            <i className="bi bi-geo-alt-fill me-1" style={{ color: '#0d6efd' }}></i>
-                                                                                                            {location.locationName}
-                                                                                                        </td>
-                                                                                                        <td className="text-muted small align-middle">
-                                                                                                            {location.locationAddress}
-                                                                                                        </td>
-                                                                                                        <td className="align-middle">
-                                                                                                            <span className="price-tag extra">
-                                                                                                                +₹{location.extraPrice || 0}
-                                                                                                            </span>
-                                                                                                        </td>
-                                                                                                        <td>
-                                                                                                            <div className="d-flex flex-column gap-1">
-                                                                                                                {plans.map((p, pIdx) => {
-                                                                                                                    const baseVal = Number(p.price) || 0;
-                                                                                                                    const extraVal = Number(location.extraPrice) || 0;
-                                                                                                                    const totalVal = baseVal + extraVal;
-                                                                                                                    return (
-                                                                                                                        <div 
-                                                                                                                            key={pIdx}
-                                                                                                                            className="d-flex align-items-center justify-content-between px-2 py-1 rounded"
-                                                                                                                            style={{ background: '#2b2b2b', fontSize: '11px' }}
-                                                                                                                        >
-                                                                                                                            <span>
-                                                                                                                                <strong className="text-light">{formatPlanUnit(p)}:</strong>
-                                                                                                                                <span className="text-muted ms-1">(Base: ₹{baseVal})</span>
-                                                                                                                                {extraVal > 0 && <span className="price-tag extra ms-1">(Extra: +₹{extraVal})</span>}
-                                                                                                                            </span>
-                                                                                                                            <span className="ms-2">
-                                                                                                                                <span className="price-tag total fw-bold">₹{totalVal}</span>
-                                                                                                                                <small className="text-muted ms-1">/{formatPlanUnit(p)}</small>
-                                                                                                                                {p.isDefault && (
-                                                                                                                                    <span className="badge bg-success ms-1" style={{ fontSize: '8px', padding: '1px 4px' }}>
-                                                                                                                                        Default
-                                                                                                                                    </span>
-                                                                                                                                )}
-                                                                                                                            </span>
-                                                                                                                        </div>
-                                                                                                                    );
-                                                                                                                })}
-                                                                                                            </div>
-                                                                                                        </td>
-                                                                                                        <td className="align-middle">
-                                                                                                            {location.optionalInputsExtra && location.optionalInputsExtra.length > 0 ? (
-                                                                                                                <div className="small">
-                                                                                                                    {location.optionalInputsExtra.map((opt, optIdx) => (
-                                                                                                                        <div key={optIdx}>
-                                                                                                                            <span>{opt.inputName}: </span>
-                                                                                                                            <span className="price-tag extra">+₹{opt.extraPrice}</span>
-                                                                                                                        </div>
-                                                                                                                    ))}
-                                                                                                                </div>
-                                                                                                            ) : (
-                                                                                                                <span className="text-muted">—</span>
-                                                                                                            )}
-                                                                                                        </td>
-                                                                                                    </tr>
-                                                                                                ))}
-                                                                                            </tbody>
-                                                                                        </table>
-                                                                                    </div>
-                                                                                ) : (
-                                                                                    <div className="p-3 text-center rounded" style={{ background: '#252525', color: '#888', fontSize: '12px' }}>
-                                                                                        <i className="bi bi-info-circle me-1"></i>
-                                                                                        No location-based pricing set for this service. Standard base price plans apply to all locations.
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-                                                                    );
-                                                                })()}
+                                                        </td>
+                                                        <td className='text-center align-middle'>
+                                                            {service.unavailableDates && service.unavailableDates.length > 0 ? (
+                                                                <button
+                                                                    className="badge bg-danger border-0 py-2 px-3 rounded-pill text-white fw-bold cursor-pointer"
+                                                                    style={{ fontSize: '11.5px', cursor: 'pointer' }}
+                                                                    onClick={() => handleCalendarOpen(service)}
+                                                                    title="Click to manage blocked dates"
+                                                                >
+                                                                    <i className="bi bi-calendar-x me-1"></i>
+                                                                    {service.unavailableDates.length} Blocked Date{service.unavailableDates.length > 1 ? 's' : ''}
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    className="badge bg-success-subtle text-success border border-success-subtle py-2 px-3 rounded-pill fw-bold"
+                                                                    style={{ fontSize: '11.5px', cursor: 'pointer' }}
+                                                                    onClick={() => handleCalendarOpen(service)}
+                                                                    title="Click to manage schedule"
+                                                                >
+                                                                    <i className="bi bi-calendar-check me-1"></i>
+                                                                    Fully Available
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                        <td className='text-center'>
+                                                            <div className="d-flex gap-1 justify-content-center">
+                                                                <button
+                                                                    className="btn btn-outline-primary btn-sm px-2 fw-semibold"
+                                                                    onClick={() => handleCalendarOpen(service)}
+                                                                    title="Manage Availability & Off-Days"
+                                                                    style={{ fontSize: '12px' }}
+                                                                >
+                                                                    <i className="bi bi-calendar-event me-1"></i>
+                                                                    Calendar
+                                                                </button>
+                                                                <button
+                                                                    className={`btn btn-sm px-2 fw-semibold ${service.useOwn ? 'btn-outline-indigo border-primary text-primary' : (service.assignedHelpers && service.assignedHelpers.length > 0 ? 'btn-info text-white' : 'btn-outline-secondary')}`}
+                                                                    onClick={() => handleJobAssignment(service)}
+                                                                    title="Assign helpers for this service"
+                                                                    style={{ fontSize: '12px', whiteSpace: 'nowrap' }}
+                                                                >
+                                                                    <i className="bi bi-people me-1"></i>
+                                                                    {service.useOwn 
+                                                                        ? "Assign (Own)" 
+                                                                        : (service.assignedHelpers && service.assignedHelpers.length > 0 
+                                                                            ? `Assign (${service.assignedHelpers.length})` 
+                                                                            : "Assign")}
+                                                                </button>
+                                                                <button
+                                                                    className="btn btn-outline-danger btn-sm px-2"
+                                                                    onClick={() => deleteService(service._id)}
+                                                                    title="Delete service"
+                                                                    style={{ fontSize: '12px' }}
+                                                                >
+                                                                    <i className="bi bi-trash"></i>
+                                                                </button>
                                                             </div>
                                                         </td>
                                                     </tr>
-                                                )}
-                                            </React.Fragment>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
 
-                    {/* Calendar Modal */}
-                    {selectedService && (
-                        <div className="modal-overlay">
-                            <div className="calendar-modal bg-dark p-4 rounded">
-                                <div className="d-flex justify-content-between align-items-center mb-3">
-                                    <h4 className="mb-0 text-light">
-                                        Availability for {selectedService.name}
-                                    </h4>
-                                    <button
-                                        onClick={() => {
-                                            setSelectedService(null);
-                                            setSelectedDate(null);
-                                            setIsFullDay(false);
-                                            setSelectedSlots([]);
-                                        }}
-                                        className="btn btn-close btn-close-white"
-                                    ></button>
-                                </div>
+                                                    {/* Expanded Row for Plans & Location Pricing */}
+                                                    {isExpanded && (
+                                                        <tr>
+                                                            <td colSpan="6" style={{ padding: '12px 16px', background: '#f8fafc' }}>
+                                                                <div className="expanded-pricing-light">
+                                                                    {/* Section 1: All Price Plans */}
+                                                                    <div className="mb-3">
+                                                                        <div className="d-flex align-items-center justify-content-between mb-2">
+                                                                            <h6 className="mb-0 fw-bold text-dark d-flex align-items-center">
+                                                                                <i className="bi bi-card-checklist text-success me-2"></i>
+                                                                                Price Plans for <span className="text-primary ms-1">{service.name}</span>
+                                                                            </h6>
+                                                                            <span className="badge bg-secondary" style={{ fontSize: '10px' }}>
+                                                                                {plans.length} {plans.length === 1 ? 'Plan' : 'Plans'}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="table-responsive rounded-2 border bg-white">
+                                                                            <table className="table table-sm table-hover mb-0" style={{ fontSize: '12.5px' }}>
+                                                                                <thead className="table-light">
+                                                                                    <tr>
+                                                                                        <th>#</th>
+                                                                                        <th>Plan / Billing Unit</th>
+                                                                                        <th>Base Price</th>
+                                                                                        <th>Type</th>
+                                                                                        <th>Capacity / Limits</th>
+                                                                                        <th>Description</th>
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody>
+                                                                                    {plans.map((p, idx) => (
+                                                                                        <tr key={idx}>
+                                                                                            <td>{idx + 1}</td>
+                                                                                            <td className="fw-semibold text-dark">
+                                                                                                {formatPlanUnit(p)}
+                                                                                                {p.unit === 'Other' && p.customUnit && ` (${p.customUnit})`}
+                                                                                            </td>
+                                                                                            <td className="fw-bold text-success">
+                                                                                                ₹{p.price} <small className="text-muted fw-normal">/{formatPlanUnit(p)}</small>
+                                                                                            </td>
+                                                                                            <td>
+                                                                                                {p.isDefault ? (
+                                                                                                    <span className="badge bg-success-subtle text-success border border-success-subtle">Default</span>
+                                                                                                ) : (
+                                                                                                    <span className="badge bg-light text-secondary border">Standard</span>
+                                                                                                )}
+                                                                                            </td>
+                                                                                            <td>
+                                                                                                {p.isCountable 
+                                                                                                    ? `Countable (Max: ${p.maxQuantityPerDay || 'Unlimited'} qty/day)`
+                                                                                                    : 'Fixed (Single unit)'}
+                                                                                            </td>
+                                                                                            <td className="text-muted">{p.description || '—'}</td>
+                                                                                        </tr>
+                                                                                    ))}
+                                                                                </tbody>
+                                                                            </table>
+                                                                        </div>
+                                                                    </div>
 
-                                <div className="row g-3">
-                                    <div className="col-md-6">
-                                        <Calendar
-                                            onClickDay={handleDateClick}
-                                            tileClassName={({ date }) => {
-                                                const dateStr = date.toISOString().split("T")[0];
-                                                const unavailable = unavailableDates.find(d => d.date === dateStr);
-                                                if (unavailable) {
-                                                    return unavailable.fullDay
-                                                        ? 'fully-unavailable'
-                                                        : 'partially-unavailable';
-                                                }
-                                                return '';
-                                            }}
-                                            className="availability-calendar bg-secondary text-light w-100"
-                                        />
-                                    </div>
+                                                                    {/* Section 2: Location Pricing */}
+                                                                    {hasLocations && (
+                                                                        <div>
+                                                                            <h6 className="mb-2 fw-bold text-dark d-flex align-items-center">
+                                                                                <i className="bi bi-geo-alt-fill text-primary me-2"></i>
+                                                                                Location Pricing Breakdown
+                                                                            </h6>
+                                                                            <div className="table-responsive rounded-2 border bg-white">
+                                                                                <table className="table table-sm table-hover mb-0" style={{ fontSize: '12.5px' }}>
+                                                                                    <thead className="table-light">
+                                                                                        <tr>
+                                                                                            <th>Location</th>
+                                                                                            <th>Address</th>
+                                                                                            <th>Extra Fee</th>
+                                                                                            <th>Total Rate (Base + Extra)</th>
+                                                                                        </tr>
+                                                                                    </thead>
+                                                                                    <tbody>
+                                                                                        {service.locationPricing.map((loc, lIdx) => (
+                                                                                            <tr key={lIdx}>
+                                                                                                <td className="fw-semibold text-primary">
+                                                                                                    <i className="bi bi-geo-alt me-1"></i>{loc.locationName}
+                                                                                                </td>
+                                                                                                <td className="text-muted">{loc.locationAddress || '—'}</td>
+                                                                                                <td className="text-warning fw-bold">+₹{loc.extraPrice || 0}</td>
+                                                                                                <td>
+                                                                                                    <div className="d-flex flex-column gap-1">
+                                                                                                        {plans.map((p, pIdx) => {
+                                                                                                            const total = (Number(p.price) || 0) + (Number(loc.extraPrice) || 0);
+                                                                                                            return (
+                                                                                                                <span key={pIdx} className="small">
+                                                                                                                    <strong>{formatPlanUnit(p)}:</strong> ₹{total}
+                                                                                                                </span>
+                                                                                                            );
+                                                                                                        })}
+                                                                                                    </div>
+                                                                                                </td>
+                                                                                            </tr>
+                                                                                        ))}
+                                                                                    </tbody>
+                                                                                </table>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </React.Fragment>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
 
-                                    <div className="col-md-6">
-                                        {selectedDate ? (
-                                            <div className="time-slots-section">
-                                                <div className="d-flex justify-content-between align-items-center mb-3">
-                                                    <h5 className="text-light mb-0">
-                                                        {new Date(selectedDate).toLocaleDateString('en-US', {
-                                                            weekday: 'long',
-                                                            year: 'numeric',
-                                                            month: 'long',
-                                                            day: 'numeric'
-                                                        })}
-                                                    </h5>
-                                                    <div className="form-check form-switch">
-                                                        <input
-                                                            className="form-check-input"
-                                                            type="checkbox"
-                                                            role="switch"
-                                                            id="fullDayToggle"
-                                                            checked={isFullDay}
-                                                            onChange={(e) => {
-                                                                const checked = e.target.checked;
-                                                                setIsFullDay(checked);
-                                                                setSelectedSlots(checked ? timeSlots : []);
-                                                            }}
-                                                        />
-                                                        <label className="form-check-label text-light" htmlFor="fullDayToggle">
-                                                            Full Day Unavailable
-                                                        </label>
+                            {/* Mobile Service Cards View (< 768px) */}
+                            <div className="service-cards-mobile d-block d-md-none">
+                                {filteredServices.map(service => {
+                                    const plans = getPricingPlans(service);
+                                    const hasLocations = service.locationPricing && service.locationPricing.length > 0;
+                                    const isExpanded = !!expandedPriceRows[service._id];
+                                    const canExpand = hasLocations || plans.length > 1;
+
+                                    return (
+                                        <div key={service._id} className="service-mobile-card">
+                                            <div className="service-mobile-card-header">
+                                                <div>
+                                                    <Link
+                                                        to={`/book/${service._id}`}
+                                                        className="service-mobile-title d-block"
+                                                        target="_blank"
+                                                    >
+                                                        {service.name}
+                                                        <i className="bi bi-box-arrow-up-right ms-1 text-muted" style={{ fontSize: '12px' }}></i>
+                                                    </Link>
+                                                    <small className="text-muted">ID: {service._id.substring(0, 8)}...</small>
+                                                </div>
+                                                <button
+                                                    className={`btn btn-sm px-3 fw-bold rounded-pill ${service.isVisible ? "btn-success" : "btn-outline-secondary"}`}
+                                                    onClick={() => toggleVisibility(service._id, service.isVisible)}
+                                                    disabled={loading}
+                                                    style={{ fontSize: '11px' }}
+                                                >
+                                                    {service.isVisible ? "ACTIVE" : "HIDDEN"}
+                                                </button>
+                                            </div>
+
+                                            <div className="service-mobile-body">
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <span className="text-muted">Rate:</span>
+                                                    <div>
+                                                        <span className="fw-bold text-success">₹{plans[0].price}</span>
+                                                        <small className="text-muted ms-1">/{formatPlanUnit(plans[0])}</small>
                                                     </div>
                                                 </div>
 
-                                                <p className="text-light mb-3">
-                                                    {isFullDay
-                                                        ? "Service will be completely unavailable for the entire day."
-                                                        : "Select specific time slots that are unavailable:"}
-                                                </p>
-
-                                                <div className="time-slots-grid">
-                                                    {timeSlots.map(slot => (
-                                                        <button
-                                                            key={slot}
-                                                            className={`time-slot-btn btn btn-sm ${isFullDay
-                                                                ? 'btn-dark disabled'
-                                                                : selectedSlots.includes(slot)
-                                                                    ? 'btn-danger'
-                                                                    : 'btn-outline-light'
-                                                                }`}
-                                                            onClick={() => handleSlotToggle(slot)}
-                                                            disabled={isFullDay}
-                                                        >
-                                                            {slot}
-                                                            {selectedSlots.includes(slot) && (
-                                                                <span className="selected-indicator">✓</span>
-                                                            )}
-                                                        </button>
-                                                    ))}
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <span className="text-muted">Contact:</span>
+                                                    <span className="text-dark fw-semibold">📞 {service.phonenumber || 'N/A'}</span>
                                                 </div>
 
-                                                <div className="d-flex gap-2 mt-4">
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <span className="text-muted">Schedule:</span>
+                                                    {service.unavailableDates && service.unavailableDates.length > 0 ? (
+                                                        <span className="badge bg-danger rounded-pill">
+                                                            {service.unavailableDates.length} Blocked Date{service.unavailableDates.length > 1 ? 's' : ''}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill">
+                                                            Fully Available
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {canExpand && (
                                                     <button
-                                                        className="btn btn-primary flex-grow-1"
-                                                        onClick={saveSlots}
-                                                        disabled={!selectedDate || (selectedSlots.length === 0 && !isFullDay)}
+                                                        className="btn btn-sm btn-link text-primary p-0 text-start text-decoration-none fw-semibold mt-1"
+                                                        onClick={() => togglePriceExpansion(service._id)}
+                                                        style={{ fontSize: '12px' }}
                                                     >
-                                                        Save Changes
+                                                        {isExpanded ? '▲ Hide rate details' : `▼ View ${plans.length} plan(s) & locations`}
                                                     </button>
+                                                )}
+
+                                                {isExpanded && (
+                                                    <div className="p-2 rounded bg-light border mt-2 small">
+                                                        <div className="fw-bold text-dark mb-1">Pricing Plans:</div>
+                                                        {plans.map((p, idx) => (
+                                                            <div key={idx} className="d-flex justify-content-between py-1 border-bottom border-light">
+                                                                <span>{formatPlanUnit(p)} {p.isDefault && <span className="badge bg-success ms-1" style={{ fontSize: '9px' }}>Default</span>}</span>
+                                                                <span className="fw-bold text-success">₹{p.price}</span>
+                                                            </div>
+                                                        ))}
+                                                        {hasLocations && (
+                                                            <div className="mt-2">
+                                                                <div className="fw-bold text-primary mb-1">Locations ({service.locationPricing.length}):</div>
+                                                                {service.locationPricing.map((loc, lIdx) => (
+                                                                    <div key={lIdx} className="d-flex justify-content-between py-1 text-muted" style={{ fontSize: '11px' }}>
+                                                                        <span>{loc.locationName}</span>
+                                                                        <span className="text-warning fw-semibold">+₹{loc.extraPrice}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Action Buttons */}
+                                            <div className="service-mobile-actions">
+                                                <button
+                                                    className="btn btn-outline-primary btn-sm fw-semibold"
+                                                    onClick={() => handleCalendarOpen(service)}
+                                                >
+                                                    <i className="bi bi-calendar-event me-1"></i> Cal
+                                                </button>
+                                                <button
+                                                    className={`btn btn-sm fw-semibold ${service.useOwn ? 'btn-outline-primary' : (service.assignedHelpers && service.assignedHelpers.length > 0 ? 'btn-info text-white' : 'btn-outline-secondary')}`}
+                                                    onClick={() => handleJobAssignment(service)}
+                                                >
+                                                    <i className="bi bi-people me-1"></i>
+                                                    {service.useOwn ? 'Own' : (service.assignedHelpers?.length > 0 ? `Assign (${service.assignedHelpers.length})` : 'Assign')}
+                                                </button>
+                                                <button
+                                                    className="btn btn-outline-danger btn-sm"
+                                                    onClick={() => deleteService(service._id)}
+                                                >
+                                                    <i className="bi bi-trash"></i> Del
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
+                </>
+            )}
+
+            {/* ========================================================================= */}
+            {/* CALENDAR & AVAILABILITY MODAL */}
+            {/* ========================================================================= */}
+            {selectedService && (
+                <div className="modal-overlay">
+                    <div className="calendar-modal p-0">
+                        {/* Modal Header */}
+                        <div className="modal-modern-header">
+                            <div>
+                                <h4 className="modal-modern-title d-flex align-items-center">
+                                    <i className="bi bi-calendar-week text-primary me-2"></i>
+                                    Availability & Schedule
+                                </h4>
+                                <div className="modal-modern-subtitle">
+                                    Service: <strong className="text-primary">{selectedService.name}</strong>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setSelectedService(null);
+                                    setSelectedDate(null);
+                                    setIsFullDay(false);
+                                    setSelectedSlots([]);
+                                }}
+                                className="modal-close-btn"
+                                aria-label="Close"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="p-3 p-md-4">
+                            {/* Mode Tabs: Single Day vs Date Range */}
+                            <div className="d-flex gap-2 mb-3 border-bottom pb-3">
+                                <button
+                                    className={`btn btn-sm px-3 fw-bold rounded-pill ${calendarMode === 'single' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                    onClick={() => setCalendarMode('single')}
+                                >
+                                    <i className="bi bi-calendar-day me-1"></i>
+                                    Single Day & Hourly Slots
+                                </button>
+                                <button
+                                    className={`btn btn-sm px-3 fw-bold rounded-pill ${calendarMode === 'range' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                                    onClick={() => setCalendarMode('range')}
+                                >
+                                    <i className="bi bi-calendar-range me-1"></i>
+                                    Quick Date Range Off
+                                </button>
+                            </div>
+
+                            {/* MODE 1: Single Day & Slot Picker */}
+                            {calendarMode === 'single' && (
+                                <div className="row g-3">
+                                    <div className="col-lg-6">
+                                        <Calendar
+                                            onClickDay={handleDateClick}
+                                            tileClassName={({ date, view }) => {
+                                                if (view !== 'month') return '';
+                                                const dateStr = formatDateLocal(date);
+                                                const unavailable = unavailableDates.find(d => d.date === dateStr);
+                                                const isSelected = selectedDate === dateStr;
+                                                const classes = [];
+                                                if (isSelected) classes.push('calendar-tile-selected');
+                                                if (unavailable) {
+                                                    classes.push(unavailable.fullDay ? 'fully-unavailable' : 'partially-unavailable');
+                                                }
+                                                return classes.join(' ');
+                                            }}
+                                            className="availability-calendar w-100"
+                                        />
+
+                                        {/* Calendar Legend */}
+                                        <div className="availability-legend mt-2">
+                                            <div className="legend-item">
+                                                <span className="legend-dot available"></span>
+                                                Available
+                                            </div>
+                                            <div className="legend-item">
+                                                <span className="legend-dot fullday"></span>
+                                                Full Day Off
+                                            </div>
+                                            <div className="legend-item">
+                                                <span className="legend-dot partial"></span>
+                                                Partial Slots Off
+                                            </div>
+                                            <div className="legend-item">
+                                                <span className="legend-dot selected"></span>
+                                                Selected
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="col-lg-6">
+                                        {selectedDate ? (
+                                            <div className="p-3 bg-light rounded-3 border h-100 d-flex flex-column justify-content-between">
+                                                <div>
+                                                    <div className="d-flex justify-content-between align-items-start mb-2">
+                                                        <div>
+                                                            <h5 className="fw-bold text-dark mb-0">
+                                                                {formatDisplayDate(selectedDate, {
+                                                                    weekday: 'long',
+                                                                    year: 'numeric',
+                                                                    month: 'long',
+                                                                    day: 'numeric'
+                                                                })}
+                                                            </h5>
+                                                            <small className="text-muted">
+                                                                Date Key: <code>{selectedDate}</code>
+                                                            </small>
+                                                        </div>
+                                                        {unavailableDates.some(d => d.date === selectedDate) && (
+                                                            <span className="badge bg-danger rounded-pill">
+                                                                {unavailableDates.find(d => d.date === selectedDate)?.fullDay ? "Full Day Off" : "Slots Blocked"}
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Full Day Toggle Card */}
+                                                    <div className="p-3 my-3 bg-white rounded-3 border">
+                                                        <div className="form-check form-switch mb-0">
+                                                            <input
+                                                                className="form-check-input"
+                                                                type="checkbox"
+                                                                role="switch"
+                                                                id="fullDayToggle"
+                                                                checked={isFullDay}
+                                                                onChange={(e) => {
+                                                                    const checked = e.target.checked;
+                                                                    setIsFullDay(checked);
+                                                                    setSelectedSlots(checked ? timeSlots : []);
+                                                                }}
+                                                                style={{ cursor: 'pointer', transform: 'scale(1.2)', marginRight: '10px' }}
+                                                            />
+                                                            <label className="form-check-label text-dark fw-bold" htmlFor="fullDayToggle" style={{ cursor: 'pointer' }}>
+                                                                Full Day Unavailable (Full Day Off)
+                                                            </label>
+                                                        </div>
+                                                        <small className="d-block text-muted mt-1">
+                                                            {isFullDay 
+                                                                ? "Service is completely OFF for this entire day. Customers cannot book any slot."
+                                                                : "Toggle on to take the entire day off, or select individual unavailable slots below."}
+                                                        </small>
+                                                    </div>
+
+                                                    {/* Hourly Slots Selection (if not full day) */}
+                                                    {!isFullDay && (
+                                                        <div>
+                                                            <div className="d-flex justify-content-between align-items-center mb-2">
+                                                                <span className="fw-bold text-dark small">Select Unavailable Time Slots:</span>
+                                                                <div className="d-flex gap-1">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-link btn-sm p-0 text-primary text-decoration-none fw-semibold"
+                                                                        onClick={handleSelectAllSlots}
+                                                                        style={{ fontSize: '11.5px' }}
+                                                                    >
+                                                                        Select All
+                                                                    </button>
+                                                                    <span className="text-muted">|</span>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-link btn-sm p-0 text-danger text-decoration-none fw-semibold"
+                                                                        onClick={handleClearSlots}
+                                                                        style={{ fontSize: '11.5px' }}
+                                                                    >
+                                                                        Clear
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="time-slots-grid">
+                                                                {timeSlots.map(slot => {
+                                                                    const isSelected = selectedSlots.includes(slot);
+                                                                    return (
+                                                                        <button
+                                                                            key={slot}
+                                                                            type="button"
+                                                                            className={`time-slot-btn ${isSelected ? 'selected-slot' : ''}`}
+                                                                            onClick={() => handleSlotToggle(slot)}
+                                                                        >
+                                                                            <span>{slot}</span>
+                                                                            {isSelected ? (
+                                                                                <i className="bi bi-x-circle-fill text-white ms-1"></i>
+                                                                            ) : (
+                                                                                <i className="bi bi-circle text-muted ms-1" style={{ fontSize: '11px' }}></i>
+                                                                            )}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Action Buttons for Date */}
+                                                <div className="d-flex gap-2 mt-4 pt-3 border-top">
                                                     <button
-                                                        className="btn btn-outline-light"
+                                                        className="btn btn-primary flex-grow-1 fw-bold"
+                                                        onClick={saveSlots}
+                                                    >
+                                                        <i className="bi bi-check2-circle me-1"></i>
+                                                        Save Availability
+                                                    </button>
+                                                    {unavailableDates.some(d => d.date === selectedDate) && (
+                                                        <button
+                                                            className="btn btn-outline-danger fw-semibold"
+                                                            onClick={() => removeDateBlock(selectedDate)}
+                                                            title="Remove block and make fully available"
+                                                        >
+                                                            <i className="bi bi-unlock me-1"></i>
+                                                            Unblock Date
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        className="btn btn-outline-secondary"
                                                         onClick={() => {
                                                             setSelectedDate(null);
                                                             setIsFullDay(false);
@@ -3455,180 +3831,565 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="text-center text-light h-100 d-flex flex-column justify-content-center">
-                                                <i className="bi bi-calendar-check fs-1 mb-3"></i>
-                                                <h5>Select a date to manage availability</h5>
-                                                <p className="text-muted">
-                                                    Click on any date in the calendar to mark it as unavailable
+                                            <div className="p-4 bg-light rounded-3 border text-center h-100 d-flex flex-column justify-content-center align-items-center">
+                                                <i className="bi bi-calendar2-day fs-1 text-primary mb-2 opacity-75"></i>
+                                                <h6 className="fw-bold text-dark">Select a date from calendar</h6>
+                                                <p className="text-muted small mb-0" style={{ maxWidth: '280px' }}>
+                                                    Click any day on the calendar to mark it as Full Day Off or block specific hourly slots.
                                                 </p>
                                             </div>
                                         )}
                                     </div>
                                 </div>
+                            )}
 
-                                <div className="mt-4">
-                                    <h6 className="text-light mb-2">Current Blocked Dates:</h6>
-                                    {unavailableDates.length === 0 ? (
-                                        <p className="text-muted">No dates blocked yet</p>
-                                    ) : (
-                                        <div className="d-flex flex-wrap gap-2">
-                                            {unavailableDates.map((dateEntry, index) => (
-                                                <span key={index} className="badge bg-danger">
-                                                    {new Date(dateEntry.date).toLocaleDateString()}
-                                                    {dateEntry.fullDay ? " (Full Day)" : ` (${dateEntry.slots.length} slots)`}
-                                                </span>
-                                            ))}
+                            {/* MODE 2: Date Range Multi-Day Off */}
+                            {calendarMode === 'range' && (
+                                <div className="p-3 bg-light rounded-3 border">
+                                    <div className="d-flex align-items-center gap-2 mb-2">
+                                        <i className="bi bi-calendar-range text-primary fs-4"></i>
+                                        <div>
+                                            <h6 className="fw-bold text-dark mb-0">Block Multiple Days (Date Range)</h6>
+                                            <small className="text-muted">
+                                                Take several days off at once (e.g., vacation, weekend off, holidays).
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    <div className="row g-3 my-2">
+                                        <div className="col-md-6">
+                                            <label className="form-label fw-bold text-dark small">From Date (Start):</label>
+                                            <input
+                                                type="date"
+                                                className="form-control"
+                                                value={rangeStartDate}
+                                                onChange={(e) => setRangeStartDate(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="form-label fw-bold text-dark small">To Date (End):</label>
+                                            <input
+                                                type="date"
+                                                className="form-control"
+                                                value={rangeEndDate}
+                                                onChange={(e) => setRangeEndDate(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {rangeStartDate && rangeEndDate && (
+                                        <div className="p-2 mb-3 bg-white rounded border small text-dark d-flex align-items-center justify-content-between">
+                                            <span>
+                                                Selected Range: <strong>{formatDisplayDate(rangeStartDate)}</strong> → <strong>{formatDisplayDate(rangeEndDate)}</strong>
+                                            </span>
+                                            <span className="badge bg-primary">
+                                                {(() => {
+                                                    const s = new Date(rangeStartDate);
+                                                    const e = new Date(rangeEndDate);
+                                                    const diffDays = Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+                                                    return diffDays > 0 ? `${diffDays} Day(s)` : 'Invalid range';
+                                                })()}
+                                            </span>
                                         </div>
                                     )}
+
+                                    <div className="d-flex gap-2 flex-wrap">
+                                        <button
+                                            type="button"
+                                            className="btn btn-danger fw-bold flex-grow-1"
+                                            onClick={() => handleRangeBlock(true)}
+                                            disabled={!rangeStartDate || !rangeEndDate}
+                                        >
+                                            <i className="bi bi-slash-circle me-1"></i>
+                                            Mark All Selected Days Full Off
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-success fw-bold flex-grow-1"
+                                            onClick={() => handleRangeBlock(false)}
+                                            disabled={!rangeStartDate || !rangeEndDate}
+                                        >
+                                            <i className="bi bi-check2-all me-1"></i>
+                                            Unblock All Days in Range
+                                        </button>
+                                    </div>
                                 </div>
+                            )}
+
+                            {/* Currently Blocked Dates Overview */}
+                            <div className="mt-4 pt-3 border-top">
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 className="fw-bold text-dark mb-0 d-flex align-items-center">
+                                        <i className="bi bi-clock-history text-secondary me-2"></i>
+                                        Currently Blocked Dates ({unavailableDates.length})
+                                    </h6>
+                                    {unavailableDates.length > 0 && (
+                                        <button
+                                            className="btn btn-link btn-sm text-danger p-0 text-decoration-none fw-semibold"
+                                            onClick={clearAllBlockedDates}
+                                        >
+                                            Clear All Blocked Dates
+                                        </button>
+                                    )}
+                                </div>
+
+                                {unavailableDates.length === 0 ? (
+                                    <div className="p-3 bg-light rounded text-center text-muted small">
+                                        <i className="bi bi-check-circle text-success me-1"></i>
+                                        No blocked dates. This service is available on all dates.
+                                    </div>
+                                ) : (
+                                    <div className="blocked-dates-container">
+                                        {unavailableDates
+                                            .slice()
+                                            .sort((a, b) => a.date.localeCompare(b.date))
+                                            .map((dateEntry, idx) => (
+                                                <div 
+                                                    key={idx} 
+                                                    className={`blocked-date-chip ${dateEntry.fullDay ? '' : 'partial-chip'}`}
+                                                    title={dateEntry.fullDay ? "Full day off" : `${dateEntry.slots?.length || 0} slots blocked`}
+                                                >
+                                                    <i className="bi bi-calendar-event"></i>
+                                                    <span>{formatDisplayDate(dateEntry.date)}</span>
+                                                    <small>({dateEntry.fullDay ? "Full Off" : `${dateEntry.slots?.length || 0} slots`})</small>
+                                                    <button
+                                                        type="button"
+                                                        className="remove-chip-btn"
+                                                        onClick={() => removeDateBlock(dateEntry.date)}
+                                                        title={`Unblock ${formatDisplayDate(dateEntry.date)}`}
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </div>
+                                            ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
-                    )}
 
-                    {/* Job Assignment Modal */}
-                    {showHelperModal && (
-                        <div className="modal-overlay">
-                            <div className="helper-modal p-4 rounded shadow-lg" style={{ maxWidth: '820px', width: '95%', maxHeight: '90vh', overflowY: 'auto', background: '#1e293b', color: '#f8fafc' }}>
-                                <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom border-secondary">
-                                    <div>
-                                        <h4 className="mb-1 text-light fw-bold">
-                                            <i className="bi bi-person-badge text-primary me-2"></i>
-                                            Job Assignment for <span className="text-info">{currentService?.name}</span>
-                                        </h4>
-                                        <small className="text-muted">
-                                            Assign helpers to automatically receive bookings for this service.
-                                        </small>
+                        {/* Modal Footer */}
+                        <div className="p-3 bg-light border-top d-flex justify-content-end">
+                            <button
+                                className="btn btn-secondary px-4 fw-semibold"
+                                onClick={() => {
+                                    setSelectedService(null);
+                                    setSelectedDate(null);
+                                    setIsFullDay(false);
+                                    setSelectedSlots([]);
+                                }}
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* JOB ASSIGNMENT & DISPATCH MODAL */}
+            {/* ========================================================================= */}
+            {showHelperModal && (
+                <div className="modal-overlay">
+                    <div className="helper-modal p-0 shadow-lg">
+                        {/* Header */}
+                        <div className="modal-modern-header border-bottom px-3 px-md-4 py-3 bg-white">
+                            <div className="d-flex align-items-center gap-3">
+                                <div className="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style={{ width: '42px', height: '42px', flexShrink: 0 }}>
+                                    <i className="bi bi-diagram-3-fill fs-5"></i>
+                                </div>
+                                <div>
+                                    <h5 className="modal-modern-title mb-1 text-dark fw-bold">
+                                        Job Assignment & Dispatch Rules
+                                    </h5>
+                                    <div className="d-flex align-items-center flex-wrap gap-2">
+                                        <span className="text-secondary small">Service:</span>
+                                        <span className="badge bg-primary-subtle text-primary border border-primary-subtle fw-semibold px-2 py-1">
+                                            {currentService?.name}
+                                        </span>
+                                        {currentService?.category && (
+                                            <span className="badge bg-light text-secondary border px-2 py-1">
+                                                {currentService.category}
+                                            </span>
+                                        )}
+                                        {currentService?.rate && (
+                                            <span className="badge bg-light text-success border px-2 py-1 fw-bold">
+                                                ₹{currentService.rate}
+                                            </span>
+                                        )}
                                     </div>
-                                    <button
-                                        onClick={() => setShowHelperModal(false)}
-                                        className="btn btn-close btn-close-white"
-                                        aria-label="Close"
-                                    ></button>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowHelperModal(false)}
+                                className="modal-close-btn"
+                                aria-label="Close"
+                                title="Close Modal"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="helper-modal-body p-3 p-md-4 bg-light bg-opacity-50">
+                            {/* Step 1: Select Fulfillment Strategy */}
+                            <div className="mb-4">
+                                <div className="d-flex align-items-center justify-content-between mb-2">
+                                    <span className="text-uppercase fw-bold text-secondary" style={{ fontSize: '11px', letterSpacing: '0.6px' }}>
+                                        Step 1: Choose Fulfillment Strategy
+                                    </span>
+                                    <span className="text-muted small">Select who fulfills bookings for this service</span>
                                 </div>
 
-                                {/* Option 1: Admin handles directly (Own booking) */}
-                                <div className="p-3 mb-3 rounded" style={{ background: useOwn ? 'rgba(37, 99, 235, 0.15)' : '#334155', border: useOwn ? '1px solid #3b82f6' : '1px solid #475569' }}>
-                                    <div className="form-check form-switch mb-0">
-                                        <input
-                                            className="form-check-input"
-                                            type="checkbox"
-                                            role="switch"
-                                            id="useOwnToggle"
-                                            checked={useOwn}
-                                            onChange={(e) => {
-                                                const checked = e.target.checked;
-                                                setUseOwn(checked);
-                                                if (checked) setSelectedHelpers([]);
+                                <div className="row g-3">
+                                    {/* Option 1: External Helpers */}
+                                    <div className="col-md-6">
+                                        <div 
+                                            className={`dispatch-mode-card ${!useOwn ? 'active-external' : ''}`}
+                                            onClick={() => setUseOwn(false)}
+                                        >
+                                            <div>
+                                                <div className="d-flex justify-content-between align-items-start mb-2">
+                                                    <div 
+                                                        className="dispatch-mode-icon" 
+                                                        style={{ 
+                                                            background: !useOwn ? '#dbeafe' : '#f1f5f9', 
+                                                            color: !useOwn ? '#2563eb' : '#64748b' 
+                                                        }}
+                                                    >
+                                                        <i className="bi bi-people-fill"></i>
+                                                    </div>
+                                                    <div className="dispatch-mode-radio">
+                                                        {!useOwn && <div className="dispatch-mode-radio-inner"></div>}
+                                                    </div>
+                                                </div>
+                                                <h6 className="fw-bold mb-1 text-dark" style={{ fontSize: '14.5px' }}>
+                                                    Dispatch to Helpers
+                                                </h6>
+                                                <p className="text-muted mb-3" style={{ fontSize: '12px', lineHeight: '1.45' }}>
+                                                    Automatically alert & dispatch bookings to assigned helpers to accept and fulfill the job.
+                                                </p>
+                                            </div>
+                                            <div>
+                                                {!useOwn ? (
+                                                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1">
+                                                        <i className="bi bi-check2-circle me-1"></i> Active Mode • {selectedHelpers.length} Helper(s)
+                                                    </span>
+                                                ) : (
+                                                    <span className="badge bg-light text-secondary border px-2 py-1">
+                                                        Click to select
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Option 2: In-House Admin Direct */}
+                                    <div className="col-md-6">
+                                        <div 
+                                            className={`dispatch-mode-card ${useOwn ? 'active-inhouse' : ''}`}
+                                            onClick={() => {
+                                                setUseOwn(true);
+                                                setSelectedHelpers([]);
                                             }}
-                                            style={{ cursor: 'pointer' }}
-                                        />
-                                        <label className="form-check-label text-light fw-semibold ms-2" htmlFor="useOwnToggle" style={{ cursor: 'pointer' }}>
-                                            Admin can only show in own booking (Admin handles directly)
-                                        </label>
+                                        >
+                                            <div>
+                                                <div className="d-flex justify-content-between align-items-start mb-2">
+                                                    <div 
+                                                        className="dispatch-mode-icon" 
+                                                        style={{ 
+                                                            background: useOwn ? '#d1fae5' : '#f1f5f9', 
+                                                            color: useOwn ? '#10b981' : '#64748b' 
+                                                        }}
+                                                    >
+                                                        <i className="bi bi-building-fill-check"></i>
+                                                    </div>
+                                                    <div className="dispatch-mode-radio">
+                                                        {useOwn && <div className="dispatch-mode-radio-inner"></div>}
+                                                    </div>
+                                                </div>
+                                                <h6 className="fw-bold mb-1 text-dark" style={{ fontSize: '14.5px' }}>
+                                                    Admin In-House Team
+                                                </h6>
+                                                <p className="text-muted mb-3" style={{ fontSize: '12px', lineHeight: '1.45' }}>
+                                                    Fulfilled directly by internal admin staff. Orders bypass external helper notifications.
+                                                </p>
+                                            </div>
+                                            <div>
+                                                {useOwn ? (
+                                                    <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                                        <i className="bi bi-shield-fill-check me-1"></i> Active Mode • In-House
+                                                    </span>
+                                                ) : (
+                                                    <span className="badge bg-light text-secondary border px-2 py-1">
+                                                        Click to select
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <small className="d-block text-muted ms-4 mt-1">
-                                        When enabled, this service will be fulfilled by admin / own in-house staff only. It will show only in admin's own bookings and will not dispatch to external helpers.
-                                    </small>
                                 </div>
+                            </div>
 
-                                {/* Option 2: Alert if no one selected / accepted this service */}
-                                <div className="p-3 mb-4 rounded" style={{ background: alertIfNoOneAccepts ? 'rgba(234, 88, 12, 0.15)' : '#334155', border: alertIfNoOneAccepts ? '1px solid #f97316' : '1px solid #475569' }}>
-                                    <div className="form-check form-switch mb-0">
-                                        <input
-                                            className="form-check-input"
-                                            type="checkbox"
-                                            role="switch"
-                                            id="alertIfNoOneToggle"
-                                            checked={alertIfNoOneAccepts}
-                                            onChange={(e) => setAlertIfNoOneAccepts(e.target.checked)}
-                                            style={{ cursor: 'pointer' }}
-                                        />
-                                        <label className="form-check-label text-light fw-semibold ms-2" htmlFor="alertIfNoOneToggle" style={{ cursor: 'pointer' }}>
-                                            Alert / Notification on Admin screen if no one selected or accepted this service
-                                        </label>
+                            {/* Step 2: Details / Helper Management based on Mode */}
+                            {useOwn ? (
+                                /* In-House Mode Reassurance Panel */
+                                <div className="p-4 bg-white rounded-3 border text-start shadow-sm mb-2">
+                                    <div className="d-flex align-items-center gap-3 mb-3">
+                                        <div className="rounded-circle bg-success bg-opacity-10 text-success p-3 d-flex align-items-center justify-content-center" style={{ width: '50px', height: '50px' }}>
+                                            <i className="bi bi-shield-check fs-3"></i>
+                                        </div>
+                                        <div>
+                                            <h6 className="fw-bold text-dark mb-1">Admin In-House Fulfillment is Active</h6>
+                                            <p className="text-muted small mb-0">Direct internal operations mode without external vendor dispatch.</p>
+                                        </div>
                                     </div>
-                                    <small className="d-block text-muted ms-4 mt-1">
-                                        Sends sound alert and visual notification banner to admin screen when a customer books this service and no helper is assigned or has accepted yet.
-                                    </small>
+                                    <div className="row g-2 pt-2 border-top">
+                                        <div className="col-md-4">
+                                            <div className="p-2 rounded bg-light border-0">
+                                                <div className="fw-bold text-dark small mb-1">
+                                                    <i className="bi bi-folder2-open text-primary me-1"></i> Direct In-House Inbox
+                                                </div>
+                                                <div className="text-muted" style={{ fontSize: '11.5px' }}>
+                                                    Bookings appear directly under Admin's Own Bookings.
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="col-md-4">
+                                            <div className="p-2 rounded bg-light border-0">
+                                                <div className="fw-bold text-dark small mb-1">
+                                                    <i className="bi bi-bell-slash text-secondary me-1"></i> No Helper Alerts
+                                                </div>
+                                                <div className="text-muted" style={{ fontSize: '11.5px' }}>
+                                                    External helpers will not receive claim requests or alerts.
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="col-md-4">
+                                            <div className="p-2 rounded bg-light border-0">
+                                                <div className="fw-bold text-dark small mb-1">
+                                                    <i className="bi bi-person-badge text-success me-1"></i> Complete Control
+                                                </div>
+                                                <div className="text-muted" style={{ fontSize: '11.5px' }}>
+                                                    Manage, complete, or reassign orders internally anytime.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-
-                                {!useOwn ? (
-                                    <>
-                                        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-                                            <h5 className="text-light mb-0 fw-bold">
-                                                Select Helpers for this Service ({selectedHelpers.length} selected)
-                                            </h5>
-                                            <div className="d-flex gap-2">
+                            ) : (
+                                /* External Helper Dispatch Section */
+                                <div>
+                                    {/* Escalation Alert Switch Card */}
+                                    <div className={`escalation-alert-card mb-4 ${alertIfNoOneAccepts ? 'enabled' : ''}`}>
+                                        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                            <div className="d-flex align-items-center gap-3">
+                                                <div className="rounded-circle bg-warning bg-opacity-20 text-warning d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px', flexShrink: 0 }}>
+                                                    <i className="bi bi-bell-fill fs-5"></i>
+                                                </div>
+                                                <div>
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        <span className="fw-bold text-dark" style={{ fontSize: '13.5px' }}>
+                                                            Urgent Screen Alert If Unaccepted
+                                                        </span>
+                                                        {alertIfNoOneAccepts ? (
+                                                            <span className="badge bg-warning text-dark border fw-semibold" style={{ fontSize: '10px' }}>
+                                                                Sound & Banner ON
+                                                            </span>
+                                                        ) : (
+                                                            <span className="badge bg-light text-muted border" style={{ fontSize: '10px' }}>
+                                                                Muted
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <small className="text-muted d-block" style={{ fontSize: '11.5px' }}>
+                                                        Plays audio chime and flashes high-priority banner on Admin screen if no helper claims new booking promptly.
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            <div className="form-check form-switch m-0">
                                                 <input
-                                                    type="text"
-                                                    className="form-control form-control-sm bg-dark text-light border-secondary"
-                                                    placeholder="Search helpers..."
-                                                    value={helperSearchTerm}
-                                                    onChange={(e) => setHelperSearchTerm(e.target.value)}
-                                                    style={{ width: '180px' }}
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    role="switch"
+                                                    id="alertIfNoOneToggle"
+                                                    checked={alertIfNoOneAccepts}
+                                                    onChange={(e) => setAlertIfNoOneAccepts(e.target.checked)}
+                                                    style={{ cursor: 'pointer', transform: 'scale(1.25)' }}
                                                 />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Helper Assignment Toolbar */}
+                                    <div className="p-3 bg-white rounded-3 border shadow-sm mb-3">
+                                        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                                            <div>
+                                                <span className="text-uppercase fw-bold text-secondary" style={{ fontSize: '11px', letterSpacing: '0.6px' }}>
+                                                    Step 2: Assign Qualified Helpers
+                                                </span>
+                                                <div className="fw-bold text-dark mt-1" style={{ fontSize: '14px' }}>
+                                                    Select Helpers to Receive Dispatch Requests
+                                                </div>
+                                            </div>
+                                            <div className="d-flex align-items-center gap-2">
+                                                <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 fw-semibold">
+                                                    {selectedHelpers.length} of {helpers.length} Selected
+                                                </span>
+                                                <span className="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-semibold">
+                                                    {helpers.filter(h => h.isConnected).length} Online
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Filters and Search Bar */}
+                                        <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top">
+                                            {/* Filter Pills */}
+                                            <div className="d-flex gap-1 align-items-center">
+                                                <button
+                                                    type="button"
+                                                    className={`helper-filter-pill ${helperFilterTab === 'all' ? 'active' : ''}`}
+                                                    onClick={() => setHelperFilterTab('all')}
+                                                >
+                                                    All ({helpers.length})
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`helper-filter-pill ${helperFilterTab === 'selected' ? 'active' : ''}`}
+                                                    onClick={() => setHelperFilterTab('selected')}
+                                                >
+                                                    Selected ({selectedHelpers.length})
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={`helper-filter-pill ${helperFilterTab === 'online' ? 'active' : ''}`}
+                                                    onClick={() => setHelperFilterTab('online')}
+                                                >
+                                                    <i className="bi bi-circle-fill text-success me-1" style={{ fontSize: '7px' }}></i>
+                                                    Online ({helpers.filter(h => h.isConnected).length})
+                                                </button>
+                                            </div>
+
+                                            {/* Search Input and Select All */}
+                                            <div className="d-flex gap-2 align-items-center">
+                                                <div className="position-relative" style={{ minWidth: '180px' }}>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control form-control-sm pe-4"
+                                                        placeholder="Search helpers..."
+                                                        value={helperSearchTerm}
+                                                        onChange={(e) => setHelperSearchTerm(e.target.value)}
+                                                        style={{ borderRadius: '8px', fontSize: '12px' }}
+                                                    />
+                                                    {helperSearchTerm ? (
+                                                        <span
+                                                            onClick={() => setHelperSearchTerm('')}
+                                                            className="position-absolute end-0 top-50 translate-middle-y me-2 text-muted"
+                                                            style={{ cursor: 'pointer', fontSize: '12px' }}
+                                                        >
+                                                            ✕
+                                                        </span>
+                                                    ) : (
+                                                        <i className="bi bi-search position-absolute end-0 top-50 translate-middle-y me-2 text-muted" style={{ fontSize: '11px' }}></i>
+                                                    )}
+                                                </div>
                                                 {helpers.length > 0 && (
                                                     <button
                                                         type="button"
-                                                        className="btn btn-sm btn-outline-info"
+                                                        className="btn btn-sm btn-outline-primary fw-semibold d-flex align-items-center gap-1"
                                                         onClick={handleSelectAllHelpers}
+                                                        style={{ borderRadius: '8px', fontSize: '12px' }}
                                                     >
-                                                        {selectedHelpers.length === helpers.length ? "Deselect All" : "Select All"}
+                                                        <i className="bi bi-check2-all"></i>
+                                                        Toggle Visible
                                                     </button>
                                                 )}
                                             </div>
                                         </div>
+                                    </div>
 
-                                        {helpers.length === 0 ? (
-                                            <div className="text-center p-4 rounded bg-dark border border-secondary text-muted">
-                                                <i className="bi bi-people fs-2 d-block mb-2 text-secondary"></i>
-                                                <p className="mb-1 text-light">No helpers found for your admin account.</p>
-                                                <small>You can add and manage helpers from the "Vendor/Helper Info" tab.</small>
+                                    {/* Helpers List Grid */}
+                                    {helpers.length === 0 ? (
+                                        <div className="text-center p-4 bg-white rounded-3 border text-muted shadow-sm">
+                                            <div className="rounded-circle bg-light d-inline-flex p-3 mb-2">
+                                                <i className="bi bi-people fs-2 text-secondary"></i>
                                             </div>
-                                        ) : (
-                                            <div className="row g-3" style={{ maxHeight: '360px', overflowY: 'auto' }}>
-                                                {helpers
-                                                    .filter(h => !helperSearchTerm || 
-                                                        h.name?.toLowerCase().includes(helperSearchTerm.toLowerCase()) || 
-                                                        h.skills?.toLowerCase().includes(helperSearchTerm.toLowerCase()) ||
-                                                        h.phone?.includes(helperSearchTerm)
-                                                    )
-                                                    .map(helper => {
+                                            <p className="mb-1 text-dark fw-bold">No registered helpers found</p>
+                                            <small className="text-muted d-block mb-2">Add or approve helpers from the "Vendor/Helper Info" tab to assign them to services.</small>
+                                        </div>
+                                    ) : (
+                                        (() => {
+                                            const filteredHelpers = helpers.filter(h => {
+                                                if (helperFilterTab === 'selected' && !selectedHelpers.includes(String(h._id))) return false;
+                                                if (helperFilterTab === 'online' && !h.isConnected) return false;
+                                                if (helperSearchTerm.trim()) {
+                                                    const q = helperSearchTerm.trim().toLowerCase();
+                                                    const matchName = h.name && h.name.toLowerCase().includes(q);
+                                                    const matchSkills = h.skills && h.skills.toLowerCase().includes(q);
+                                                    const matchPhone = h.phone && h.phone.includes(q);
+                                                    if (!matchName && !matchSkills && !matchPhone) return false;
+                                                }
+                                                return true;
+                                            });
+
+                                            if (filteredHelpers.length === 0) {
+                                                return (
+                                                    <div className="text-center p-4 bg-white rounded-3 border text-muted shadow-sm">
+                                                        <i className="bi bi-search fs-3 text-secondary d-block mb-2"></i>
+                                                        <p className="mb-1 text-dark fw-semibold">No helpers match your criteria</p>
+                                                        <small className="text-muted">Try adjusting your search or tab filters.</small>
+                                                        <div className="mt-2">
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-sm btn-link text-decoration-none"
+                                                                onClick={() => {
+                                                                    setHelperSearchTerm('');
+                                                                    setHelperFilterTab('all');
+                                                                }}
+                                                            >
+                                                                Reset Filters
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <div className="row g-2" style={{ maxHeight: '330px', overflowY: 'auto' }}>
+                                                    {filteredHelpers.map(helper => {
                                                         const isSelected = selectedHelpers.includes(String(helper._id));
                                                         return (
-                                                            <div key={helper._id} className="col-md-6">
+                                                            <div key={helper._id} className="col-sm-6">
                                                                 <div 
-                                                                    className={`card text-light h-100 ${isSelected ? 'border-primary' : 'border-secondary'}`}
-                                                                    style={{ 
-                                                                        background: isSelected ? '#1e3a5f' : '#1e293b', 
-                                                                        cursor: 'pointer',
-                                                                        transition: 'all 0.2s ease'
-                                                                    }}
+                                                                    className={`helper-card-item ${isSelected ? 'selected' : ''}`}
                                                                     onClick={() => handleHelperSelect(helper._id, !isSelected)}
                                                                 >
-                                                                    <div className="card-body p-3">
-                                                                        <div className="d-flex align-items-start gap-3">
-                                                                            <input
-                                                                                className="form-check-input mt-1"
-                                                                                type="checkbox"
-                                                                                id={`helper-${helper._id}`}
-                                                                                checked={isSelected}
-                                                                                onChange={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    handleHelperSelect(helper._id, e.target.checked);
-                                                                                }}
-                                                                                style={{ cursor: 'pointer' }}
-                                                                            />
-                                                                            <div className="flex-grow-1">
-                                                                                <div className="d-flex align-items-center justify-content-between mb-1">
-                                                                                    <h6 className="mb-0 fw-bold text-light">{helper.name}</h6>
-                                                                                    <span className={`badge ${helper.isConnected ? 'bg-success' : 'bg-secondary'}`} style={{ fontSize: '10px' }}>
-                                                                                        {helper.isConnected ? 'Online' : 'Offline'}
-                                                                                    </span>
+                                                                    <div className="d-flex align-items-start gap-2">
+                                                                        <div className={`helper-avatar-badge ${helper.isConnected ? 'online' : 'offline'}`}>
+                                                                            {helper.name ? helper.name.charAt(0).toUpperCase() : 'H'}
+                                                                        </div>
+                                                                        <div className="flex-grow-1 min-w-0">
+                                                                            <div className="d-flex justify-content-between align-items-center mb-1">
+                                                                                <strong className="text-dark text-truncate d-block" style={{ fontSize: '13.5px' }}>
+                                                                                    {helper.name}
+                                                                                </strong>
+                                                                                <div className="helper-check-badge">
+                                                                                    {isSelected ? '✓' : ''}
                                                                                 </div>
-                                                                                <small className="d-block text-info">📞 {helper.phone}</small>
-                                                                                <small className="d-block text-muted">Skills: {helper.skills || 'General'}</small>
-                                                                                <small className="d-block text-muted">Exp: {helper.experience || 'N/A'} yrs</small>
+                                                                            </div>
+                                                                            <div className="d-flex align-items-center gap-2 mb-1">
+                                                                                <span 
+                                                                                    className={`badge ${helper.isConnected ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-light text-muted border'}`} 
+                                                                                    style={{ fontSize: '10px', padding: '2px 6px' }}
+                                                                                >
+                                                                                    <i className={`bi bi-circle-fill me-1 ${helper.isConnected ? 'text-success' : 'text-secondary'}`} style={{ fontSize: '6px' }}></i>
+                                                                                    {helper.isConnected ? 'Online' : 'Offline'}
+                                                                                </span>
+                                                                                <span className="text-muted small text-truncate" style={{ fontSize: '11px' }}>
+                                                                                    <i className="bi bi-telephone me-1"></i>{helper.phone || 'No phone'}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="text-secondary small text-truncate" style={{ fontSize: '11px' }}>
+                                                                                <i className="bi bi-tools me-1 text-primary"></i>Skills: {helper.skills || 'General'}
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -3636,38 +4397,60 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                                                             </div>
                                                         );
                                                     })}
-                                            </div>
-                                        )}
-                                    </>
-                                ) : (
-                                    <div className="p-4 rounded bg-dark border border-secondary text-center">
-                                        <i className="bi bi-shield-check fs-2 text-primary d-block mb-2"></i>
-                                        <h6 className="text-light fw-bold">Internal / Admin Booking Mode Active</h6>
-                                        <p className="text-muted small mb-0">
-                                            This service will be fulfilled by admin directly. Bookings will show in Admin's own bookings without external helper assignments.
-                                        </p>
-                                    </div>
-                                )}
-
-                                <div className="d-flex justify-content-end gap-2 mt-4 pt-3 border-top border-secondary">
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-light px-4"
-                                        onClick={() => setShowHelperModal(false)}
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn btn-primary px-4 fw-semibold"
-                                        onClick={saveJobAssignment}
-                                    >
-                                        <i className="bi bi-check-lg me-1"></i> Save Assignment
-                                    </button>
+                                                </div>
+                                            );
+                                        })()
+                                    )}
                                 </div>
+                            )}
+                        </div>
+
+                        {/* Modal Sticky Footer */}
+                        <div className="p-3 bg-white border-top d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                {useOwn ? (
+                                    <span className="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 fw-semibold">
+                                        <i className="bi bi-shield-check me-1"></i> Mode: Admin In-House Fulfillment
+                                    </span>
+                                ) : (
+                                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 fw-semibold">
+                                        <i className="bi bi-people-fill me-1"></i> Mode: External Dispatch ({selectedHelpers.length} Helper{selectedHelpers.length === 1 ? '' : 's'} Assigned)
+                                    </span>
+                                )}
+                            </div>
+                            <div className="d-flex gap-2">
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary px-3 fw-semibold"
+                                    onClick={() => setShowHelperModal(false)}
+                                    disabled={isSavingHelperAssignment}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-primary px-4 fw-bold d-flex align-items-center gap-2"
+                                    onClick={saveJobAssignment}
+                                    disabled={isSavingHelperAssignment}
+                                >
+                                    {isSavingHelperAssignment ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="bi bi-check-lg"></i>
+                                            Save Assignment
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         </div>
-                    )}
+                    </div>
+                </div>
+            )}
+            )}
         </div>
     );
 }
