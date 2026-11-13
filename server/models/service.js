@@ -47,10 +47,10 @@ const serviceSchema = mongoose.Schema({
             type: Boolean, 
             default: false 
         },
-        isCountable: { 
-            type: Boolean, 
-            default: true 
-        },
+        isCountable: {
+        type: Boolean,
+        default: false
+    },
         maxQuantityPerDay: { 
             type: Number, 
             default: null 
@@ -98,7 +98,7 @@ const serviceSchema = mongoose.Schema({
     },
     isCountable: {
         type: Boolean,
-        default: true
+        default: false
     },
     maxQuantityPerDay: {
         type: Number,
@@ -201,6 +201,10 @@ const serviceSchema = mongoose.Schema({
         type: Boolean,
         default: false
     },
+    alertIfNoOneAccepts: {
+        type: Boolean,
+        default: false
+    },
     unavailableDates: [{
         date: String,
         slots: [String],
@@ -245,8 +249,8 @@ serviceSchema.pre('save', function(next) {
         this.rentperday = defaultUnit.price || 0;
         this.unit = defaultUnit.unit || 'per day';
         this.customUnit = defaultUnit.customUnit || '';
-        this.isCountable = defaultUnit.isCountable !== false;
-        this.maxQuantityPerDay = defaultUnit.maxQuantityPerDay || null;
+        this.isCountable = defaultUnit.isCountable === true;
+        this.maxQuantityPerDay = defaultUnit.isCountable === true ? (defaultUnit.maxQuantityPerDay || null) : null;
         this.maxUsersPerDay = defaultUnit.maxUsersPerDay || null;
     }
     next();
@@ -265,7 +269,7 @@ serviceSchema.methods.getActivePricingUnits = function() {
         price: this.rentperday || 0,
         customUnit: this.customUnit || '',
         isDefault: true,
-        isCountable: this.isCountable !== false,
+        isCountable: this.isCountable === true,
         maxQuantityPerDay: this.maxQuantityPerDay,
         maxUsersPerDay: this.maxUsersPerDay,
         description: ''

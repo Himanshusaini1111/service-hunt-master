@@ -372,10 +372,7 @@ router.get("/helpers", async (req, res) => {
         const filter = isSuperAdmin ? {} : { vendorId: userid };
         const helpers = await Helper.find(filter).lean();
         
-        if (helpers.length === 0) {
-            return res.status(404).json({ message: "No helpers found for this vendor" });
-        }
-        res.status(200).json(helpers);
+        return res.status(200).json(helpers || []);
     } catch (error) {
         console.error("Database error:", error);
         res.status(500).json({ message: "Server error" });

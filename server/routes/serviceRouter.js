@@ -66,7 +66,10 @@ router.get("/getvisible", async (req, res) => {
 
         // Strict filtering: Only show services owned by this user (unless Super Admin)
         const filter = isSuperAdmin ? {} : { vendorId: userid };
-        const services = await Service.find(filter);
+        const services = await Service.find(filter).populate({
+            path: 'assignedHelpers',
+            select: 'name phone email skills experience photo'
+        });
         
         res.send(services);
     } catch (error) {
@@ -198,10 +201,10 @@ router.post("/addservice", async (req, res) => {
                 price: parseFloat(u.price) || 0,
                 customUnit: u.unit === 'Other' ? (u.customUnit || '') : '',
                 isDefault: u.isDefault || false,
-                isCountable: u.isCountable !== false,
+                isCountable: u.isCountable === true,
                 isMerged: !!u.isMerged,
                 mergedUnit: u.mergedUnit || 'per day',
-                maxQuantityPerDay: u.maxQuantityPerDay ? parseInt(u.maxQuantityPerDay) : null,
+                maxQuantityPerDay: u.isCountable === true && u.maxQuantityPerDay ? parseInt(u.maxQuantityPerDay) : null,
                 maxUsersPerDay: u.maxUsersPerDay ? parseInt(u.maxUsersPerDay) : null,
                 description: u.description || ''
             }));
@@ -217,10 +220,10 @@ router.post("/addservice", async (req, res) => {
                 price: parseFloat(rentperday) || 0,
                 customUnit: unit === 'Other' ? (customUnit || '') : '',
                 isDefault: true,
-                isCountable: isCountable !== false,
+                isCountable: isCountable === true,
                 isMerged: !!isMerged,
                 mergedUnit: mergedUnit || 'per day',
-                maxQuantityPerDay: maxQuantityPerDay ? parseInt(maxQuantityPerDay) : null,
+                maxQuantityPerDay: isCountable === true && maxQuantityPerDay ? parseInt(maxQuantityPerDay) : null,
                 maxUsersPerDay: maxUsersPerDay ? parseInt(maxUsersPerDay) : null,
                 description: ''
             };
@@ -251,8 +254,8 @@ router.post("/addservice", async (req, res) => {
             customUnit: defaultUnit.customUnit || '',
             isMerged: !!defaultUnit.isMerged,
             mergedUnit: defaultUnit.mergedUnit || 'per day',
-            isCountable: defaultUnit.isCountable !== false,
-            maxQuantityPerDay: defaultUnit.maxQuantityPerDay || null,
+            isCountable: defaultUnit.isCountable === true,
+            maxQuantityPerDay: defaultUnit.isCountable === true ? (defaultUnit.maxQuantityPerDay || null) : null,
             maxUsersPerDay: defaultUnit.maxUsersPerDay || null,
             description: description || '',
             phonenumber: phonenumber || '',

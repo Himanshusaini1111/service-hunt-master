@@ -71,7 +71,23 @@ const bookingSchema = new mongoose.Schema({
     assignedHelpers: [{
         type: mongoose.Schema.Types.ObjectId,  // Keep this as ObjectId since it references Helper collection
         ref: 'Helper'
-    }]
+    }],
+    jobCompletedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Helper'
+    },
+    claimedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Helper'
+    },
+    useOwn: {
+        type: Boolean,
+        default: false
+    },
+    alertIfNoOneAccepts: {
+        type: Boolean,
+        default: false
+    }
 }, { timestamps: true });
 
 module.exports = mongoose.model("Booking", bookingSchema);

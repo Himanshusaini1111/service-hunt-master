@@ -132,7 +132,7 @@ router.get('/check-new-works', authenticateHelper, async (req, res) => {
         
         let filter = { 
             assignedHelpers: { $in: [helperId] },
-            status: 'assigned'  // Only show newly assigned works
+            status: { $in: ['assigned', 'booked'] }  // Show newly assigned or booked works
         };
         
         // Only get works newer than lastId
@@ -161,7 +161,10 @@ router.get('/assigned-works', authenticateHelper, async (req, res) => {
         // Find bookings where this helper is assigned
         const bookings = await Booking.find({
             assignedHelpers: { $in: [req.helper._id] }
-        }).sort({ createdAt: -1 });
+        })
+        .populate('jobCompletedBy', 'name phone email photo')
+        .populate('claimedBy', 'name phone email photo')
+        .sort({ createdAt: -1 });
 
         console.log(`Found ${bookings.length} bookings for helper ${req.helper._id}`);
 
@@ -188,6 +191,9 @@ router.get('/assigned-works', authenticateHelper, async (req, res) => {
                     address += ' (Round Trip)';
                 }
             }
+
+            const claimedId = bookingObj.claimedBy ? (bookingObj.claimedBy._id || bookingObj.claimedBy).toString() : null;
+            const isClaimedByMe = claimedId === req.helper._id.toString();
 
             return {
                 _id: bookingObj._id,
@@ -217,7 +223,12 @@ router.get('/assigned-works', authenticateHelper, async (req, res) => {
                 daysCount: bookingObj.daysCount || 1,
                 returnTrip: bookingObj.returnTrip || false,
                 time: bookingObj.time,
-                description: bookingObj.description
+                description: bookingObj.description,
+                claimedBy: bookingObj.claimedBy,
+                isClaimed: !!bookingObj.claimedBy,
+                isClaimedByMe: isClaimedByMe,
+                jobCompletedBy: bookingObj.jobCompletedBy,
+                assignedHelpers: bookingObj.assignedHelpers
             };
         });
 
@@ -379,7 +390,54 @@ router.put('/profile', authenticateHelper, async (req, res) => {
     }
 });
 
+// Helper accepts/claims a job - first one to click gets to do the service!
+router.post('/accept-job', authenticateHelper, async (req, res) => {
+    try {
+        const { bookingId } = req.body;
+        const helperId = req.helper._id;
 
+        if (!bookingId) {
+            return res.status(400).json({ success: false, message: 'Booking ID is required' });
+        }
+
+        const booking = await Booking.findById(bookingId);
+        if (!booking) {
+            return res.status(404).json({ success: false, message: 'Booking not found' });
+        }
+
+        // Check if helper is assigned to this service
+        const isAssigned = booking.assignedHelpers && booking.assignedHelpers.some(
+            h => (h._id || h).toString() === helperId.toString()
+        );
+        if (!isAssigned) {
+            return res.status(403).json({ success: false, message: 'You are not assigned to this service' });
+        }
+
+        // Check if another helper already claimed/accepted it
+        if (booking.claimedBy && booking.claimedBy.toString() !== helperId.toString()) {
+            return res.status(409).json({ 
+                success: false, 
+                message: 'This service was already accepted by another helper.' 
+            });
+        }
+
+        // First click takes it!
+        booking.claimedBy = helperId;
+        booking.jobCompletedBy = helperId; // Helper performing this service
+        booking.assignedHelpers = [helperId]; // Exclusively assigned to this helper
+        booking.status = 'in-progress';
+        await booking.save();
+
+        res.json({
+            success: true,
+            message: 'You have accepted this job! You are assigned to perform this service.',
+            booking
+        });
+    } catch (error) {
+        console.error('Error accepting job:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
 // Update work status
 router.put('/update-status', authenticateHelper, async (req, res) => {
@@ -408,6 +466,13 @@ router.put('/update-status', authenticateHelper, async (req, res) => {
 
         // Update the status
         booking.status = status;
+        if (status === 'completed') {
+            booking.jobCompletedBy = req.helper._id;
+        } else if (status === 'in-progress' && !booking.claimedBy) {
+            booking.claimedBy = req.helper._id;
+            booking.jobCompletedBy = req.helper._id;
+            booking.assignedHelpers = [req.helper._id];
+        }
         await booking.save();
 
         res.json({ 

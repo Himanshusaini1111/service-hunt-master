@@ -34,7 +34,7 @@ export function Addservice({ userId }) {
             price: '', 
             customUnit: '', 
             isDefault: true,
-            isCountable: true,
+            isCountable: false,
             maxQuantityPerDay: '',
             maxUsersPerDay: '',
             description: '',
@@ -113,7 +113,7 @@ export function Addservice({ userId }) {
                     price: '', 
                     customUnit: '', 
                     isDefault: false,
-                    isCountable: true,
+                    isCountable: false,
                     maxQuantityPerDay: '',
                     maxUsersPerDay: '',
                     description: '',
@@ -145,6 +145,10 @@ export function Addservice({ userId }) {
         }
         
         newUnits[index][field] = value;
+        
+        if (field === 'isCountable' && value === false) {
+            newUnits[index].maxQuantityPerDay = '';
+        }
         
         // If setting this as default, unset others
         if (field === 'isDefault' && value === true) {
@@ -624,8 +628,8 @@ export function Addservice({ userId }) {
                     price: parseFloat(u.price),
                     customUnit: u.unit === "Other" ? u.customUnit : "",
                     isDefault: u.isDefault || false,
-                    isCountable: u.isCountable !== false,
-                    maxQuantityPerDay: u.maxQuantityPerDay ? parseInt(u.maxQuantityPerDay) : null,
+                    isCountable: u.isCountable === true,
+                    maxQuantityPerDay: u.isCountable === true && u.maxQuantityPerDay ? parseInt(u.maxQuantityPerDay) : null,
                     maxUsersPerDay: u.maxUsersPerDay ? parseInt(u.maxUsersPerDay) : null,
                     description: u.description || '',
                     isMerged: !!u.isMerged,
@@ -635,10 +639,10 @@ export function Addservice({ userId }) {
                 rentperday: parseFloat(defaultUnit.price) || 0,
                 unit: defaultUnit.unit,
                 customUnit: defaultUnit.unit === "Other" ? defaultUnit.customUnit : "",
-                isCountable: defaultUnit.isCountable !== false,
+                isCountable: defaultUnit.isCountable === true,
                 isMerged: !!defaultUnit.isMerged,
                 mergedUnit: defaultUnit.mergedUnit || 'per day',
-                maxQuantityPerDay: defaultUnit.maxQuantityPerDay ? parseInt(defaultUnit.maxQuantityPerDay) : null,
+                maxQuantityPerDay: defaultUnit.isCountable === true && defaultUnit.maxQuantityPerDay ? parseInt(defaultUnit.maxQuantityPerDay) : null,
                 maxUsersPerDay: defaultUnit.maxUsersPerDay ? parseInt(defaultUnit.maxUsersPerDay) : null,
                 description: formattedDescription,
                 phonenumber,
@@ -688,7 +692,7 @@ export function Addservice({ userId }) {
                     price: '', 
                     customUnit: '', 
                     isDefault: true,
-                    isCountable: true,
+                    isCountable: false,
                     maxQuantityPerDay: '',
                     maxUsersPerDay: '',
                     description: ''
@@ -1019,6 +1023,93 @@ export function Addservice({ userId }) {
                                     )}
                                 </div>
                             )}
+
+                            {/* Quantity & Inventory Limits for Simple View */}
+                            <div className="as-qty-config-box">
+                                <div className="as-field" style={{ marginBottom: 0 }}>
+                                    <label className="as-label" style={{ marginBottom: 6 }}>
+                                        Quantity Setting
+                                    </label>
+                                    <div className="as-qty-toggle-group">
+                                        <label className={`as-qty-toggle-btn ${pricingUnits[0]?.isCountable === false ? 'active' : ''}`}>
+                                            <input
+                                                type="radio"
+                                                name="simple_qty_mode"
+                                                checked={pricingUnits[0]?.isCountable === false}
+                                                onChange={() => {
+                                                    const newUnits = [...pricingUnits];
+                                                    newUnits[0].isCountable = false;
+                                                    newUnits[0].maxQuantityPerDay = '';
+                                                    setPricingUnits(newUnits);
+                                                }}
+                                            />
+                                            <span className="as-qty-radio-circle"></span>
+                                            <span className="as-qty-btn-text">No Quantity</span>
+                                            <span className="as-qty-default-pill">Default</span>
+                                        </label>
+                                        <label className={`as-qty-toggle-btn ${pricingUnits[0]?.isCountable === true ? 'active' : ''}`}>
+                                            <input
+                                                type="radio"
+                                                name="simple_qty_mode"
+                                                checked={pricingUnits[0]?.isCountable === true}
+                                                onChange={() => {
+                                                    const newUnits = [...pricingUnits];
+                                                    newUnits[0].isCountable = true;
+                                                    setPricingUnits(newUnits);
+                                                }}
+                                            />
+                                            <span className="as-qty-radio-circle"></span>
+                                            <span className="as-qty-btn-text">Add Quantity</span>
+                                        </label>
+                                    </div>
+
+                                    {pricingUnits[0]?.isCountable === false ? (
+                                        <div className="as-qty-info-banner">
+                                            <span>🔒 <b>No Quantity:</b> Quantity option will not be seen on booking screen.</span>
+                                        </div>
+                                    ) : (
+                                        <div className="as-qty-input-reveal">
+                                            <label className="as-label" style={{ fontSize: 12, marginTop: 8, marginBottom: 4 }}>
+                                                Max Quantity Per Day (Optional)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                className="as-input"
+                                                placeholder="Unlimited (e.g. 5, 10)"
+                                                value={pricingUnits[0]?.maxQuantityPerDay || ''}
+                                                onChange={(e) => {
+                                                    const newUnits = [...pricingUnits];
+                                                    newUnits[0].maxQuantityPerDay = e.target.value;
+                                                    setPricingUnits(newUnits);
+                                                }}
+                                                min="1"
+                                            />
+                                            <div className="as-qty-hint-text">
+                                                ✓ Customers can select quantity on booking screen {pricingUnits[0]?.maxQuantityPerDay ? `(up to max ${pricingUnits[0]?.maxQuantityPerDay})` : '(unlimited)'}.
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="as-field" style={{ marginBottom: 0 }}>
+                                    <label className="as-label">Max Users Per Day (Optional)</label>
+                                    <input
+                                        type="number"
+                                        className="as-input"
+                                        placeholder="Unlimited"
+                                        value={pricingUnits[0]?.maxUsersPerDay || ''}
+                                        onChange={(e) => {
+                                            const newUnits = [...pricingUnits];
+                                            newUnits[0].maxUsersPerDay = e.target.value;
+                                            setPricingUnits(newUnits);
+                                        }}
+                                        min="1"
+                                    />
+                                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                                        Maximum unique customers who can book on the same day.
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     ) : (
                         <div className="as-pricing-panel">
@@ -1108,17 +1199,64 @@ export function Addservice({ userId }) {
                                         </div>
                                     )}
 
-                                    <div className="as-grid-2" style={{ marginTop: 10 }}>
+                                    <div className="as-qty-config-box">
                                         <div className="as-field" style={{ marginBottom: 0 }}>
-                                            <label className="as-label">Max Quantity Per Day (Optional)</label>
-                                            <input
-                                                type="number"
-                                                className="as-input"
-                                                placeholder="Unlimited"
-                                                value={unit.maxQuantityPerDay || ''}
-                                                onChange={(e) => handlePricingUnitChange(index, 'maxQuantityPerDay', e.target.value)}
-                                            />
+                                            <label className="as-label" style={{ marginBottom: 6 }}>
+                                                Quantity Setting
+                                            </label>
+                                            <div className="as-qty-toggle-group">
+                                                <label className={`as-qty-toggle-btn ${unit.isCountable === false ? 'active' : ''}`}>
+                                                    <input
+                                                        type="radio"
+                                                        name={`qty_mode_${index}`}
+                                                        checked={unit.isCountable === false}
+                                                        onChange={() => {
+                                                            handlePricingUnitChange(index, 'isCountable', false);
+                                                            handlePricingUnitChange(index, 'maxQuantityPerDay', '');
+                                                        }}
+                                                    />
+                                                    <span className="as-qty-radio-circle"></span>
+                                                    <span className="as-qty-btn-text">No Quantity</span>
+                                                    <span className="as-qty-default-pill">Default</span>
+                                                </label>
+                                                <label className={`as-qty-toggle-btn ${unit.isCountable === true ? 'active' : ''}`}>
+                                                    <input
+                                                        type="radio"
+                                                        name={`qty_mode_${index}`}
+                                                        checked={unit.isCountable === true}
+                                                        onChange={() => {
+                                                            handlePricingUnitChange(index, 'isCountable', true);
+                                                        }}
+                                                    />
+                                                    <span className="as-qty-radio-circle"></span>
+                                                    <span className="as-qty-btn-text">Add Quantity</span>
+                                                </label>
+                                            </div>
+
+                                            {unit.isCountable === false ? (
+                                                <div className="as-qty-info-banner">
+                                                    <span>🔒 <b>No Quantity:</b> Quantity option will not be seen on booking screen.</span>
+                                                </div>
+                                            ) : (
+                                                <div className="as-qty-input-reveal">
+                                                    <label className="as-label" style={{ fontSize: 12, marginTop: 8, marginBottom: 4 }}>
+                                                        Max Quantity Per Day (Optional)
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        className="as-input"
+                                                        placeholder="Unlimited (e.g. 5, 10)"
+                                                        value={unit.maxQuantityPerDay || ''}
+                                                        onChange={(e) => handlePricingUnitChange(index, 'maxQuantityPerDay', e.target.value)}
+                                                        min="1"
+                                                    />
+                                                    <div className="as-qty-hint-text">
+                                                        ✓ Customers can select quantity on booking screen {unit.maxQuantityPerDay ? `(up to max ${unit.maxQuantityPerDay})` : '(unlimited)'}.
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
+
                                         <div className="as-field" style={{ marginBottom: 0 }}>
                                             <label className="as-label">Max Users Per Day (Optional)</label>
                                             <input
@@ -1127,7 +1265,11 @@ export function Addservice({ userId }) {
                                                 placeholder="Unlimited"
                                                 value={unit.maxUsersPerDay || ''}
                                                 onChange={(e) => handlePricingUnitChange(index, 'maxUsersPerDay', e.target.value)}
+                                                min="1"
                                             />
+                                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+                                                Maximum unique customers who can book on the same day.
+                                            </div>
                                         </div>
                                     </div>
 

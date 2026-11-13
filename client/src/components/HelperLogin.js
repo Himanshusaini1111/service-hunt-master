@@ -518,6 +518,26 @@ function HelperDashboard({ helperData, onLogout }) {
         }
     }, [helperData, refreshAll]);
 
+    const handleAcceptJob = async (workId) => {
+        try {
+            const response = await axios.post(
+                '/api/helper/accept-job',
+                { bookingId: workId },
+                { headers: { Authorization: `Bearer ${localStorage.getItem('helperToken')}` } }
+            );
+
+            if (response.data.success) {
+                message.success(response.data.message || 'Job accepted! You are now doing this service.');
+                stopSound();
+                fetchAssignedWorks();
+            }
+        } catch (error) {
+            const errMsg = error.response?.data?.message || 'Failed to accept job. Another helper may have taken it.';
+            message.warning(errMsg);
+            fetchAssignedWorks();
+        }
+    };
+
     const updateWorkStatus = async (workId, newStatus) => {
         try {
             const response = await axios.put(
@@ -760,43 +780,89 @@ function HelperDashboard({ helperData, onLogout }) {
             {
                 title: 'Duty Status',
                 key: 'status',
-                render: (_, record) => (
-                    <Select
-                        value={record.status}
-                        onChange={(value) => updateWorkStatus(record._id, value)}
-                        style={{ width: screens.xs ? 110 : 135 }}
-                        size="small"
-                    >
-                        <Option value="assigned">
-                            <ClockCircleOutlined style={{ color: '#f59e0b', marginRight: 4 }} />
-                            Assigned
-                        </Option>
-                        <Option value="in-progress">
-                            <SyncOutlined spin style={{ color: '#2563eb', marginRight: 4 }} />
-                            In Progress
-                        </Option>
-                        <Option value="completed">
-                            <CheckCircleOutlined style={{ color: '#16a34a', marginRight: 4 }} />
-                            Completed
-                        </Option>
-                    </Select>
-                )
+                render: (_, record) => {
+                    const isCompleted = record.status === 'completed';
+                    const isUnclaimed = !record.isClaimed && (record.status === 'assigned' || record.status === 'booked');
+
+                    if (isCompleted) {
+                        return (
+                            <Tag color="green" icon={<CheckCircleOutlined />}>
+                                Completed
+                            </Tag>
+                        );
+                    }
+
+                    if (isUnclaimed) {
+                        return (
+                            <Button
+                                type="primary"
+                                size="small"
+                                style={{ background: '#16a34a', borderColor: '#16a34a', fontWeight: 600, borderRadius: 6 }}
+                                icon={<CheckCircleOutlined />}
+                                onClick={() => handleAcceptJob(record._id)}
+                            >
+                                Accept Job
+                            </Button>
+                        );
+                    }
+
+                    return (
+                        <Select
+                            value={record.status}
+                            onChange={(value) => updateWorkStatus(record._id, value)}
+                            style={{ width: screens.xs ? 110 : 135 }}
+                            size="small"
+                        >
+                            <Option value="assigned">
+                                <ClockCircleOutlined style={{ color: '#f59e0b', marginRight: 4 }} />
+                                Assigned
+                            </Option>
+                            <Option value="in-progress">
+                                <SyncOutlined spin style={{ color: '#2563eb', marginRight: 4 }} />
+                                In Progress
+                            </Option>
+                            <Option value="completed">
+                                <CheckCircleOutlined style={{ color: '#16a34a', marginRight: 4 }} />
+                                Completed
+                            </Option>
+                        </Select>
+                    );
+                }
             },
             {
                 title: 'Actions',
                 key: 'action',
                 render: (_, record) => (
                     <Space size={6}>
+                        {(!record.isClaimed && (record.status === 'assigned' || record.status === 'booked')) && (
+                            <Button
+                                size="small"
+                                type="primary"
+                                style={{ background: '#16a34a', borderColor: '#16a34a', borderRadius: 6, fontWeight: 600 }}
+                                onClick={() => handleAcceptJob(record._id)}
+                            >
+                                Accept
+                            </Button>
+                        )}
+                        {record.status === 'in-progress' && (
+                            <Button
+                                size="small"
+                                style={{ background: '#059669', color: '#fff', borderColor: '#059669', borderRadius: 6 }}
+                                onClick={() => updateWorkStatus(record._id, 'completed')}
+                            >
+                                Complete
+                            </Button>
+                        )}
                         <Button
                             size="small"
-                            type="primary"
+                            type="default"
                             icon={<InfoCircleOutlined />}
                             onClick={() => handleViewDetails(record)}
                             style={{ borderRadius: 6 }}
                         >
                             Details
                         </Button>
-                        {record.status === 'assigned' && (
+                        {record.status === 'assigned' && !record.isClaimed && (
                             <Button
                                 size="small"
                                 danger

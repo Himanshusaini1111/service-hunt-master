@@ -281,6 +281,11 @@ router.post("/bookservice", async (req, res) => {
             }
         }
 
+        // Determine assigned helpers and alert settings from service
+        const serviceAssignedHelpers = (!serviceData.useOwn && serviceData.assignedHelpers && serviceData.assignedHelpers.length > 0)
+            ? serviceData.assignedHelpers
+            : [];
+
         // Create booking data
         const bookingData = {
             serviceid,
@@ -296,7 +301,7 @@ router.post("/bookservice", async (req, res) => {
             isMerged: isMerged !== undefined ? isMerged : (serviceData.isMerged || false),
             mergedUnit: mergedUnit || serviceData.mergedUnit || 'per day',
             isCountable: isCountable !== undefined ? isCountable : serviceData.isCountable,
-            quantity: quantity || 1,
+            quantity: (isCountable === false || (isCountable === undefined && serviceData.isCountable === false)) ? 1 : (quantity || 1),
             daysCount: daysCount || 1,
             rentperday: rentperday || serviceData.rentperday,
             fromDate: fromDate ? new Date(fromDate) : null,
@@ -308,7 +313,10 @@ router.post("/bookservice", async (req, res) => {
             bookingType: bookingType || 'Automatic Booking',
             optionalInputs: optionalInputs || [],
             extraInputs: extraInputs || [],
-            status: bookingType === 'Inquari Booking' ? "inquiry" : "booked",
+            status: bookingType === 'Inquari Booking' ? "inquiry" : (serviceAssignedHelpers.length > 0 ? "assigned" : "booked"),
+            assignedHelpers: serviceAssignedHelpers,
+            useOwn: !!serviceData.useOwn,
+            alertIfNoOneAccepts: !!serviceData.alertIfNoOneAccepts,
             ...(selectedServiceArea && typeof selectedServiceArea === 'object' ? {
                 selectedServiceArea: {
                     city: selectedServiceArea.city || '',
@@ -334,6 +342,21 @@ router.post("/bookservice", async (req, res) => {
         await newBooking.save();
 
         console.log(`✅ Booking created: ${newBooking._id} for vendor: ${vendorId} (Type: ${bookingType})`);
+
+        // Notify assigned helpers if any
+        if (serviceAssignedHelpers.length > 0) {
+            try {
+                await sendPushNotificationToHelpers(serviceAssignedHelpers, {
+                    _id: newBooking._id,
+                    service: newBooking.service,
+                    totalAmount: newBooking.totalAmount,
+                    customerName: newBooking.name,
+                    customerPhone: newBooking.phone
+                });
+            } catch (helperNotifErr) {
+                console.error("Error sending push notification to assigned helpers:", helperNotifErr);
+            }
+        }
 
         // ============================================
         // ✅ UPDATE UNAVAILABLE DATES (ONLY FOR TIME SLOTS, NOT FULL DAYS)
@@ -505,10 +528,18 @@ router.get("/getallbookings", async (req, res) => {
 
         const bookings = await Booking.find(filter)
             .populate('userid', 'name email phone')
-            .populate('serviceid', 'name rentperday category')
+            .populate('serviceid', 'name rentperday category vendorId alertIfNoOneAccepts')
             .populate({
                 path: 'assignedHelpers',
-                select: 'name phone email skills experience photo description'
+                select: 'name phone email skills experience photo description isConnected'
+            })
+            .populate({
+                path: 'jobCompletedBy',
+                select: 'name phone email skills experience photo'
+            })
+            .populate({
+                path: 'claimedBy',
+                select: 'name phone email skills experience photo'
             })
             .sort({ createdAt: -1 });
             
@@ -1015,10 +1046,14 @@ router.get("/check-new", async (req, res) => {
             filter.createdAt = { $gt: lastCheckedDate };
         }
 
-        // Only get bookings with status 'booked' or 'pending' (not confirmed/rejected yet)
-        filter.status = { $in: ['booked', 'pending', 'inquiry'] };
+        // Only get bookings with status 'booked', 'pending', 'inquiry', or 'assigned' (not confirmed/rejected yet)
+        filter.status = { $in: ['booked', 'pending', 'inquiry', 'assigned'] };
 
         const newBookings = await Booking.find(filter)
+            .populate('serviceid', 'name rentperday category vendorId alertIfNoOneAccepts')
+            .populate('assignedHelpers', 'name phone email')
+            .populate('jobCompletedBy', 'name phone email')
+            .populate('claimedBy', 'name phone email')
             .sort({ createdAt: -1 })
             .limit(20);
 

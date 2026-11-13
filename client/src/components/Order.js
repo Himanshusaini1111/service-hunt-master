@@ -29,6 +29,227 @@ import "./Order.css";
 
 const { Title, Text, Paragraph } = Typography;
 
+// Helper functions for unit and pricing calculation
+const isHourUnit = (unit) => {
+    if (!unit || typeof unit !== 'string') return false;
+    const val = unit.toLowerCase().trim();
+    return val.includes('hour') || val.includes('hr') || val.includes('hor') || val === 'h' || val.includes('slot') || val.includes('time');
+};
+
+const isDayOrLongerUnit = (unit) => {
+    if (!unit || typeof unit !== 'string') return false;
+    const val = unit.toLowerCase().trim();
+    return val.includes('day') || val.includes('week') || val.includes('month') || val.includes('year');
+};
+
+const getBookingDaysCount = (booking) => {
+    if (booking.daysCount && Number(booking.daysCount) > 0) return Number(booking.daysCount);
+    if (booking.selectedDates && Array.isArray(booking.selectedDates) && booking.selectedDates.length > 0) {
+        return booking.selectedDates.length;
+    }
+    const from = booking.fromDate || booking.fromdate;
+    const to = booking.toDate || booking.todate;
+    if (from && to && from !== to) {
+        const start = new Date(from);
+        const end = new Date(to);
+        const diffTime = Math.abs(end - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        if (!isNaN(diffDays) && diffDays > 0) return diffDays;
+    }
+    return 1;
+};
+
+const getBookingSlotCount = (booking) => {
+    if (booking.slots && Array.isArray(booking.slots) && booking.slots.length > 0) {
+        return booking.slots.length;
+    }
+    return 1;
+};
+
+const calculateBookingPricing = (booking) => {
+    if (!booking) return null;
+
+    const basePrice = Number(booking.rentperday !== undefined && booking.rentperday !== null ? booking.rentperday : (booking.price || 0));
+    const quantity = (booking.isCountable !== false && Number(booking.quantity) > 0) ? Number(booking.quantity) : 1;
+    const daysCount = getBookingDaysCount(booking);
+    const slotCount = getBookingSlotCount(booking);
+    const isMerged = !!booking.isMerged;
+    const mergedUnit = (booking.mergedUnit || '').toLowerCase();
+    const rawUnit = (booking.customUnit || booking.unit || 'per day').toLowerCase();
+
+    // Base total calculation
+    let baseTotal = basePrice;
+    let baseDurationQtyText = '1 unit';
+    let baseFormulaText = `₹${basePrice}`;
+
+    if (isMerged) {
+        const isHour = isHourUnit(mergedUnit) || (booking.slots && booking.slots.length > 0);
+        if (isHour) {
+            baseTotal = basePrice * (booking.isCountable ? quantity : 1) * slotCount;
+            baseDurationQtyText = `${booking.isCountable && quantity > 1 ? `${quantity} qty × ` : ''}${slotCount} hr${slotCount > 1 ? 's' : ''}`;
+            baseFormulaText = `₹${basePrice}${booking.isCountable && quantity > 1 ? ` × ${quantity}` : ''} × ${slotCount} hr${slotCount > 1 ? 's' : ''}`;
+        } else {
+            baseTotal = basePrice * (booking.isCountable ? quantity : 1) * daysCount;
+            baseDurationQtyText = `${booking.isCountable && quantity > 1 ? `${quantity} qty × ` : ''}${daysCount} day${daysCount > 1 ? 's' : ''}`;
+            baseFormulaText = `₹${basePrice}${booking.isCountable && quantity > 1 ? ` × ${quantity}` : ''} × ${daysCount} day${daysCount > 1 ? 's' : ''}`;
+        }
+    } else if (isHourUnit(rawUnit) || (booking.slots && booking.slots.length > 0 && !isDayOrLongerUnit(rawUnit))) {
+        baseTotal = basePrice * (booking.isCountable ? quantity : 1) * slotCount;
+        baseDurationQtyText = `${booking.isCountable && quantity > 1 ? `${quantity} qty × ` : ''}${slotCount} hr${slotCount > 1 ? 's' : ''}`;
+        baseFormulaText = `₹${basePrice}${booking.isCountable && quantity > 1 ? ` × ${quantity}` : ''} × ${slotCount} hr${slotCount > 1 ? 's' : ''}`;
+    } else if (isDayOrLongerUnit(rawUnit)) {
+        baseTotal = basePrice * (booking.isCountable ? quantity : 1) * daysCount;
+        baseDurationQtyText = `${booking.isCountable && quantity > 1 ? `${quantity} qty × ` : ''}${daysCount} day${daysCount > 1 ? 's' : ''}`;
+        baseFormulaText = `₹${basePrice}${booking.isCountable && quantity > 1 ? ` × ${quantity}` : ''} × ${daysCount} day${daysCount > 1 ? 's' : ''}`;
+    } else if (booking.isCountable && quantity > 1) {
+        baseTotal = basePrice * quantity;
+        baseDurationQtyText = `${quantity} qty`;
+        baseFormulaText = `₹${basePrice} × ${quantity}`;
+    }
+
+    // Optional inputs
+    const optionalItems = (booking.optionalInputs || []).map((input) => {
+        const count = Number(input.count) || 1;
+        const price = Number(input.price) || 0;
+        const isOptMerged = !!input.isMerged;
+        const optMergedUnit = (input.mergedUnit || '').toLowerCase();
+        const inputUnit = (input.customUnit || input.unit || '').toLowerCase();
+
+        let multiplier = 1;
+        let timeLabel = '';
+        let isTimeBased = false;
+
+        if (isOptMerged) {
+            if (isHourUnit(optMergedUnit)) {
+                multiplier = slotCount;
+                timeLabel = `${slotCount} hr${slotCount > 1 ? 's' : ''}`;
+                isTimeBased = true;
+            } else {
+                multiplier = daysCount;
+                timeLabel = `${daysCount} day${daysCount > 1 ? 's' : ''}`;
+                isTimeBased = true;
+            }
+        } else if (isDayOrLongerUnit(inputUnit)) {
+            multiplier = daysCount;
+            timeLabel = `${daysCount} day${daysCount > 1 ? 's' : ''}`;
+            isTimeBased = true;
+        } else if (isHourUnit(inputUnit)) {
+            multiplier = slotCount;
+            timeLabel = `${slotCount} hr${slotCount > 1 ? 's' : ''}`;
+            isTimeBased = true;
+        }
+
+        const itemTotal = count * price * multiplier;
+
+        let durationQtyText = '';
+        let formulaText = '';
+        if (isTimeBased) {
+            if (count > 1) {
+                durationQtyText = `${count} qty × ${timeLabel}`;
+                formulaText = `₹${price} × ${count} × ${timeLabel}`;
+            } else {
+                durationQtyText = timeLabel;
+                formulaText = `₹${price} × ${timeLabel}`;
+            }
+        } else {
+            if (count > 1) {
+                durationQtyText = `${count} qty`;
+                formulaText = `₹${price} × ${count}`;
+            } else {
+                durationQtyText = '1 unit';
+                formulaText = `₹${price}`;
+            }
+        }
+
+        let displayUnit = input.customUnit || input.unit || '';
+        if (displayUnit.startsWith('per-')) displayUnit = displayUnit.replace('per-', 'per ');
+
+        return {
+            name: input.name || 'Optional Addon',
+            price,
+            count,
+            multiplier,
+            timeLabel,
+            isTimeBased,
+            displayUnit,
+            durationQtyText,
+            formulaText,
+            itemTotal
+        };
+    });
+
+    // Extra inputs
+    const extraItems = (booking.extraInputs || []).map((input) => {
+        const price = Number(input.price) || 0;
+        const extraUnit = (input.customUnit || input.unit || '').toLowerCase();
+
+        let multiplier = 1;
+        let timeLabel = '';
+        let isTimeBased = false;
+
+        if (isDayOrLongerUnit(extraUnit)) {
+            multiplier = daysCount;
+            timeLabel = `${daysCount} day${daysCount > 1 ? 's' : ''}`;
+            isTimeBased = true;
+        } else if (isHourUnit(extraUnit)) {
+            multiplier = slotCount;
+            timeLabel = `${slotCount} hr${slotCount > 1 ? 's' : ''}`;
+            isTimeBased = true;
+        }
+
+        const itemTotal = price * multiplier;
+        const durationQtyText = isTimeBased ? timeLabel : '1 unit';
+        const formulaText = isTimeBased ? `₹${price} × ${timeLabel}` : `₹${price}`;
+
+        let displayUnit = input.customUnit || input.unit || '';
+        if (displayUnit.startsWith('per-')) displayUnit = displayUnit.replace('per-', 'per ');
+
+        return {
+            name: input.name || 'Extra Option',
+            price,
+            multiplier,
+            timeLabel,
+            isTimeBased,
+            displayUnit,
+            durationQtyText,
+            formulaText,
+            itemTotal
+        };
+    });
+
+    const areaExtra = Number(booking.selectedServiceArea?.extraPrice) || 0;
+    const optionalSubtotal = optionalItems.reduce((acc, item) => acc + item.itemTotal, 0);
+    const extraSubtotal = extraItems.reduce((acc, item) => acc + item.itemTotal, 0);
+    const calculatedGrandTotal = baseTotal + optionalSubtotal + extraSubtotal + areaExtra;
+
+    const isInquiry = 
+        booking.status === 'inquiry' || 
+        booking.bookingType === 'inquiry' || 
+        booking.bookingType === 'Inquari Booking' || 
+        (typeof booking.bookingType === 'string' && booking.bookingType.toLowerCase().includes('inqu'));
+
+    const effectiveTotal = isInquiry 
+        ? 0 
+        : (booking.totalAmount != null && Number(booking.totalAmount) > 0 ? Number(booking.totalAmount) : calculatedGrandTotal);
+
+    return {
+        basePrice,
+        baseTotal,
+        baseDurationQtyText,
+        baseFormulaText,
+        daysCount,
+        slotCount,
+        optionalItems,
+        extraItems,
+        optionalSubtotal,
+        extraSubtotal,
+        areaExtra,
+        calculatedGrandTotal,
+        effectiveTotal,
+        isInquiry
+    };
+};
+
 const MyOrders = () => {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -215,7 +436,7 @@ const MyOrders = () => {
                             {helper.name || 'Assigned Specialist'}
                         </Text>
                         <Text type="secondary" style={{ fontSize: '12px' }}>
-                            📞 {helper.phone || 'N/A'}
+                            ðŸ“ž {helper.phone || 'N/A'}
                         </Text>
                     </div>
                 </div>
@@ -297,15 +518,9 @@ const MyOrders = () => {
             return unit;
         };
 
-        const isInquiry = 
-            selectedBooking.status === 'inquiry' || 
-            selectedBooking.bookingType === 'inquiry' || 
-            selectedBooking.bookingType === 'Inquari Booking' || 
-            (typeof selectedBooking.bookingType === 'string' && selectedBooking.bookingType.toLowerCase().includes('inqu'));
-
-        const basePrice = selectedBooking.rentperday !== undefined && selectedBooking.rentperday !== null 
-            ? selectedBooking.rentperday 
-            : (selectedBooking.price || 0);
+        const pricing = calculateBookingPricing(selectedBooking);
+        const isInquiry = pricing.isInquiry;
+        const basePrice = pricing.basePrice;
 
         return (
             <Modal
@@ -375,12 +590,14 @@ const MyOrders = () => {
                                 <span className="order-modal-field-value">{selectedBooking.quantity || 1}</span>
                             </div>
 
-                            {selectedBooking.daysCount > 1 && (
-                                <div className="order-modal-field">
-                                    <span className="order-modal-field-label">Duration</span>
-                                    <span className="order-modal-field-value">{selectedBooking.daysCount} days</span>
-                                </div>
-                            )}
+                            <div className="order-modal-field">
+                                <span className="order-modal-field-label">Duration</span>
+                                <span className="order-modal-field-value">
+                                    {pricing.daysCount > 1 
+                                        ? `${pricing.daysCount} days` 
+                                        : (pricing.slotCount > 1 ? `${pricing.slotCount} slots/hours` : '1 unit')}
+                                </span>
+                            </div>
                         </div>
                     </div>
 
@@ -502,11 +719,151 @@ const MyOrders = () => {
                         </div>
                     )}
 
-                    {/* 7. Optional / Extra Services (if available) */}
-                    {((selectedBooking.optionalInputs && selectedBooking.optionalInputs.length > 0) || (selectedBooking.extraInputs && selectedBooking.extraInputs.length > 0)) && (
+                    {/* 7. Price Breakdown & Total Amount (For Automatic & Manual Bookings) */}
+                    {!isInquiry && (
+                        <div className="order-modal-card" style={{ border: '1px solid #bfdbfe' }}>
+                            <div className="order-modal-card-title" style={{ color: '#1d4ed8' }}>
+                                <span>🧾 Price Breakdown & Total Amount</span>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {/* Main Service Line */}
+                                <div style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '9px 12px',
+                                    background: '#f8fafc',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    fontSize: '13px'
+                                }}>
+                                    <div>
+                                        <div style={{ fontWeight: 600, color: '#0f172a' }}>
+                                            {selectedBooking.service}
+                                            <span style={{
+                                                marginLeft: '6px',
+                                                background: '#eff6ff',
+                                                color: '#2563eb',
+                                                fontSize: '11px',
+                                                padding: '2px 6px',
+                                                borderRadius: '4px',
+                                                fontWeight: 600
+                                            }}>
+                                                Main Service
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                                            {pricing.baseFormulaText}
+                                        </div>
+                                    </div>
+                                    <span style={{ fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                                        ₹{pricing.baseTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+
+                                {/* Optional Addons */}
+                                {pricing.optionalItems.map((item, index) => (
+                                    <div key={`opt-${index}`} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '9px 12px',
+                                        background: '#f0fdf4',
+                                        border: '1px solid #bbf7d0',
+                                        borderRadius: '8px',
+                                        fontSize: '13px'
+                                    }}>
+                                        <div>
+                                            <div style={{ fontWeight: 600, color: '#0f172a' }}>
+                                                {item.name}
+                                                <span style={{
+                                                    marginLeft: '6px',
+                                                    background: '#dcfce7',
+                                                    color: '#15803d',
+                                                    fontSize: '11px',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    fontWeight: 600
+                                                }}>
+                                                    Optional
+                                                </span>
+                                            </div>
+                                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                                                {item.formulaText}
+                                            </div>
+                                        </div>
+                                        <span style={{ fontWeight: 700, color: '#15803d', whiteSpace: 'nowrap' }}>
+                                            ₹{item.itemTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+                                ))}
+
+                                {/* Extra Options */}
+                                {pricing.extraItems.map((item, index) => (
+                                    <div key={`ext-${index}`} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '9px 12px',
+                                        background: '#fff7ed',
+                                        border: '1px solid #fed7aa',
+                                        borderRadius: '8px',
+                                        fontSize: '13px'
+                                    }}>
+                                        <div>
+                                            <div style={{ fontWeight: 600, color: '#0f172a' }}>
+                                                {item.name}
+                                                <span style={{
+                                                    marginLeft: '6px',
+                                                    background: '#ffedd5',
+                                                    color: '#c2410c',
+                                                    fontSize: '11px',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    fontWeight: 600
+                                                }}>
+                                                    Extra
+                                                </span>
+                                            </div>
+                                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                                                {item.formulaText}
+                                            </div>
+                                        </div>
+                                        <span style={{ fontWeight: 700, color: '#c2410c', whiteSpace: 'nowrap' }}>
+                                            ₹{item.itemTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+                                ))}
+
+                               
+                                {/* Subtotals & Final Total */}
+                                <div style={{
+                                    marginTop: '8px',
+                                    padding: '12px 14px',
+                                    background: '#f0fdf4',
+                                    border: '1.5px solid #86efac',
+                                    borderRadius: '10px',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                }}>
+                                    <span style={{ fontSize: '15px', fontWeight: 700, color: '#166534' }}>
+                                        Total Amount:
+                                    </span>
+                                    <span style={{ fontSize: '20px', fontWeight: 800, color: '#15803d' }}>
+                                        ₹{pricing.effectiveTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 8. Addon Services for Inquiry Booking */}
+                    {isInquiry && ((selectedBooking.optionalInputs && selectedBooking.optionalInputs.length > 0) || (selectedBooking.extraInputs && selectedBooking.extraInputs.length > 0)) && (
                         <div className="order-modal-card">
                             <div className="order-modal-card-title">
-                                <span>Addon & Optional Services</span>
+                                <span>Requested Addon Services</span>
                             </div>
                             {selectedBooking.optionalInputs && selectedBooking.optionalInputs.length > 0 && (
                                 <div className="order-modal-addon-list">
@@ -516,8 +873,8 @@ const MyOrders = () => {
                                                 <strong>{input.name}:</strong> {input.count} × ₹{input.price}
                                                 {input.unit && ` /${input.unit.replace('per-', '')}`}
                                             </span>
-                                            <span className="order-modal-addon-price">
-                                                {isInquiry ? 'Quote on inquiry' : `₹${(input.count * input.price * (selectedBooking.daysCount || 1)).toFixed(2)}`}
+                                            <span className="order-modal-addon-price" style={{ color: '#7c3aed' }}>
+                                                Quote on inquiry
                                             </span>
                                         </div>
                                     ))}
@@ -531,8 +888,8 @@ const MyOrders = () => {
                                                 <strong>{input.name}</strong>
                                                 {input.unit && <span style={{ color: '#64748b' }}> ({input.unit.replace('per-', '')})</span>}
                                             </span>
-                                            <span className="order-modal-addon-price" style={{ color: '#ea580c' }}>
-                                                {isInquiry ? 'Quote on inquiry' : `₹${input.price}`}
+                                            <span className="order-modal-addon-price" style={{ color: '#7c3aed' }}>
+                                                Quote on inquiry
                                             </span>
                                         </div>
                                     ))}
@@ -541,7 +898,7 @@ const MyOrders = () => {
                         </div>
                     )}
 
-                    {/* 8. Bottom Notice for Inquiry Service (Shows it is an inquiry service without a total amount) */}
+                    {/* 9. Bottom Notice for Inquiry Service */}
                     {isInquiry && (
                         <div className="order-modal-inquiry-banner">
                             <div className="order-modal-inquiry-header">
@@ -624,15 +981,9 @@ const MyOrders = () => {
             return unit;
         };
 
-        const isInquiry = 
-            booking.status === 'inquiry' || 
-            booking.bookingType === 'inquiry' || 
-            booking.bookingType === 'Inquari Booking' || 
-            (typeof booking.bookingType === 'string' && booking.bookingType.toLowerCase().includes('inqu'));
-
-        const basePrice = booking.rentperday !== undefined && booking.rentperday !== null 
-            ? booking.rentperday 
-            : (booking.price || 0);
+        const pricing = calculateBookingPricing(booking);
+        const isInquiry = pricing.isInquiry;
+        const basePrice = pricing.basePrice;
 
         const getAccentColor = () => {
             if (isInquiry) return '#7c3aed';
@@ -676,15 +1027,35 @@ const MyOrders = () => {
                         )}
                     </div>
 
-                    {/* Base Price Strip (Replacing Total Amount) */}
-                    <div className="order-price-strip">
-                        <span className="order-price-label">Base Price</span>
-                        <div className="order-price-val-box">
-                            <span className="order-price-currency">₹</span>
-                            <span className="order-price-val">{Number(basePrice).toLocaleString()}</span>
-                            <span className="order-price-unit">/ {getUnitDisplay()}</span>
+                    {/* Price Strip: Total Amount for Auto/Manual, Base Price for Inquiry */}
+                    {isInquiry ? (
+                        <div className="order-price-strip">
+                            <span className="order-price-label">Base Price</span>
+                            <div className="order-price-val-box">
+                                <span className="order-price-currency">₹</span>
+                                <span className="order-price-val">{Number(basePrice).toLocaleString()}</span>
+                                <span className="order-price-unit">/ {getUnitDisplay()}</span>
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="order-price-strip" style={{ alignItems: 'flex-end' }}>
+                            <div>
+                                <span className="order-price-label" style={{ color: '#166534' }}>Total Amount</span>
+                                <div className="order-price-val-box">
+                                    <span className="order-price-currency" style={{ color: '#15803d', fontSize: '16px' }}>₹</span>
+                                    <span className="order-price-val" style={{ color: '#15803d', fontSize: '20px' }}>
+                                        {Number(pricing.effectiveTotal).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
+                                </div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <span className="order-price-label" style={{ fontSize: '11px' }}>Base Rate</span>
+                                <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>
+                                    ₹{Number(basePrice).toLocaleString()} / {getUnitDisplay()}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Helpers indicator (if assigned) */}
                     {booking.assignedHelpers && booking.assignedHelpers.length > 0 && (

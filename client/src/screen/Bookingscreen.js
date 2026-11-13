@@ -1508,69 +1508,175 @@ const handleBooking = async (e) => {
                 </div>
               )}
 
-              {/* Rental Location */}
+              {/* Rental / Multi-Location */}
               {getLocationType() === "Rental" && (
-                <>
-                  {/* Pickup Address */}
-                  <div className="bm-field-group">
-                    <label className="bm-field-label">
-                      Pickup Address <span className="req">*</span>
-                    </label>
-
-                    <div className="bm-input-wrapper">
-                      <span className="bm-input-icon">🚗</span>
-
-                      <input
-                        type="text"
-                        className="bm-input"
-                        value={pickupAddress}
-                        onChange={(e) => setPickupAddress(e.target.value)}
-                        required
-                        placeholder="Enter pickup location"
-                      />
+                <div className="bm-multi-location-card">
+                  <div className="bm-route-header">
+                    <div className="bm-route-header-title">
+                      <span className="bm-route-badge-icon">🗺️</span>
+                      <span>Trip Route</span>
                     </div>
+                    <span className={`bm-trip-type-badge ${returnTrip ? "round-trip" : "one-way"}`}>
+                      {returnTrip ? "🔄 Round Trip" : "➡️ One-Way Trip"}
+                    </span>
                   </div>
 
-                  {/* Drop-off Address */}
-                  <div className="bm-field-group">
-                    <label className="bm-field-label">
-                      Drop-off Address <span className="req">*</span>
-                    </label>
-
-                    <div className="bm-input-wrapper">
-                      <span className="bm-input-icon">🏁</span>
-
-                      <input
-                        type="text"
-                        className="bm-input"
-                        value={dropAddress}
-                        onChange={(e) => setDropAddress(e.target.value)}
-                        required
-                        placeholder="Enter drop-off location"
-                      />
+                  {/* Timeline & Route Inputs */}
+                  <div className="bm-route-timeline-container">
+                    <div className="bm-route-track" aria-hidden="true">
+                      <div className="bm-track-node pickup" title="Pickup Point">
+                        <span className="bm-node-dot"></span>
+                      </div>
+                      <div className="bm-track-line"></div>
+                      <div className="bm-track-node dropoff" title="Drop-off Point">
+                        <span className="bm-node-dot"></span>
+                      </div>
+                      {returnTrip && (
+                        <>
+                          <div className="bm-track-line return-line"></div>
+                          <div className="bm-track-node return" title="Return Point">
+                            <span className="bm-node-dot"></span>
+                          </div>
+                        </>
+                      )}
                     </div>
-                  </div>
 
-                  {/* Return Trip */}
-                  <label className="bm-checkbox-card">
-                    <input
-                      type="checkbox"
-                      className="bm-checkbox"
-                      checked={returnTrip}
-                      onChange={(e) => setReturnTrip(e.target.checked)}
-                    />
+                    <div className="bm-route-inputs">
+                      {/* Pickup Address */}
+                      <div className="bm-route-field">
+                        <div className="bm-route-field-header">
+                          <label className="bm-route-field-label" htmlFor="bm-pickup-address">
+                            Pickup Address <span className="req">*</span>
+                          </label>
+                          <span className="bm-route-step-tag pickup">Start</span>
+                        </div>
 
-                    <div>
-                      <div className="bm-checkbox-title">
-                        🔄 Return Trip Required
+                        <div className="bm-input-wrapper">
+                          <span className="bm-input-icon">🚗</span>
+                          <input
+                            id="bm-pickup-address"
+                            type="text"
+                            className="bm-input bm-route-input"
+                            value={pickupAddress}
+                            onChange={(e) => setPickupAddress(e.target.value)}
+                            required
+                            placeholder="Enter pickup location"
+                          />
+                        </div>
                       </div>
 
-                      <p className="bm-checkbox-desc">
-                        Additional charges may apply for return trip.
-                      </p>
+                      {/* Drop-off Address */}
+                      <div className="bm-route-field">
+                        <div className="bm-route-field-header">
+                          <label className="bm-route-field-label" htmlFor="bm-drop-address">
+                            Drop-off Address <span className="req">*</span>
+                          </label>
+                          <span className="bm-route-step-tag dropoff">Destination</span>
+                        </div>
+
+                        <div className="bm-input-wrapper">
+                          <span className="bm-input-icon">🏁</span>
+                          <input
+                            id="bm-drop-address"
+                            type="text"
+                            className="bm-input bm-route-input"
+                            value={dropAddress}
+                            onChange={(e) => setDropAddress(e.target.value)}
+                            required
+                            placeholder="Enter drop-off location"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Return Route Leg (Visible when Return Trip is active) */}
+                      {returnTrip && (
+                        <div className="bm-route-field bm-route-return-field">
+                          <div className="bm-route-field-header">
+                            <label className="bm-route-field-label">
+                              Return Destination
+                            </label>
+                            <span className="bm-route-step-tag return">Round Trip</span>
+                          </div>
+                          <div className="bm-return-destination-pill">
+                            <span className="return-icon">🔄</span>
+                            <span className="return-text">
+                              Return back to: <strong>{pickupAddress ? pickupAddress : "Pickup Address"}</strong>
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </label>
-                </>
+                  </div>
+
+                  {/* Return Trip Option Selection */}
+                  <div className="bm-return-option-container">
+                    <div className="bm-return-option-header">
+                      <div className="bm-return-label-wrap">
+                        <span className="bm-return-label">Return Trip Option</span>
+                        <span className="bm-return-sublabel">Do you require a return journey?</span>
+                      </div>
+                      <span className={`bm-return-status-chip ${returnTrip ? "round" : "oneway"}`}>
+                        {returnTrip ? "Round Trip" : "One-Way"}
+                      </span>
+                    </div>
+
+                    <div className="bm-return-choice-grid">
+                      {/* Option 1: One-Way */}
+                      <button
+                        type="button"
+                        className={`bm-return-choice-btn ${!returnTrip ? "selected" : ""}`}
+                        onClick={() => setReturnTrip(false)}
+                      >
+                        <div className="bm-choice-radio-indicator">
+                          {!returnTrip && <span className="bm-radio-inner-dot"></span>}
+                        </div>
+                        <div className="bm-choice-text">
+                          <div className="bm-choice-main">
+                            <span className="bm-choice-icon">➡️</span>
+                            <span className="bm-choice-title">One-Way Trip</span>
+                          </div>
+                          <span className="bm-choice-desc">Direct drop-off only, no return</span>
+                        </div>
+                      </button>
+
+                      {/* Option 2: Return Trip Required */}
+                      <button
+                        type="button"
+                        className={`bm-return-choice-btn ${returnTrip ? "selected" : ""}`}
+                        onClick={() => setReturnTrip(true)}
+                      >
+                        <div className="bm-choice-radio-indicator">
+                          {returnTrip && <span className="bm-radio-inner-dot"></span>}
+                        </div>
+                        <div className="bm-choice-text">
+                          <div className="bm-choice-main">
+                            <span className="bm-choice-icon">🔄</span>
+                            <span className="bm-choice-title">Return Trip Required</span>
+                          </div>
+                          <span className="bm-choice-desc">Round trip back to pickup location</span>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Hidden input for form checkbox state accessibility */}
+                    <input
+                      type="checkbox"
+                      checked={returnTrip}
+                      onChange={(e) => setReturnTrip(e.target.checked)}
+                      style={{ display: "none" }}
+                      aria-hidden="true"
+                    />
+
+                    {returnTrip && (
+                      <div className="bm-return-note">
+                        <span className="bm-return-note-icon">ℹ️</span>
+                        <span>
+                          Vehicle will return back to <strong>{pickupAddress ? pickupAddress : "pickup location"}</strong> after drop-off. Additional return trip charges may apply.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
 
             </section>
