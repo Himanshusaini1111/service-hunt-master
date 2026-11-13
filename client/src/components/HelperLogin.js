@@ -52,14 +52,42 @@ export function HelperLogin() {
     const [helperData, setHelperData] = useState(null);
     const [loginCode, setLoginCode] = useState('');
     const [loginLoading, setLoginLoading] = useState(false);
+    const [isAuthorizedHelper, setIsAuthorizedHelper] = useState(null);
+    const [registeredHelperInfo, setRegisteredHelperInfo] = useState(null);
 
-    // Auto-restore helper session if already authenticated
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
+    // Auto-restore helper session if already authenticated, or verify helper email
     useEffect(() => {
         const token = localStorage.getItem('helperToken');
         const savedUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
         if (token && savedUser && savedUser.isHelper) {
             setIsLoggedIn(true);
             setHelperData(savedUser);
+            setIsAuthorizedHelper(true);
+            return;
+        }
+
+        // If user is logged in, verify whether their email was added by an admin
+        if (savedUser && savedUser.email) {
+            axios.get('/api/helper/check-by-email', { params: { email: savedUser.email } })
+                .then((res) => {
+                    if (res.data?.success && res.data?.isHelper) {
+                        setIsAuthorizedHelper(true);
+                        setRegisteredHelperInfo(res.data.helper);
+                    } else {
+                        setIsAuthorizedHelper(false);
+                    }
+                })
+                .catch((err) => {
+                    console.error('Error checking helper authorization:', err);
+                    // Fallback to allowing code entry
+                    setIsAuthorizedHelper(true);
+                });
+        } else {
+            // Not logged in to a regular account - allow entering code directly
+            setIsAuthorizedHelper(true);
         }
     }, []);
 
@@ -67,13 +95,18 @@ export function HelperLogin() {
         if (e && e.preventDefault) e.preventDefault();
         const codeClean = loginCode.trim();
         if (!codeClean) {
-            message.warning('Please enter your helper code');
+            message.warning('Please enter your 5-digit unique code');
             return;
         }
 
         try {
             setLoginLoading(true);
-            const response = await axios.post('/api/helper/login', { code: codeClean });
+            const savedUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+            const response = await axios.post('/api/helper/login', {
+                code: codeClean,
+                email: savedUser?.email
+            });
+
             if (response.data.success) {
                 const helper = response.data.helper;
                 const token = response.data.token;
@@ -84,6 +117,7 @@ export function HelperLogin() {
 
                 // Synchronize currentUser so Navbar and /helperpanel recognize the helper
                 const helperUser = {
+                    ...savedUser,
                     _id: helper._id,
                     name: helper.name,
                     email: helper.email,
@@ -95,6 +129,7 @@ export function HelperLogin() {
                     vendor: helper.vendor
                 };
                 localStorage.setItem('currentUser', JSON.stringify(helperUser));
+                localStorage.setItem('helperIsOnline', String(Boolean(helper.isConnected)));
 
                 // Save FCM token for helper notifications
                 try {
@@ -108,7 +143,7 @@ export function HelperLogin() {
                 message.error(response.data?.message || 'Login failed');
             }
         } catch (error) {
-            message.error(error.response?.data?.message || 'Invalid or inactive helper code');
+            message.error(error.response?.data?.message || 'Invalid or inactive unique code');
         } finally {
             setLoginLoading(false);
         }
@@ -119,10 +154,37 @@ export function HelperLogin() {
         setHelperData(null);
         localStorage.removeItem('helperToken');
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('helperIsOnline');
         message.success('Logged out successfully');
     };
 
     if (!isLoggedIn) {
+        if (currentUser && isAuthorizedHelper === false) {
+            return (
+                <div className="helper-auth-page">
+                    <Navbar />
+                    <div style={{ maxWidth: 560, margin: '80px auto', padding: '32px 24px', background: '#fff', borderRadius: 16, boxShadow: '0 20px 40px rgba(0,0,0,0.06)', textAlign: 'center', border: '1px solid #e2e8f0' }}>
+                        <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, margin: '0 auto 16px' }}>
+                            🔒
+                        </div>
+                        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Helper Panel Restricted</h2>
+                        <p style={{ color: '#475569', fontSize: 15, lineHeight: 1.6, marginBottom: 16 }}>
+                            Only users whose email has been added by an <strong>Admin</strong> or <strong>Vendor</strong> can access the Helper Panel.
+                        </p>
+                        <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: 10, padding: '12px 16px', marginBottom: 24, fontSize: 14, color: '#334155' }}>
+                            Logged-in Email: <strong>{currentUser.email}</strong> (Not registered as helper)
+                        </div>
+                        <p style={{ color: '#64748b', fontSize: 13, marginBottom: 24 }}>
+                            If you believe this is a mistake, please contact your Admin or Vendor to add your email in the Admin Screen Helper Studio.
+                        </p>
+                        <Link to="/home" style={{ display: 'inline-block', padding: '10px 24px', background: '#4f46e5', color: '#fff', borderRadius: 8, fontWeight: 600, textDecoration: 'none' }}>
+                            ← Return to Home
+                        </Link>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div className="helper-auth-page">
                 <Navbar />
@@ -190,8 +252,24 @@ export function HelperLogin() {
 
                             <h2 className="helper-login-title">Helper Workstation</h2>
                             <p className="helper-login-subtitle">
-                                Enter your assigned helper code to unlock your shift dashboard.
+                                Enter your assigned unique code to unlock your shift dashboard and connect with your Admin/Vendor.
                             </p>
+
+                            {registeredHelperInfo?.vendor?.name && (
+                                <div style={{
+                                    background: '#eff6ff',
+                                    border: '1px solid #bfdbfe',
+                                    borderRadius: 10,
+                                    padding: '10px 14px',
+                                    marginBottom: 16,
+                                    fontSize: 13,
+                                    color: '#1e40af',
+                                    lineHeight: 1.5
+                                }}>
+                                    👷 Assigned by: <strong>{registeredHelperInfo.vendor.name}</strong>
+                                    {currentUser?.email && <div>Account: <strong>{currentUser.email}</strong></div>}
+                                </div>
+                            )}
 
                             <form onSubmit={handleLogin}>
                                 <div className="helper-input-group">
@@ -205,8 +283,9 @@ export function HelperLogin() {
                                             type="text"
                                             value={loginCode}
                                             onChange={(e) => setLoginCode(e.target.value.toUpperCase())}
-                                            placeholder="e.g. HLP789"
+                                            placeholder="Enter 5-digit code (e.g. 12345)"
                                             autoComplete="off"
+                                            maxLength={8}
                                             autoFocus
                                         />
                                     </div>
@@ -234,7 +313,7 @@ export function HelperLogin() {
                                     Helper codes are assigned by your registered vendor agency.
                                 </p>
                                 <Link to="/pathner" style={{ color: '#2563eb', fontWeight: 600, textDecoration: 'none' }}>
-                                    Register your agency as a Service Partner →
+                                    Register your agency as a Service Partner â†’
                                 </Link>
                             </div>
                         </div>
@@ -254,7 +333,13 @@ export function HelperLogin() {
 
 function HelperDashboard({ helperData, onLogout }) {
     const screens = useBreakpoint();
-    const [isOnline, setIsOnline] = useState(false);
+    const [isOnline, setIsOnline] = useState(() => {
+        const stored = localStorage.getItem('helperIsOnline');
+        if (stored !== null) {
+            return stored === 'true';
+        }
+        return Boolean(helperData?.isConnected);
+    });
     const [assignedWorks, setAssignedWorks] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -281,8 +366,14 @@ function HelperDashboard({ helperData, onLogout }) {
     const notifiedWorkIdsRef = useRef(notifiedWorkIds);
     const soundEnabledRef = useRef(soundEnabled);
     const isPlayingSoundRef = useRef(isPlayingSound);
+    const isOnlineRef = useRef(isOnline);
 
     // Keep refs synchronized
+    useEffect(() => {
+        isOnlineRef.current = isOnline;
+        localStorage.setItem('helperIsOnline', String(isOnline));
+    }, [isOnline]);
+
     useEffect(() => {
         lastCheckedTimeRef.current = lastCheckedTime;
     }, [lastCheckedTime]);
@@ -312,7 +403,19 @@ function HelperDashboard({ helperData, onLogout }) {
         setNewWorkAlert(null);
     }, []);
 
+    // If helper is offline, immediately silence any ringing alert sound
+    useEffect(() => {
+        if (!isOnline && isPlayingSound) {
+            stopSound();
+        }
+    }, [isOnline, isPlayingSound, stopSound]);
+
     const playNotificationSound = useCallback((shouldLoop = true) => {
+        // If helper is offline, do NOT ring alert!
+        if (!isOnlineRef.current) {
+            return;
+        }
+
         if (!soundEnabledRef.current || !audioRef.current) return;
 
         try {
@@ -401,22 +504,26 @@ function HelperDashboard({ helperData, onLogout }) {
                             timestamp: new Date()
                         };
 
-                        setNewWorkAlert(newWorkInfo);
+                        // When helper is offline, do NOT ring alert or show alert banner/toast
+                        if (isOnlineRef.current) {
+                            setNewWorkAlert(newWorkInfo);
 
-                        if (soundEnabledRef.current && audioRef.current) {
-                            playNotificationSound(true);
-                        }
+                            if (soundEnabledRef.current && audioRef.current) {
+                                playNotificationSound(true);
+                            }
 
-                        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                            new Notification(`📢 New Work Assigned!`, {
-                                body: `${count} new work${count > 1 ? 's have' : ' has'} been assigned to you`,
-                                icon: '/icon-192.png',
-                                vibrate: [200, 100, 200]
-                            });
+                            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                                new Notification(`📢 New Work Assigned!`, {
+                                    body: `${count} new work${count > 1 ? 's have' : ' has'} been assigned to you`,
+                                    icon: '/icon-192.png',
+                                    vibrate: [200, 100, 200]
+                                });
+                            }
+
+                            message.info(`${count} new job${count > 1 ? 's' : ''} assigned to you!`);
                         }
 
                         fetchAssignedWorks(true);
-                        message.info(`${count} new job${count > 1 ? 's' : ''} assigned to you!`);
                     }
                 }
             }
@@ -472,11 +579,17 @@ function HelperDashboard({ helperData, onLogout }) {
             const response = await axios.get('/api/helper/status', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setIsOnline(response.data.isConnected);
+            const onlineStatus = Boolean(response.data.isConnected);
+            setIsOnline(onlineStatus);
+            isOnlineRef.current = onlineStatus;
+            localStorage.setItem('helperIsOnline', String(onlineStatus));
+            if (!onlineStatus) {
+                stopSound();
+            }
         } catch (error) {
             console.error('Error checking status:', error);
         }
-    }, []);
+    }, [stopSound]);
 
     // 1-minute combined auto-refresh
     const refreshAll = useCallback(async (isSilent = true) => {
@@ -588,13 +701,27 @@ function HelperDashboard({ helperData, onLogout }) {
     const toggleConnection = async () => {
         setLoading(true);
         try {
+            const nextStatus = !isOnline;
             await axios.post(
                 '/api/helper/toggle-connection',
-                { isConnected: !isOnline },
+                { isConnected: nextStatus },
                 { headers: { Authorization: `Bearer ${localStorage.getItem('helperToken')}` } }
             );
-            setIsOnline(!isOnline);
-            message.success(`You are now ${!isOnline ? 'Online (Accepting Jobs)' : 'Offline'}`);
+            setIsOnline(nextStatus);
+            isOnlineRef.current = nextStatus;
+            localStorage.setItem('helperIsOnline', String(nextStatus));
+
+            const savedUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+            if (savedUser && savedUser.isHelper) {
+                savedUser.isConnected = nextStatus;
+                localStorage.setItem('currentUser', JSON.stringify(savedUser));
+            }
+
+            if (!nextStatus) {
+                stopSound();
+            }
+
+            message.success(`You are now ${nextStatus ? 'Online (Accepting Jobs)' : 'Offline'}`);
         } catch (error) {
             message.error('Failed to update connection status');
         } finally {
@@ -674,7 +801,7 @@ function HelperDashboard({ helperData, onLogout }) {
         } else if (work.locationType === 'Rental') {
             let address = `Pickup: ${work.pickupAddress || 'N/A'}`;
             if (work.dropAddress) {
-                address += ` → Drop: ${work.dropAddress}`;
+                address += ` â†’ Drop: ${work.dropAddress}`;
             }
             if (work.returnTrip) {
                 address += ' (Round Trip)';
@@ -930,8 +1057,8 @@ function HelperDashboard({ helperData, onLogout }) {
                                 CODE: {helperData?.code}
                             </span>
                             {helperData?.vendor && (
-                                <Tag color="green" style={{ borderRadius: 12 }}>
-                                    Vendor: {helperData.vendor.name}
+                                <Tag color="green" style={{ borderRadius: 12, padding: '2px 10px', fontSize: 13, fontWeight: 600 }}>
+                                    🔗 Connected with Admin/Vendor: {helperData.vendor.name}
                                 </Tag>
                             )}
                         </div>

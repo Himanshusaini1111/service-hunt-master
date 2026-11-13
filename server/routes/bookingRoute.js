@@ -629,7 +629,8 @@ router.post("/updatestatus", async (req, res) => {
 
 async function sendPushNotificationToHelpers(helperIds, bookingData) {
     try {
-        const helpers = await Helper.find({ _id: { $in: helperIds } });
+        // Only notify helpers who are currently online (isConnected: true) so offline helpers are not alerted
+        const helpers = await Helper.find({ _id: { $in: helperIds }, isConnected: true });
         const tokens = helpers.flatMap(helper => helper.fcmTokens || []);
         
         if (tokens.length === 0) {

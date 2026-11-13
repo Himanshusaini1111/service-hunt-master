@@ -293,7 +293,14 @@ router.post('/add',
                 return res.status(403).json({ success: false, message: "Unauthorized to add helper" });
             }
 
-            const existingHelper = await Helper.findOne({ email: req.body.email });
+            const helperEmail = req.body.email ? req.body.email.toLowerCase().trim() : '';
+            if (!helperEmail) {
+                return res.status(400).json({ success: false, message: 'Helper email is required' });
+            }
+
+            const existingHelper = await Helper.findOne({ 
+                email: { $regex: new RegExp(`^${helperEmail}$`, 'i') } 
+            });
             if (existingHelper) {
                 return res.status(400).json({
                     success: false,
@@ -312,7 +319,7 @@ router.post('/add',
             const newHelper = new Helper({
                 name: req.body.name,
                 phone: req.body.phone,
-                email: req.body.email,
+                email: helperEmail,
                 address: req.body.address,
                 age: req.body.age,
                 experience: req.body.experience,
@@ -329,7 +336,7 @@ router.post('/add',
             
             res.status(201).json({
                 success: true,
-                message: "Helper added successfully!",
+                message: `Helper added successfully! Unique Code: ${code}`,
                 helper: newHelper
             });
         } catch (error) {

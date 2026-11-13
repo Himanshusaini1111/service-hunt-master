@@ -65,9 +65,17 @@ export function onMessageListener() {
                            (typeof bookingType === 'string' && bookingType.toLowerCase().includes('auto'));
 
             // Only play audio alert sound for manual and inquiry bookings, NOT for automatic bookings
+            // Do NOT play sound if helper is offline
             if (!isAuto) {
-                const audio = new Audio('/sounds/booking.mp3');
-                audio.play().catch(e => console.log('Sound play failed:', e));
+                const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+                const isHelperOffline = currentUser?.isHelper && (
+                    localStorage.getItem('helperIsOnline') === 'false' || 
+                    currentUser?.isConnected === false
+                );
+                if (!isHelperOffline) {
+                    const audio = new Audio('/sounds/booking.mp3');
+                    audio.play().catch(e => console.log('Sound play failed:', e));
+                }
             }
             
             // Show browser notification

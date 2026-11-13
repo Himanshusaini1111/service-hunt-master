@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
-import { Tabs, Table, message, Select } from "antd";
+import { Tabs, Table, message, Select, Modal, Button } from "antd";
 import "./VendorHelperInfo.css";
 
 const { TabPane } = Tabs;
@@ -548,6 +548,7 @@ function AddHelper({ userId }) {
         pastWorkPhotos: [],
     });
     const [loading, setLoading] = useState(false);
+    const [newlyCreatedHelper, setNewlyCreatedHelper] = useState(null);
 
     // Add refs for file inputs
     const idProofRef = useRef(null);
@@ -641,6 +642,9 @@ function AddHelper({ userId }) {
 
             if (res.data.success) {
                 message.success(res.data.message || "Helper registered successfully!");
+                if (res.data.helper) {
+                    setNewlyCreatedHelper(res.data.helper);
+                }
                 handleResetForm();
             } else {
                 message.warning(res.data.message || "Helper could not be added.");
@@ -920,6 +924,81 @@ function AddHelper({ userId }) {
                     </button>
                 </div>
             </form>
+
+            {/* Generated Helper Unique Code Announcement Modal */}
+            <Modal
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 24 }}>🎉</span>
+                        <span style={{ fontSize: 18, fontWeight: 700, color: '#0f172a' }}>Helper Registered Successfully!</span>
+                    </div>
+                }
+                open={Boolean(newlyCreatedHelper)}
+                onOk={() => setNewlyCreatedHelper(null)}
+                onCancel={() => setNewlyCreatedHelper(null)}
+                footer={[
+                    <Button
+                        key="copy"
+                        type="default"
+                        onClick={() => {
+                            if (newlyCreatedHelper?.code) {
+                                navigator.clipboard.writeText(newlyCreatedHelper.code);
+                                message.success("Unique Code copied to clipboard!");
+                            }
+                        }}
+                    >
+                        📋 Copy Code
+                    </Button>,
+                    <Button
+                        key="done"
+                        type="primary"
+                        onClick={() => setNewlyCreatedHelper(null)}
+                        style={{ background: '#4f46e5', borderColor: '#4f46e5' }}
+                    >
+                        Done
+                    </Button>
+                ]}
+                centered
+            >
+                {newlyCreatedHelper && (
+                    <div style={{ padding: '12px 4px' }}>
+                        <p style={{ color: '#475569', fontSize: 14, marginBottom: 16 }}>
+                            A unique security code has been generated for <strong>{newlyCreatedHelper.name}</strong>.
+                        </p>
+
+                        <div style={{
+                            background: '#f8fafc',
+                            border: '1.5px dashed #4f46e5',
+                            borderRadius: '12px',
+                            padding: '16px',
+                            textAlign: 'center',
+                            marginBottom: '16px'
+                        }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Helper Unique Access Code
+                            </div>
+                            <div style={{ fontSize: 32, fontWeight: 800, color: '#1e1b4b', letterSpacing: '4px', margin: '8px 0' }}>
+                                {newlyCreatedHelper.code}
+                            </div>
+                            <div style={{ fontSize: 13, color: '#64748b' }}>
+                                Registered Email: <strong>{newlyCreatedHelper.email}</strong>
+                            </div>
+                        </div>
+
+                        <div style={{
+                            background: '#eff6ff',
+                            borderLeft: '4px solid #3b82f6',
+                            padding: '10px 14px',
+                            borderRadius: '4px',
+                            fontSize: 13,
+                            color: '#1e40af',
+                            lineHeight: 1.5
+                        }}>
+                            ℹ️ <strong>How helper connects:</strong> When this helper logs into Service Hunt with this email (<strong>{newlyCreatedHelper.email}</strong>), the <strong>Helper Panel</strong> will automatically appear directly in their top navbar. They enter this 5-digit code to connect with your admin account!
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 }

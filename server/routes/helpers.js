@@ -44,10 +44,10 @@ router.get('/check-code/:code', async (req, res) => {
         
         console.log('Checking code:', code);
         
-        if (!code || code.length !== 6) {
+        if (!code || code.length < 4 || code.length > 8) {
             return res.json({
                 exists: false,
-                message: 'Code must be 6 characters'
+                message: 'Invalid code length'
             });
         }
 
@@ -70,9 +70,60 @@ router.get('/check-code/:code', async (req, res) => {
     }
 });
 // Helper Login Route
+router.get('/check-by-email', async (req, res) => {
+    try {
+        const { email } = req.query;
+        if (!email) {
+            return res.status(400).json({ success: false, isHelper: false, message: 'Email is required' });
+        }
+
+        const normalizedEmail = email.toLowerCase().trim();
+        const helper = await Helper.findOne({
+            email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') },
+            isActive: true
+        }).select('_id name email phone code isConnected vendorId');
+
+        if (!helper) {
+            return res.json({ success: true, isHelper: false });
+        }
+
+        let vendorInfo = null;
+        if (helper.vendorId) {
+            const vendorUser = await User.findById(helper.vendorId).select('name email phone companyName serviceType');
+            if (vendorUser) {
+                vendorInfo = {
+                    _id: vendorUser._id,
+                    name: vendorUser.name,
+                    email: vendorUser.email,
+                    phone: vendorUser.phone,
+                    companyName: vendorUser.companyName || vendorUser.name
+                };
+            }
+        }
+
+        res.json({
+            success: true,
+            isHelper: true,
+            helper: {
+                _id: helper._id,
+                name: helper.name,
+                email: helper.email,
+                phone: helper.phone,
+                code: helper.code,
+                isConnected: helper.isConnected,
+                vendor: vendorInfo
+            }
+        });
+    } catch (error) {
+        console.error('Error checking helper by email:', error);
+        res.status(500).json({ success: false, isHelper: false, message: 'Server error' });
+    }
+});
+
+// Helper Login Route
 router.post('/login', async (req, res) => {
     try {
-        const { code } = req.body;
+        const { code, email } = req.body;
         
         if (!code) {
             return res.status(400).json({
@@ -81,11 +132,12 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Populate vendorId to include vendor name
+        const cleanCode = code.toString().trim().toUpperCase();
+
         const helper = await Helper.findOne({ 
-            code: code.toUpperCase(), 
+            code: cleanCode, 
             isActive: true 
-    }).select('-password').populate('vendorId', 'name');  // This should work now
+        }).select('-password');
         
         if (!helper) {
             return res.status(400).json({
@@ -93,6 +145,37 @@ router.post('/login', async (req, res) => {
                 message: 'Invalid code or helper not found'
             });
         }
+
+        // If email is provided, verify this code belongs to that email
+        if (email) {
+            const normalizedEmail = email.toLowerCase().trim();
+            if (helper.email.toLowerCase().trim() !== normalizedEmail) {
+                return res.status(403).json({
+                    success: false,
+                    message: `This unique code does not belong to your account (${email})`
+                });
+            }
+        }
+
+        // Fetch vendor/admin user details
+        let vendorInfo = null;
+        if (helper.vendorId) {
+            const vendorUser = await User.findById(helper.vendorId).select('name email phone companyName serviceType');
+            if (vendorUser) {
+                vendorInfo = {
+                    _id: vendorUser._id,
+                    name: vendorUser.name,
+                    email: vendorUser.email,
+                    phone: vendorUser.phone,
+                    companyName: vendorUser.companyName || vendorUser.name
+                };
+            }
+        }
+
+        // Connect helper with admin / vendor
+        helper.isConnected = true;
+        helper.lastSeen = new Date();
+        await helper.save();
 
         const token = jwt.sign(
             { helperId: helper._id, code: helper.code },
@@ -102,15 +185,15 @@ router.post('/login', async (req, res) => {
 
         res.json({
             success: true,
-            message: 'Login successful',
+            message: 'Connected with admin/vendor successfully',
             helper: {
                 _id: helper._id,
                 name: helper.name,
                 code: helper.code,
                 phone: helper.phone,
                 email: helper.email,
-                isConnected: helper.isConnected,
-                vendor: helper.vendorId ? { name: helper.vendorId.name } : null  // <-- NEW: Include vendor name in response
+                isConnected: true,
+                vendor: vendorInfo
             },
             token
         });
