@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import Modal from "react-bootstrap/Modal";
 import Button from "react-bootstrap/Button";
+import { appAlert } from "../utils/appAlert";
 
 function BidInputs({ selectedRequirement, onClose }) {
     const [bidDescription, setBidDescription] = useState("");
@@ -46,7 +47,7 @@ function BidInputs({ selectedRequirement, onClose }) {
             // Frontend (BidInputs.js)
             const response = await axios.post("/api/bids/bidsubmit", bidsumbit); // Changed from bidsumbit to bidsubmit
             if (response.status === 201) {
-                alert("Requirement bid submitted successfully!");
+                appAlert.success("Requirement bid submitted successfully!");
                 setBidDescription("");
                 setBidPrice("");
                 handleNestedModalClose();

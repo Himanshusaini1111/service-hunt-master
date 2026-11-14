@@ -1,81 +1,213 @@
 // contexts/NotificationContext.js
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 
 const NotificationContext = createContext();
 
 export const useNotifications = () => {
     const context = useContext(NotificationContext);
     if (!context) {
-        throw new Error('useNotifications must be used within NotificationProvider');
+        // Return a safe mock if used outside provider so app never crashes
+        return {
+            unreadCount: 0,
+            notifications: [],
+            newBookingsCount: 0,
+            pendingBookings: [],
+            soundEnabled: true,
+            markAsRead: () => {},
+            markAllAsRead: () => {},
+            toggleSound: () => {},
+            resetNotifications: () => {},
+            triggerServiceVisibilityChange: () => {}
+        };
     }
     return context;
 };
 
 export const NotificationProvider = ({ children }) => {
+    const [notifications, setNotifications] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('sh_recent_notifications') || '[]');
+        } catch {
+            return [];
+        }
+    });
+
+    const [soundEnabled, setSoundEnabled] = useState(() => {
+        return localStorage.getItem('soundEnabled') !== 'false';
+    });
+
+    const [pendingBookings, setPendingBookings] = useState([]);
     const [newBookingsCount, setNewBookingsCount] = useState(0);
     const [serviceVisibilityChanged, setServiceVisibilityChanged] = useState(false);
-    const [pendingBookings, setPendingBookings] = useState([]);
-    const [lastChecked, setLastChecked] = useState(new Date());
-    const user = JSON.parse(localStorage.getItem("currentUser"));
 
-    // Check for new bookings
-    useEffect(() => {
-        if (!user || (!user.isAdmin && user.role !== 'admin' && user.role !== 'vendor')) return;
+    const notifiedIdsRef = useRef(new Set());
+    const lastCheckedRef = useRef(Date.now() - 3600000); // 1 hour ago initially
 
-        const checkNewBookings = async () => {
-            try {
+    const toggleSound = useCallback(() => {
+        setSoundEnabled((prev) => {
+            const next = !prev;
+            localStorage.setItem('soundEnabled', String(next));
+            return next;
+        });
+    }, []);
+
+    const markAsRead = useCallback((id) => {
+        setNotifications((prev) => {
+            const updated = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
+            localStorage.setItem('sh_recent_notifications', JSON.stringify(updated.slice(0, 30)));
+            return updated;
+        });
+    }, []);
+
+    const markAllAsRead = useCallback(() => {
+        setNotifications((prev) => {
+            const updated = prev.map((n) => ({ ...n, read: true }));
+            localStorage.setItem('sh_recent_notifications', JSON.stringify(updated.slice(0, 30)));
+            return updated;
+        });
+        setNewBookingsCount(0);
+    }, []);
+
+    const addNotification = useCallback((item) => {
+        setNotifications((prev) => {
+            if (prev.some((n) => n.id === item.id)) return prev;
+            const updated = [
+                {
+                    ...item,
+                    read: false,
+                    timestamp: item.timestamp || new Date().toISOString()
+                },
+                ...prev
+            ].slice(0, 30);
+            localStorage.setItem('sh_recent_notifications', JSON.stringify(updated));
+            return updated;
+        });
+    }, []);
+
+    // Check for new bookings / orders / tasks
+    const checkUpdates = useCallback(async () => {
+        const user = JSON.parse(localStorage.getItem('currentUser') || 'null');
+        if (!user || !user._id) return;
+
+        try {
+            const isAdminOrVendor = user.isAdmin || user.role === 'admin' || user.role === 'vendor' || user.role === 'superadmin';
+
+            if (isAdminOrVendor) {
                 const response = await axios.get(`/api/bookings/getallbookings?userid=${user._id}`);
-                const bookings = response.data;
-                
-                // Filter bookings that are pending/confirmed and not assigned
-                const pending = bookings.filter(b => 
-                    (b.status === 'pending' || b.status === 'confirmed' || b.status === 'booked') && 
+                const bookings = Array.isArray(response.data) ? response.data : [];
+
+                const pending = bookings.filter((b) =>
+                    (b.status === 'pending' || b.status === 'confirmed' || b.status === 'booked') &&
                     b.status !== 'assigned' &&
                     b.status !== 'completed'
                 );
-                
                 setPendingBookings(pending);
-                
-                // Check for new bookings (created after last check)
-                const newBookings = bookings.filter(b => 
-                    new Date(b.createdAt) > lastChecked && 
-                    (b.status === 'pending' || b.status === 'confirmed')
-                );
-                
-                setNewBookingsCount(newBookings.length);
-            } catch (error) {
-                console.error('Error checking new bookings:', error);
+
+                // Check for bookings created after last check that haven't been notified
+                bookings.forEach((b) => {
+                    if (!notifiedIdsRef.current.has(b._id)) {
+                        notifiedIdsRef.current.add(b._id);
+
+                        const isRecent = new Date(b.createdAt).getTime() > lastCheckedRef.current;
+                        if (isRecent) {
+                            addNotification({
+                                id: `booking_${b._id}`,
+                                type: 'booking',
+                                title: 'New Booking Received',
+                                message: `${b.service || 'Service'} - ₹${b.totalAmount || 0}`,
+                                link: '/admin',
+                                timestamp: b.createdAt
+                            });
+                        }
+                    }
+                });
+
+                lastCheckedRef.current = Date.now();
+            } else if (user.isHelper) {
+                // Check helper assigned works
+                const token = localStorage.getItem('helperToken');
+                if (token) {
+                    const response = await axios.get('/api/helper/assigned-works', {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    const works = response.data?.works || [];
+                    works.forEach((w) => {
+                        if (!notifiedIdsRef.current.has(w._id)) {
+                            notifiedIdsRef.current.add(w._id);
+                            addNotification({
+                                id: `work_${w._id}`,
+                                type: 'work',
+                                title: 'New Assigned Job',
+                                message: `Job for ${w.service || 'service'} in ${w.location || ''}`,
+                                link: '/helperlogin',
+                                timestamp: w.createdAt || new Date().toISOString()
+                            });
+                        }
+                    });
+                }
             }
+        } catch (error) {
+            // Silently handle polling errors
+        }
+    }, [addNotification]);
+
+    useEffect(() => {
+        checkUpdates();
+        const interval = setInterval(checkUpdates, 25000);
+
+        const handleFcm = (event) => {
+            const payload = event.detail;
+            if (payload) {
+                const title = payload.notification?.title || '📢 Update Received';
+                const body = payload.notification?.body || '';
+                addNotification({
+                    id: 'fcm_' + Date.now(),
+                    type: 'fcm',
+                    title,
+                    message: body,
+                    link: '/admin',
+                    timestamp: new Date().toISOString()
+                });
+            }
+            checkUpdates();
         };
 
-        // Initial check
-        checkNewBookings();
-        
-        // Check every 30 seconds
-        const interval = setInterval(checkNewBookings, 30000);
-        
-        return () => clearInterval(interval);
-    }, [user, lastChecked]);
+        window.addEventListener('fcmBookingReceived', handleFcm);
+        window.addEventListener('fcmWorkAssigned', handleFcm);
 
-    // Reset notifications when viewed
-    const resetNotifications = () => {
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('fcmBookingReceived', handleFcm);
+            window.removeEventListener('fcmWorkAssigned', handleFcm);
+        };
+    }, [checkUpdates, addNotification]);
+
+    const unreadCount = notifications.filter((n) => !n.read).length;
+
+    const resetNotifications = useCallback(() => {
         setNewBookingsCount(0);
-        setLastChecked(new Date());
-    };
+        markAllAsRead();
+    }, [markAllAsRead]);
 
-    const triggerServiceVisibilityChange = () => {
+    const triggerServiceVisibilityChange = useCallback(() => {
         setServiceVisibilityChanged(true);
         setTimeout(() => setServiceVisibilityChanged(false), 3000);
-    };
+    }, []);
 
     const value = {
-        newBookingsCount,
-        serviceVisibilityChanged,
+        notifications,
+        unreadCount,
+        newBookingsCount: unreadCount || newBookingsCount,
         pendingBookings,
+        serviceVisibilityChanged,
+        soundEnabled,
+        toggleSound,
+        markAsRead,
+        markAllAsRead,
         resetNotifications,
-        triggerServiceVisibilityChange
+        triggerServiceVisibilityChange,
+        addNotification
     };
 
     return (

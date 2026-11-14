@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import { appAlert } from '../utils/appAlert';
 
 const InformationScreen = () => {
     const location = useLocation();
@@ -30,7 +31,7 @@ const InformationScreen = () => {
             return; // Stop after booking
         }
         if (!includePaymentStep && step === 4) {
-            alert('Inquiry Submitted!');
+            appAlert.success('Inquiry submitted successfully!');
             return; // Stop for inquiry flow
         }
         setStep((prev) => prev + 1);
@@ -157,7 +158,7 @@ const InformationScreen = () => {
                     />
                     <button onClick={handlePrev}>Back</button>
                     {!includePaymentStep ? (
-                        <button onClick={() => alert('Inquiry Submitted!')}>Send Inquiry</button>
+                        <button onClick={() => appAlert.success('Inquiry submitted successfully!')}>Send Inquiry</button>
                     ) : (
                         <button onClick={handleNext}>Proceed to Payment</button>
                     )}

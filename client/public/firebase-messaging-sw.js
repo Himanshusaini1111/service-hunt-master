@@ -13,24 +13,29 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// Handle background notifications (when app is CLOSED)
+// Handle background notifications (when app is CLOSED or IN BACKGROUND)
 messaging.onBackgroundMessage((payload) => {
     console.log('📢 Background notification received:', payload);
     
-    const notificationTitle = payload.notification?.title || 'New Booking!';
+    const notificationTitle = payload.notification?.title || '📢 Service Alert!';
+    const isWork = payload.data?.type === 'work' || payload.data?.type === 'new_work';
+    const targetUrl = isWork ? '/helperlogin' : '/admin';
+
     const notificationOptions = {
-        body: payload.notification?.body || 'A new booking has arrived',
+        body: payload.notification?.body || 'A new booking or assigned work has arrived',
         icon: '/icon-192.png',
         badge: '/icon-192.png',
-        vibrate: [200, 100, 200],
-sound: '/sounds/booking.mp3',
+        vibrate: [250, 100, 250, 100, 250],
+        requireInteraction: true,
+        tag: 'service-hunt-background-alert',
+        sound: '/sounds/booking.mp3',
         data: {
-            click_action: payload.data?.click_action,
-            bookingId: payload.data?.bookingId
+            click_action: payload.data?.click_action || targetUrl,
+            bookingId: payload.data?.bookingId,
+            url: targetUrl
         }
     };
     
-    // This will show notification with sound even when app is CLOSED
     self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
@@ -38,19 +43,19 @@ sound: '/sounds/booking.mp3',
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     
-    // Open app when notification is clicked
+    const targetUrl = event.notification.data?.url || '/admin';
+
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then(windowClients => {
-                // If app is already open, focus it
                 for (let client of windowClients) {
-                    if (client.url.includes('/') && 'focus' in client) {
+                    if ('focus' in client) {
+                        client.navigate(targetUrl);
                         return client.focus();
                     }
                 }
-                // Otherwise open new window
                 if (clients.openWindow) {
-                    return clients.openWindow('/');
+                    return clients.openWindow(targetUrl);
                 }
             })
     );

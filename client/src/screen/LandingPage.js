@@ -10,6 +10,7 @@ import { Switch, Button, Modal, DatePicker, InputNumber, Select } from 'antd';
 import moment from 'moment';
 import 'antd/dist/reset.css';
 import './LandingPage.css';
+import { appAlert } from '../utils/appAlert';
 
 // Crisp modern icons
 import {
@@ -315,7 +316,7 @@ const LandingPage = () => {
         const loc = locationSearch.trim();
 
         if (!term && !loc && !selectedLocation) {
-            alert("Please enter a service name or location to search");
+            appAlert.warning("Please enter a service name or location to search");
             return;
         }
 
@@ -403,7 +404,7 @@ const LandingPage = () => {
 
     const handleCategoryClick = (category) => {
         if (!hasLocation) {
-            alert("Please select a location first");
+            appAlert.warning("Please select a location first");
             return;
         }
 
@@ -417,7 +418,7 @@ const LandingPage = () => {
 
     const handleSubCategoryClick = (subCategory) => {
         if (!hasLocation) {
-            alert("Please select a location first");
+            appAlert.warning("Please select a location first");
             return;
         }
 
@@ -868,7 +869,7 @@ const LandingPage = () => {
                                     } else {
                                         window.scrollTo({ top: 0, behavior: 'smooth' });
                                         setTimeout(() => {
-                                            alert("Please click on the location button in the top navbar to select your location");
+                                            appAlert.info("Please click on the location button in the top navbar to select your location");
                                         }, 400);
                                     }
                                 }}

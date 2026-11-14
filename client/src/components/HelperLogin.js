@@ -41,6 +41,8 @@ import {
 } from 'react-icons/fa';
 import Navbar from './Navbar';
 import { requestNotificationPermission, onMessageListener } from '../firebase';
+import { playSoundAlert, stopSoundAlert } from '../utils/soundAlert';
+import { appAlert } from '../utils/appAlert';
 import './HelperLogin.css';
 
 const { useBreakpoint } = Grid;
@@ -391,6 +393,7 @@ function HelperDashboard({ helperData, onLogout }) {
     }, [isPlayingSound]);
 
     const stopSound = useCallback(() => {
+        stopSoundAlert();
         if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current.currentTime = 0;
@@ -400,8 +403,12 @@ function HelperDashboard({ helperData, onLogout }) {
             soundTimeoutRef.current = null;
         }
         setIsPlayingSound(false);
-        setNewWorkAlert(null);
     }, []);
+
+    const dismissWorkAlert = useCallback(() => {
+        stopSound();
+        setNewWorkAlert(null);
+    }, [stopSound]);
 
     // If helper is offline, immediately silence any ringing alert sound
     useEffect(() => {
@@ -412,30 +419,20 @@ function HelperDashboard({ helperData, onLogout }) {
 
     const playNotificationSound = useCallback((shouldLoop = true) => {
         // If helper is offline, do NOT ring alert!
-        if (!isOnlineRef.current) {
+        if (!isOnlineRef.current || !soundEnabledRef.current) {
             return;
         }
 
-        if (!soundEnabledRef.current || !audioRef.current) return;
-
-        try {
-            audioRef.current.loop = shouldLoop;
-            audioRef.current.currentTime = 0;
-            audioRef.current.play().catch((e) => {
-                console.log('Sound play failed:', e);
-                message.warning('Click "Allow" in browser to enable audio alerts', 3);
-            });
-            setIsPlayingSound(true);
-
-            // Auto-stop sound after 30 seconds
-            soundTimeoutRef.current = setTimeout(() => {
-                stopSound();
+        setIsPlayingSound(true);
+        playSoundAlert({
+            loop: shouldLoop,
+            maxDurationMs: 30000,
+            onAutoStop: () => {
+                setIsPlayingSound(false);
                 message.info('Sound alert auto-silenced after 30 seconds', 2);
-            }, 30000);
-        } catch (error) {
-            console.log('Error playing sound:', error);
-        }
-    }, [stopSound]);
+            }
+        });
+    }, []);
 
     const fetchAssignedWorks = useCallback(async (isSilent = false) => {
         if (!isSilent) {
@@ -508,7 +505,23 @@ function HelperDashboard({ helperData, onLogout }) {
                         if (isOnlineRef.current) {
                             setNewWorkAlert(newWorkInfo);
 
-                            if (soundEnabledRef.current && audioRef.current) {
+                            // Trigger floating high-priority toast
+                            appAlert.bookingAlert({
+                                title: '📢 New Work Assigned!',
+                                message: `${count} new job${count > 1 ? 's' : ''} assigned to you by your vendor`,
+                                count,
+                                service: trulyNewWorks[0]?.service || '',
+                                sound: false,
+                                onView: () => {
+                                    dismissWorkAlert();
+                                    fetchAssignedWorks(false);
+                                },
+                                onDismiss: () => {
+                                    stopSound();
+                                }
+                            });
+
+                            if (soundEnabledRef.current) {
                                 playNotificationSound(true);
                             }
 
@@ -535,7 +548,7 @@ function HelperDashboard({ helperData, onLogout }) {
         } catch (error) {
             console.log('Error checking new jobs:', error);
         }
-    }, [fetchAssignedWorks, newWorkAlert, playNotificationSound]);
+    }, [fetchAssignedWorks, newWorkAlert, playNotificationSound, dismissWorkAlert, stopSound]);
 
     // Work status changes listener
     useEffect(() => {
@@ -1069,7 +1082,7 @@ function HelperDashboard({ helperData, onLogout }) {
             </audio>
 
             {/* Floating Alert Toast */}
-            {newWorkAlert && isPlayingSound && (
+            {newWorkAlert && (
                 <div className="helper-alert-toast">
                     <div className="helper-alert-pulse" style={{ fontSize: 24 }}>🔔</div>
                     <div>
@@ -1078,14 +1091,25 @@ function HelperDashboard({ helperData, onLogout }) {
                             {newWorkAlert.count} new job{newWorkAlert.count > 1 ? 's' : ''} assigned by your vendor
                         </div>
                     </div>
-                    <Button
-                        danger
-                        size="small"
-                        onClick={stopSound}
-                        style={{ fontWeight: 700, borderRadius: 8 }}
-                    >
-                        Mute Sound
-                    </Button>
+                    <div className="d-flex align-items-center gap-2">
+                        {isPlayingSound && (
+                            <Button
+                                danger
+                                size="small"
+                                onClick={stopSound}
+                                style={{ fontWeight: 700, borderRadius: 8 }}
+                            >
+                                Mute Sound
+                            </Button>
+                        )}
+                        <Button
+                            size="small"
+                            onClick={dismissWorkAlert}
+                            style={{ fontWeight: 600, borderRadius: 8 }}
+                        >
+                            Dismiss
+                        </Button>
+                    </div>
                 </div>
             )}
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal } from "antd";
 import axios from "axios";
 import Swal from 'sweetalert2';
+import { appAlert } from "../utils/appAlert";
 import Error from "../components/Error";
 import Loader from "../components/Loader";
 import moment from "moment";
@@ -880,7 +881,7 @@ const handleBooking = async (e) => {
     if (phoneNumber) {
       window.location.href = `tel:${phoneNumber}`;
     } else {
-      alert("Phone number not available.");
+      appAlert.warning("Phone number is not available for this service.");
     }
   };
 
@@ -890,7 +891,7 @@ const handleBooking = async (e) => {
     if (phoneNumber) {
       window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, '_blank');
     } else {
-      alert("Phone number not available.");
+      appAlert.warning("Phone number is not available for this service.");
     }
   };
 

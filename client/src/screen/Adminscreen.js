@@ -13,6 +13,8 @@ import "react-calendar/dist/Calendar.css";
 import "./Adminscreen.css";
 import { Link } from 'react-router-dom';
 import { requestNotificationPermission, onMessageListener } from '../firebase';
+import { playSoundAlert, stopSoundAlert } from '../utils/soundAlert';
+import { appAlert } from '../utils/appAlert';
 
 const { TabPane } = Tabs;
 
@@ -88,35 +90,32 @@ function Adminscreen() {
 
     // Stop sound function
     const stopSound = () => {
+        stopSoundAlert();
         if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current.currentTime = 0;
         }
         setIsPlayingSound(false);
+    };
+
+    // Dismiss alert banner and stop sound
+    const dismissBookingAlert = () => {
+        stopSound();
         setNewBookingAlert(null);
     };
 
-    // Play notification sound
+    // Play notification sound with Web Audio chime fallback and auto-stop
     const playNotificationSound = (shouldLoop = true) => {
-        if (!soundEnabled || !audioRef.current) return;
-        
-        try {
-            audioRef.current.loop = shouldLoop;
-            audioRef.current.currentTime = 0;
-            audioRef.current.play().catch(e => {
-                console.log('Sound play failed:', e);
-            });
-            setIsPlayingSound(true);
-            
-            // Auto-stop sound after 30 seconds
-            setTimeout(() => {
-                if (isPlayingSound) {
-                    stopSound();
-                }
-            }, 30000);
-        } catch (error) {
-            console.log('Error playing sound:', error);
-        }
+        if (!soundEnabled) return;
+        setIsPlayingSound(true);
+
+        playSoundAlert({
+            loop: shouldLoop,
+            maxDurationMs: 30000,
+            onAutoStop: () => {
+                setIsPlayingSound(false);
+            }
+        });
     };
 
     // Check new bookings function
@@ -171,6 +170,21 @@ function Adminscreen() {
                             };
                             
                             setNewBookingAlert(newBookingInfo);
+
+                            // Trigger floating high-priority toast
+                            appAlert.bookingAlert({
+                                count: alertList.length,
+                                service: alertList[0]?.service || '',
+                                isNoHelperAlert: isNoHelper,
+                                sound: false, // Audio handled by playNotificationSound below
+                                onView: () => {
+                                    dismissBookingAlert();
+                                    setActiveTab('1');
+                                },
+                                onDismiss: () => {
+                                    stopSound();
+                                }
+                            });
                             
                             if (soundEnabledRef.current) {
                                 playNotificationSound(true);
@@ -520,7 +534,7 @@ function Adminscreen() {
             </audio>
             
             {/* NEW BOOKING ALERT BANNER */}
-            {newBookingAlert && isPlayingSound && (
+            {newBookingAlert && (
                 <div className="booking-alert-container">
                     <Card className={`booking-alert-card ${newBookingAlert.isNoHelperAlert ? 'border-danger' : ''}`} style={newBookingAlert.isNoHelperAlert ? { borderLeft: '6px solid #dc2626' } : {}}>
                         <div className="alert-content">
@@ -544,21 +558,29 @@ function Adminscreen() {
                                     type="primary"
                                     size="middle"
                                     onClick={() => {
-                                        stopSound();
+                                        dismissBookingAlert();
                                         setActiveTab('1');
                                     }}
                                     style={{ background: '#2563eb', fontWeight: 600 }}
                                 >
                                     View Bookings
                                 </Button>
+                                {isPlayingSound && (
+                                    <Button
+                                        danger
+                                        size="middle"
+                                        onClick={stopSound}
+                                        icon={<span>🔇</span>}
+                                        className="stop-sound-btn"
+                                    >
+                                        Stop Sound
+                                    </Button>
+                                )}
                                 <Button
-                                    danger
                                     size="middle"
-                                    onClick={stopSound}
-                                    icon={<span>🔇</span>}
-                                    className="stop-sound-btn"
+                                    onClick={dismissBookingAlert}
                                 >
-                                    Stop Sound
+                                    Dismiss
                                 </Button>
                             </div>
                         </div>

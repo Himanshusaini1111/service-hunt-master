@@ -1,0 +1,199 @@
+/* ==========================================================================
+   Global Alert Manager - High-Visibility Omnipresent Notification Banner
+   ========================================================================== */
+.sh-global-alert-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99999;
+  width: 92vw;
+  max-width: 620px;
+  animation: shGlobalAlertSlideDown 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+}
+
+@keyframes shGlobalAlertSlideDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -30px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.sh-global-alert-card {
+  border-radius: 16px;
+  padding: 16px 20px;
+  color: #ffffff;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(10px);
+}
+
+/* Role / Type Specific Themes */
+.sh-global-alert-card.admin {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  border-left: 6px solid #60a5fa;
+}
+
+.sh-global-alert-card.unclaimed {
+  background: linear-gradient(135deg, #7f1d1d 0%, #dc2626 100%);
+  border-left: 6px solid #f87171;
+  animation: shPulseUrgent 2s infinite ease-in-out;
+}
+
+.sh-global-alert-card.helper {
+  background: linear-gradient(135deg, #3730a3 0%, #6366f1 100%);
+  border-left: 6px solid #a5b4fc;
+}
+
+@keyframes shPulseUrgent {
+  0%, 100% { box-shadow: 0 20px 40px -10px rgba(220, 38, 38, 0.4); }
+  50% { box-shadow: 0 22px 45px -5px rgba(220, 38, 38, 0.7); }
+}
+
+.sh-global-alert-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
+}
+
+.sh-global-alert-icon-pulse {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  flex-shrink: 0;
+  animation: shGlobalBellRing 1.3s infinite ease-in-out;
+}
+
+@keyframes shGlobalBellRing {
+  0%, 100% { transform: rotate(0); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-14deg); }
+  45% { transform: rotate(8deg); }
+  60% { transform: rotate(-8deg); }
+  75% { transform: rotate(0); }
+}
+
+.sh-global-alert-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.sh-global-alert-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.25;
+}
+
+.sh-global-alert-body {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.92);
+  margin-top: 3px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.sh-global-alert-service-tag {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 3px 10px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.sh-global-alert-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sh-global-btn {
+  border: none;
+  outline: none;
+  font-weight: 700;
+  border-radius: 9px;
+  cursor: pointer;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.sh-global-btn-primary {
+  background: #ffffff;
+  color: #1e3a8a;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.sh-global-btn-primary:hover {
+  background: #f1f5f9;
+  transform: translateY(-1px);
+}
+
+.sh-global-btn-mute {
+  background: rgba(239, 68, 68, 0.9);
+  color: #ffffff;
+}
+
+.sh-global-btn-mute:hover {
+  background: #dc2626;
+}
+
+.sh-global-btn-dismiss {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.sh-global-btn-dismiss:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 640px) {
+  .sh-global-alert-container {
+    top: 10px;
+    width: 95vw;
+  }
+
+  .sh-global-alert-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .sh-global-alert-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .sh-global-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}

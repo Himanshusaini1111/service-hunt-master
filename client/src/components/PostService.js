@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { appAlert } from "../utils/appAlert";
 
 function PostService() {
     const [serviceType, setServiceType] = useState("");
@@ -157,7 +158,7 @@ function PostService() {
 
         try {
             await axios.post("/api/requirements", requirement);
-            alert("Requirement posted successfully!");
+            appAlert.success("Requirement posted successfully!");
             setServiceType("");
             setDescription("");
             setBudget("");
@@ -168,7 +169,7 @@ function PostService() {
             setSelectedSubCategory("");
         } catch (error) {
             console.error(error);
-            alert("Failed to post requirement.");
+            appAlert.error("Failed to post requirement. Please check required fields.");
         }
     }
 
