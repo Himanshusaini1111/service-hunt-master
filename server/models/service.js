@@ -193,6 +193,11 @@ const serviceSchema = mongoose.Schema({
         enum: ['Automatic Booking', 'Manual Booking', 'Inquari Booking', 'timeSlot'],
         required: true
     },
+    allowedPaymentMethods: {
+        type: [String],
+        enum: ['CASH_AFTER_SERVICE', 'FULL_ONLINE', 'PARTIAL_30_70'],
+        default: ['CASH_AFTER_SERVICE']
+    },
     assignedHelpers: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Helper'
@@ -226,12 +231,12 @@ const serviceSchema = mongoose.Schema({
     }],
     vendorId: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User', 
+        ref: 'user', 
         required: true 
     },
     userid: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User' 
+        ref: 'user' 
     }
 
 }, { timestamps: true });

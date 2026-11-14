@@ -311,7 +311,11 @@ router.get('/assigned-works', authenticateHelper, async (req, res) => {
                 isClaimed: !!bookingObj.claimedBy,
                 isClaimedByMe: isClaimedByMe,
                 jobCompletedBy: bookingObj.jobCompletedBy,
-                assignedHelpers: bookingObj.assignedHelpers
+                assignedHelpers: bookingObj.assignedHelpers,
+                paymentMethod: bookingObj.paymentMethod || 'CASH_AFTER_SERVICE',
+                paymentStatus: bookingObj.paymentStatus || 'unpaid',
+                advancePaidAmount: bookingObj.advancePaidAmount || 0,
+                remainingCashAmount: bookingObj.remainingCashAmount || 0
             };
         });
 
@@ -551,6 +555,25 @@ router.put('/update-status', authenticateHelper, async (req, res) => {
         booking.status = status;
         if (status === 'completed') {
             booking.jobCompletedBy = req.helper._id;
+            const now = new Date();
+            booking.completedAt = now;
+            // Immediate maturity for testing (bypasses 2-day hold so payout can be tested right away)
+            booking.escrowReleaseDate = now;
+
+            // Platform Commission: Flat ₹200 for Inquiry bookings, 5% of total for standard bookings
+            const total = Number(booking.totalAmount) || 0;
+            const isInquiry = booking.bookingType === 'Inquari Booking' || booking.bookingType === 'inquiry';
+            let commission = 0;
+            if (isInquiry) {
+                commission = 200;
+            } else {
+                commission = Math.round(total * 0.05 * 100) / 100;
+            }
+            booking.platformCommission = commission;
+            booking.adminNetEarning = Math.max(0, total - commission);
+            if (booking.payoutStatus !== 'paid' && booking.payoutStatus !== 'payout_requested') {
+                booking.payoutStatus = 'available';
+            }
         } else if (status === 'in-progress' && !booking.claimedBy) {
             booking.claimedBy = req.helper._id;
             booking.jobCompletedBy = req.helper._id;

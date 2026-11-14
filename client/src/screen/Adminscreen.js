@@ -8,6 +8,7 @@ import { Addservice } from "../components/Addservice.js";
 import { VendorHelperInfo } from "../components/VendorHelperInfo";
 import Calendar from "react-calendar";
 import { VendorProfile } from "../components/VendorProfile .js";
+import Payment from "../components/Payment";
 import "react-calendar/dist/Calendar.css";
 import "./Adminscreen.css";
 import { Link } from 'react-router-dom';
@@ -39,7 +40,14 @@ function Adminscreen() {
     const isVendor = user?.role === 'vendor' || user?.isVendor;
 
     const [activeTab, setActiveTab] = useState('1');
+    const [editingService, setEditingService] = useState(null);
     const [activeBookingId, setActiveBookingId] = useState(null);
+
+    const handleEditService = (service) => {
+        setEditingService(service);
+        setActiveTab('3');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
     const [dashboardData, setDashboardData] = useState({
         totalBookings: 0,
         totalServices: 0,
@@ -665,10 +673,26 @@ function Adminscreen() {
                             userId={user._id} 
                             isSuperAdmin={isSuperAdmin}
                             onServicesUpdate={setAllServices}
+                            onEditService={handleEditService}
                         />
                     </TabPane>
-                    <TabPane tab="Add Services" key="3">
-                        <Addservice userId={user._id} />
+                    <TabPane tab={editingService ? "✏️ Edit Service" : "Add Services"} key="3">
+                        <Addservice 
+                            userId={user._id} 
+                            editingService={editingService}
+                            onCancelEdit={() => {
+                                setEditingService(null);
+                                setActiveTab('2');
+                            }}
+                            onServiceUpdated={() => {
+                                setEditingService(null);
+                                setRefreshKey(prev => prev + 1);
+                                setActiveTab('2');
+                            }}
+                        />
+                    </TabPane>
+                    <TabPane tab="Payment" key="4">
+                        <Payment userId={user._id} isSuperAdmin={isSuperAdmin} />
                     </TabPane>
                     <TabPane tab="Vendor/Helper Info" key="7">
                         <VendorHelperInfo bookingId={activeBookingId} userId={user._id} />
@@ -722,6 +746,36 @@ export function Dashboard({ dashboardData, dashboardLoading, isSuperAdmin, userI
             dataIndex: 'totalAmount',
             key: 'amount',
             render: (text) => <span style={{ fontWeight: 700, color: '#0f172a' }}>₹{Number(text || 0).toLocaleString('en-IN')}</span>
+        },
+        {
+            title: 'Payment Method',
+            dataIndex: 'paymentMethod',
+            key: 'paymentMethod',
+            render: (_, record) => {
+                if (record.bookingType === 'Inquari Booking' || record.bookingType === 'inquiry' || record.paymentMethod === 'N/A') {
+                    return <span style={{ color: '#64748b', fontSize: '11.5px' }}>N/A (Inquiry)</span>;
+                }
+                const method = record.paymentMethod || 'CASH_AFTER_SERVICE';
+                if (method === 'FULL_ONLINE') {
+                    return (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 6, background: '#ecfdf5', color: '#059669', fontSize: 11, fontWeight: 600, border: '1px solid #a7f3d0' }}>
+                            💳 100% Online
+                        </span>
+                    );
+                }
+                if (method === 'PARTIAL_30_70') {
+                    return (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 6, background: '#fffbeb', color: '#b45309', fontSize: 11, fontWeight: 600, border: '1px solid #fde68a' }}>
+                            ⚡ 30% / 70% Split
+                        </span>
+                    );
+                }
+                return (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 6, background: '#f8fafc', color: '#475569', fontSize: 11, fontWeight: 600, border: '1px solid #cbd5e1' }}>
+                        💵 Cash on Service
+                    </span>
+                );
+            }
         },
         {
             title: 'Status',
@@ -955,6 +1009,59 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
     const handleViewBill = (booking) => {
         setSelectedBooking(booking);
         setShowBillModal(true);
+    };
+
+    const renderPaymentBadge = (booking) => {
+        const isInquiry = booking.bookingType === 'Inquari Booking' || booking.bookingType === 'inquiry' || booking.paymentMethod === 'N/A';
+        if (isInquiry) {
+            return (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', background: '#f8fafc', color: '#64748b', fontSize: '11px', fontWeight: 600, border: '1px solid #e2e8f0' }}>
+                    N/A (Inquiry)
+                </span>
+            );
+        }
+
+        const method = booking.paymentMethod || 'CASH_AFTER_SERVICE';
+        const status = booking.paymentStatus || 'unpaid';
+        const advance = Number(booking.advancePaidAmount) || 0;
+        const remaining = Number(booking.remainingCashAmount) || 0;
+
+        if (method === 'FULL_ONLINE' || status === 'paid') {
+            return (
+                <div>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', background: '#ecfdf5', color: '#059669', fontSize: '11.5px', fontWeight: 600, border: '1px solid #a7f3d0' }}>
+                        <span>💳 Full Online</span>
+                    </div>
+                    <div style={{ fontSize: '10.5px', color: '#059669', marginTop: '2px', fontWeight: 600 }}>
+                        Paid: ₹{advance || booking.totalAmount || 0}
+                    </div>
+                </div>
+            );
+        }
+
+        if (method === 'PARTIAL_30_70' || status === 'partial_paid') {
+            return (
+                <div>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', background: '#fffbeb', color: '#b45309', fontSize: '11.5px', fontWeight: 600, border: '1px solid #fde68a' }}>
+                        <span>⚡ 30% / 70% Split</span>
+                    </div>
+                    <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '2px' }}>
+                        Adv: <strong style={{ color: '#059669' }}>₹{advance}</strong> • Due: <strong style={{ color: '#dc2626' }}>₹{remaining}</strong>
+                    </div>
+                </div>
+            );
+        }
+
+        return (
+            <div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', background: '#f8fafc', color: '#334155', fontSize: '11.5px', fontWeight: 600, border: '1px solid #cbd5e1' }}>
+                    <span>💵 Cash on Service</span>
+                </div>
+                <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '2px' }}>
+                    Due: <strong style={{ color: '#dc2626' }}>₹{remaining || booking.totalAmount || 0}</strong>
+                </div>
+            </div>
+        );
     };
 
     const formatLocationDateTime = (loc) => {
@@ -1226,6 +1333,7 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
                             <th>Location Info</th>
                             <th>Bill</th>
                             <th>Total</th>
+                            <th>Payment Method</th>
                             <th>Status</th>
                             <th>Name</th>
                             <th>Booking Type</th>
@@ -1290,6 +1398,9 @@ export function Bookings({ setActiveTab, setActiveBookingId, userId }) {
                                     ) : (
                                         `₹${booking.totalAmount?.toFixed(2) ?? 0}`
                                     )}
+                                </td>
+                                <td className="payment-cell">
+                                    {renderPaymentBadge(booking)}
                                 </td>
                                 <td><StatusBadge status={booking.status} /></td>
                                 <td>
@@ -2017,6 +2128,33 @@ const BookingBillModal = ({ booking, onClose }) => {
                                         ) : 'N/A'}
                                     </span>
                                 </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #e2e8f0', paddingTop: '6px', gap: '8px', flexWrap: 'wrap' }}>
+                                    <span style={{ color: '#64748b' }}>Payment Method:</span>
+                                    <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                                        {isInquiry ? 'N/A (Inquiry Service)' : (
+                                            booking.paymentMethod === 'FULL_ONLINE' ? '💳 100% Online Payment' :
+                                            booking.paymentMethod === 'PARTIAL_30_70' ? '⚡ 30% Advance + 70% Cash' :
+                                            '💵 Cash on Service'
+                                        )}
+                                    </span>
+                                </div>
+                                {!isInquiry && (
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                                        <span style={{ color: '#64748b' }}>Payment Status:</span>
+                                        <span style={{
+                                            padding: '2px 8px',
+                                            borderRadius: '6px',
+                                            fontSize: '0.78rem',
+                                            fontWeight: 700,
+                                            textTransform: 'uppercase',
+                                            background: (booking.paymentStatus === 'paid' || booking.paymentMethod === 'FULL_ONLINE') ? '#ecfdf5' : (booking.paymentStatus === 'partial_paid' || booking.paymentMethod === 'PARTIAL_30_70') ? '#fffbeb' : '#f1f5f9',
+                                            color: (booking.paymentStatus === 'paid' || booking.paymentMethod === 'FULL_ONLINE') ? '#059669' : (booking.paymentStatus === 'partial_paid' || booking.paymentMethod === 'PARTIAL_30_70') ? '#b45309' : '#475569',
+                                            border: (booking.paymentStatus === 'paid' || booking.paymentMethod === 'FULL_ONLINE') ? '1px solid #a7f3d0' : (booking.paymentStatus === 'partial_paid' || booking.paymentMethod === 'PARTIAL_30_70') ? '1px solid #fde68a' : '1px solid #cbd5e1'
+                                        }}>
+                                            {booking.paymentStatus === 'paid' ? 'Paid' : booking.paymentStatus === 'partial_paid' ? 'Partial Paid (30%)' : (booking.paymentStatus || 'Unpaid / Cash Due')}
+                                        </span>
+                                    </div>
+                                )}
                                 {booking.slots && Array.isArray(booking.slots) && booking.slots.length > 0 && (
                                     <div style={{ marginTop: '2px' }}>
                                         <div style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '4px' }}>
@@ -2377,6 +2515,33 @@ const BookingBillModal = ({ booking, onClose }) => {
                                             ₹{displayTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </span>
                                     </div>
+
+                                    {booking.paymentMethod === 'PARTIAL_30_70' && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', width: '100%', marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #cbd5e1' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', color: '#15803d' }}>
+                                                <span>⚡ 30% Online Advance Paid:</span>
+                                                <span style={{ fontWeight: 700 }}>₹{Number(booking.advancePaidAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', color: '#b45309' }}>
+                                                <span>💵 70% Cash Due on Service:</span>
+                                                <span style={{ fontWeight: 700 }}>₹{Number(booking.remainingCashAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {booking.paymentMethod === 'FULL_ONLINE' && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', color: '#15803d', width: '100%', marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #cbd5e1' }}>
+                                            <span>💳 Fully Paid Online:</span>
+                                            <span style={{ fontWeight: 700 }}>₹{Number(booking.advancePaidAmount || displayTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                    )}
+
+                                    {(!booking.paymentMethod || booking.paymentMethod === 'CASH_AFTER_SERVICE') && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.86rem', color: '#475569', width: '100%', marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed #cbd5e1' }}>
+                                            <span>💵 Cash Due on Service:</span>
+                                            <span style={{ fontWeight: 700 }}>₹{Number(booking.remainingCashAmount || displayTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ) : (
@@ -2632,7 +2797,7 @@ styleElement.textContent = billModalStyles;
 document.head.appendChild(styleElement);
 
 // Update the Services component to show area-wise pricing
-export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
+export function Services({ userId, isSuperAdmin, onServicesUpdate, onEditService }) {
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -2753,6 +2918,40 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
             return parts[0].trim();
         }
         return u;
+    };
+
+    const renderServicePaymentMethods = (service) => {
+        const isInquiry = String(service?.bookingType || '').toLowerCase().includes('inqu');
+        if (isInquiry) {
+            return (
+                <span className="badge bg-light text-muted border" style={{ fontSize: '11px', fontWeight: 500 }}>
+                    Inquiry (No Payment Required)
+                </span>
+            );
+        }
+        const methods = service?.allowedPaymentMethods && service.allowedPaymentMethods.length > 0 
+            ? service.allowedPaymentMethods 
+            : ['CASH_AFTER_SERVICE'];
+
+        return (
+            <div className="d-flex flex-wrap gap-1 align-items-center">
+                {methods.includes('CASH_AFTER_SERVICE') && (
+                    <span className="badge bg-light text-dark border" style={{ fontSize: '11px', padding: '4px 7px' }} title="Cash on Service">
+                        💵 Cash
+                    </span>
+                )}
+                {methods.includes('FULL_ONLINE') && (
+                    <span className="badge bg-success-subtle text-success border border-success-subtle" style={{ fontSize: '11px', padding: '4px 7px' }} title="100% Online Payment">
+                        💳 100% Online
+                    </span>
+                )}
+                {methods.includes('PARTIAL_30_70') && (
+                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle" style={{ fontSize: '11px', padding: '4px 7px' }} title="30% Advance + 70% Cash">
+                        ⚡ 30% / 70%
+                    </span>
+                )}
+            </div>
+        );
     };
 
     const deleteService = async (id) => {
@@ -3234,6 +3433,7 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                                         <tr>
                                             <th>Service Details</th>
                                             <th>Pricing & Rates</th>
+                                            <th>Payment Options</th>
                                             <th>Contact</th>
                                             <th className='text-center'>Visibility</th>
                                             <th className='text-center'>Schedule Status</th>
@@ -3291,6 +3491,9 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                                                                 </button>
                                                             )}
                                                         </td>
+                                                        <td style={{ minWidth: '150px' }}>
+                                                            {renderServicePaymentMethods(service)}
+                                                        </td>
                                                         <td>
                                                             <span className="text-dark small d-flex align-items-center">
                                                                 <i className="bi bi-telephone text-muted me-1"></i>
@@ -3311,7 +3514,7 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                                                         <td className='text-center align-middle'>
                                                             {service.unavailableDates && service.unavailableDates.length > 0 ? (
                                                                 <button
-                                                                    className="badge bg-danger border-0 py-2 px-3 rounded-pill text-white fw-bold cursor-pointer"
+                                                                    className="badge bg-white text-success border border-success-subtle py-2 px-3 rounded-pill fw-bold"
                                                                     style={{ fontSize: '11.5px', cursor: 'pointer' }}
                                                                     onClick={() => handleCalendarOpen(service)}
                                                                     title="Click to manage blocked dates"
@@ -3321,7 +3524,7 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                                                                 </button>
                                                             ) : (
                                                                 <button
-                                                                    className="badge bg-success-subtle text-success border border-success-subtle py-2 px-3 rounded-pill fw-bold"
+                                                                    className="badge bg-white text-success border border-success-subtle py-2 px-3 rounded-pill fw-bold"
                                                                     style={{ fontSize: '11.5px', cursor: 'pointer' }}
                                                                     onClick={() => handleCalendarOpen(service)}
                                                                     title="Click to manage schedule"
@@ -3333,6 +3536,15 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                                                         </td>
                                                         <td className='text-center'>
                                                             <div className="d-flex gap-1 justify-content-center">
+                                                                <button
+                                                                    className="btn btn-outline-warning btn-sm px-2 fw-semibold"
+                                                                    onClick={() => onEditService && onEditService(service)}
+                                                                    title="Edit this service"
+                                                                    style={{ fontSize: '12px', whiteSpace: 'nowrap' }}
+                                                                >
+                                                                    <i className="bi bi-pencil-square me-1"></i>
+                                                                    Edit
+                                                                </button>
                                                                 <button
                                                                     className="btn btn-outline-primary btn-sm px-2 fw-semibold"
                                                                     onClick={() => handleCalendarOpen(service)}
@@ -3370,8 +3582,52 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                                                     {/* Expanded Row for Plans & Location Pricing */}
                                                     {isExpanded && (
                                                         <tr>
-                                                            <td colSpan="6" style={{ padding: '12px 16px', background: '#f8fafc' }}>
+                                                            <td colSpan="7" style={{ padding: '12px 16px', background: '#f8fafc' }}>
                                                                 <div className="expanded-pricing-light">
+                                                                    {/* Section: Allowed Payment Methods */}
+                                                                    <div className="mb-3">
+                                                                        <div className="d-flex align-items-center justify-content-between mb-2">
+                                                                            <h6 className="mb-0 fw-bold text-dark d-flex align-items-center">
+                                                                                <i className="bi bi-credit-card-2-front text-primary me-2"></i>
+                                                                                Allowed Payment Methods for <span className="text-primary ms-1">{service.name}</span>
+                                                                            </h6>
+                                                                        </div>
+                                                                        <div className="p-3 bg-white rounded-2 border">
+                                                                            {String(service.bookingType || '').toLowerCase().includes('inqu') ? (
+                                                                                <span className="text-muted small">Inquiry-based service (Payment methods not applicable — pricing is finalized via custom quotation upon consultation).</span>
+                                                                            ) : (
+                                                                                <div className="d-flex flex-wrap gap-2">
+                                                                                    {((service.allowedPaymentMethods && service.allowedPaymentMethods.length > 0) 
+                                                                                        ? service.allowedPaymentMethods 
+                                                                                        : ['CASH_AFTER_SERVICE']).map((m, idx) => {
+                                                                                        if (m === 'FULL_ONLINE') {
+                                                                                            return (
+                                                                                                <div key={idx} className="p-2 px-3 rounded-2 border" style={{ background: '#ecfdf5', borderColor: '#a7f3d0' }}>
+                                                                                                    <div className="fw-bold text-success" style={{ fontSize: '12.5px' }}>💳 100% Online Payment</div>
+                                                                                                    <div className="text-muted" style={{ fontSize: '11px' }}>Full payment upfront online via Razorpay (UPI/Cards).</div>
+                                                                                                </div>
+                                                                                            );
+                                                                                        }
+                                                                                        if (m === 'PARTIAL_30_70') {
+                                                                                            return (
+                                                                                                <div key={idx} className="p-2 px-3 rounded-2 border" style={{ background: '#eff6ff', borderColor: '#bfdbfe' }}>
+                                                                                                    <div className="fw-bold text-primary" style={{ fontSize: '12.5px' }}>⚡ 30% Advance + 70% Cash</div>
+                                                                                                    <div className="text-muted" style={{ fontSize: '11px' }}>30% paid online upfront, remaining 70% in cash.</div>
+                                                                                                </div>
+                                                                                            );
+                                                                                        }
+                                                                                        return (
+                                                                                            <div key={idx} className="p-2 px-3 rounded-2 border" style={{ background: '#f8fafc', borderColor: '#cbd5e1' }}>
+                                                                                                <div className="fw-bold text-dark" style={{ fontSize: '12.5px' }}>💵 Cash on Service</div>
+                                                                                                <div className="text-muted" style={{ fontSize: '11px' }}>Full payment in cash after service completion.</div>
+                                                                                            </div>
+                                                                                        );
+                                                                                    })}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+
                                                                     {/* Section 1: All Price Plans */}
                                                                     <div className="mb-3">
                                                                         <div className="d-flex align-items-center justify-content-between mb-2">
@@ -3523,6 +3779,13 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                                                 </div>
 
                                                 <div className="d-flex justify-content-between align-items-center">
+                                                    <span className="text-muted">Payment:</span>
+                                                    <div>
+                                                        {renderServicePaymentMethods(service)}
+                                                    </div>
+                                                </div>
+
+                                                <div className="d-flex justify-content-between align-items-center">
                                                     <span className="text-muted">Contact:</span>
                                                     <span className="text-dark fw-semibold">📞 {service.phonenumber || 'N/A'}</span>
                                                 </div>
@@ -3570,12 +3833,23 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                                                                 ))}
                                                             </div>
                                                         )}
+                                                        <div className="mt-2 pt-2 border-top">
+                                                            <div className="fw-bold text-dark mb-1">Payment Options:</div>
+                                                            {renderServicePaymentMethods(service)}
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
 
                                             {/* Action Buttons */}
                                             <div className="service-mobile-actions">
+                                                <button
+                                                    className="btn btn-outline-warning btn-sm fw-semibold"
+                                                    onClick={() => onEditService && onEditService(service)}
+                                                    title="Edit this service"
+                                                >
+                                                    <i className="bi bi-pencil-square me-1"></i> Edit
+                                                </button>
                                                 <button
                                                     className="btn btn-outline-primary btn-sm fw-semibold"
                                                     onClick={() => handleCalendarOpen(service)}
@@ -4450,7 +4724,7 @@ export function Services({ userId, isSuperAdmin, onServicesUpdate }) {
                     </div>
                 </div>
             )}
-            )}
+            
         </div>
     );
 }

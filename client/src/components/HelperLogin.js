@@ -905,6 +905,53 @@ function HelperDashboard({ helperData, onLogout }) {
                 responsive: ['sm']
             },
             {
+                title: 'Payment & Collection',
+                key: 'paymentMethod',
+                render: (_, record) => {
+                    const isInquiry = record.category === 'Inquari Booking' || record.paymentMethod === 'N/A';
+                    if (isInquiry) {
+                        return <Tag color="default">N/A (Inquiry)</Tag>;
+                    }
+                    const method = record.paymentMethod || 'CASH_AFTER_SERVICE';
+                    const remaining = Number(record.remainingCashAmount) || Number(record.price) || 0;
+
+                    if (method === 'FULL_ONLINE') {
+                        return (
+                            <div>
+                                <Tag color="green" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
+                                    💳 Full Online
+                                </Tag>
+                                <div style={{ fontSize: 11, color: '#059669', fontWeight: 600, marginTop: 3 }}>
+                                    ✓ No Cash to Collect
+                                </div>
+                            </div>
+                        );
+                    }
+                    if (method === 'PARTIAL_30_70') {
+                        return (
+                            <div>
+                                <Tag color="orange" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
+                                    ⚡ 30% / 70% Split
+                                </Tag>
+                                <div style={{ fontSize: 11, color: '#b45309', fontWeight: 600, marginTop: 3 }}>
+                                    💵 Collect Cash: ₹{remaining.toLocaleString('en-IN')}
+                                </div>
+                            </div>
+                        );
+                    }
+                    return (
+                        <div>
+                            <Tag color="blue" style={{ borderRadius: 6, fontWeight: 600, margin: 0 }}>
+                                💵 Cash on Service
+                            </Tag>
+                            <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 600, marginTop: 3 }}>
+                                💵 Collect Cash: ₹{remaining.toLocaleString('en-IN')}
+                            </div>
+                        </div>
+                    );
+                }
+            },
+            {
                 title: 'Duty Status',
                 key: 'status',
                 render: (_, record) => {
@@ -1320,6 +1367,64 @@ function HelperDashboard({ helperData, onLogout }) {
                                 ₹{(selectedBooking.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                             </Text>
                         </Descriptions.Item>
+
+                        <Descriptions.Item label="Payment Method">
+                            {selectedBooking.category === 'Inquari Booking' || selectedBooking.paymentMethod === 'N/A' ? (
+                                <Tag color="default">N/A (Inquiry)</Tag>
+                            ) : selectedBooking.paymentMethod === 'FULL_ONLINE' ? (
+                                <Tag color="green" style={{ fontWeight: 600 }}>💳 100% Online Payment</Tag>
+                            ) : selectedBooking.paymentMethod === 'PARTIAL_30_70' ? (
+                                <Tag color="orange" style={{ fontWeight: 600 }}>⚡ 30% Advance Online + 70% Cash</Tag>
+                            ) : (
+                                <Tag color="blue" style={{ fontWeight: 600 }}>💵 Cash on Service</Tag>
+                            )}
+                        </Descriptions.Item>
+
+                        <Descriptions.Item label="Payment Status">
+                            <Tag
+                                color={
+                                    selectedBooking.paymentStatus === 'paid' || selectedBooking.paymentMethod === 'FULL_ONLINE'
+                                        ? 'green'
+                                        : selectedBooking.paymentStatus === 'partial_paid' || selectedBooking.paymentMethod === 'PARTIAL_30_70'
+                                            ? 'orange'
+                                            : 'default'
+                                }
+                                style={{ textTransform: 'uppercase', fontWeight: 600 }}
+                            >
+                                {selectedBooking.category === 'Inquari Booking'
+                                    ? 'N/A'
+                                    : (selectedBooking.paymentStatus || 'UNPAID')}
+                            </Tag>
+                        </Descriptions.Item>
+
+                        {selectedBooking.category !== 'Inquari Booking' && (
+                            <Descriptions.Item label="Helper Collection Guide" span={screens.xs ? 1 : 2}>
+                                {selectedBooking.paymentMethod === 'FULL_ONLINE' ? (
+                                    <div style={{ padding: '10px 14px', background: '#ecfdf5', borderRadius: 8, border: '1px solid #a7f3d0', color: '#047857' }}>
+                                        <div style={{ fontWeight: 700, fontSize: 13 }}>✅ Fully Paid Online (₹{Number(selectedBooking.advancePaidAmount || selectedBooking.price || 0).toLocaleString('en-IN')})</div>
+                                        <div style={{ fontSize: 12, marginTop: 3 }}>
+                                            The customer has already paid online upfront. <strong>Do NOT ask for or collect cash from the customer.</strong>
+                                        </div>
+                                    </div>
+                                ) : selectedBooking.paymentMethod === 'PARTIAL_30_70' ? (
+                                    <div style={{ padding: '10px 14px', background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a', color: '#b45309' }}>
+                                        <div style={{ fontWeight: 700, fontSize: 13 }}>
+                                            ⚡ 30% Advance Online Paid (₹{Number(selectedBooking.advancePaidAmount || 0).toLocaleString('en-IN')})
+                                        </div>
+                                        <div style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', marginTop: 4 }}>
+                                            👉 PLEASE COLLECT REMAINING 70% CASH: ₹{Number(selectedBooking.remainingCashAmount || 0).toLocaleString('en-IN')} from the customer upon job completion.
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div style={{ padding: '10px 14px', background: '#eff6ff', borderRadius: 8, border: '1px solid #bfdbfe', color: '#1d4ed8' }}>
+                                        <div style={{ fontWeight: 700, fontSize: 13 }}>💵 Full Cash on Service</div>
+                                        <div style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', marginTop: 4 }}>
+                                            👉 PLEASE COLLECT FULL AMOUNT: ₹{Number(selectedBooking.remainingCashAmount || selectedBooking.price || 0).toLocaleString('en-IN')} in cash from the customer upon job completion.
+                                        </div>
+                                    </div>
+                                )}
+                            </Descriptions.Item>
+                        )}
 
                         {selectedBooking.specialInstructions && (
                             <Descriptions.Item label="Special Instructions" span={screens.xs ? 1 : 2}>

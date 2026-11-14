@@ -152,7 +152,8 @@ router.post("/addservice", async (req, res) => {
             bookingType,
             locations,
             locationType,
-            locationPricing
+            locationPricing,
+            allowedPaymentMethods
         } = req.body;
 
         // Validate required fields
@@ -244,6 +245,8 @@ router.post("/addservice", async (req, res) => {
         const effectiveLocType = (locations && locations.length > 0 && locations[0]) || locationType || 'Simple';
         const processedLocations = (locations && locations.length > 0) ? locations : [effectiveLocType];
 
+        const isInquiry = String(bookingType || '').toLowerCase().includes('inqu');
+
         const newService = new Service({
             name: service,
             // New: Multiple pricing units
@@ -271,6 +274,9 @@ router.post("/addservice", async (req, res) => {
             category: category || '',
             subCategory: subCategory || '',
             bookingType: bookingType,
+            allowedPaymentMethods: isInquiry ? [] : (Array.isArray(allowedPaymentMethods) && allowedPaymentMethods.length > 0 
+                ? allowedPaymentMethods 
+                : ['CASH_AFTER_SERVICE']),
             vendorId: userid,
             userid: userid,
             isVisible: true,
@@ -379,23 +385,182 @@ router.put("/updateavailability/:id", async (req, res) => {
 });
 
 // Update service
-router.put("/update/:id", async (req, res) => {
+async function handleServiceUpdate(req, res) {
     try {
-        const updatedService = await Service.findByIdAndUpdate(
-            req.params.id,
-            req.body,
-            { new: true }
-        );
-        
-        if (!updatedService) {
+        const { id } = req.params;
+        const { userid } = req.query;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid service ID" });
+        }
+
+        const existingService = await Service.findById(id);
+        if (!existingService) {
             return res.status(404).json({ message: "Service not found" });
         }
-        
-        res.json(updatedService);
+
+        // Verify permissions if userid is provided
+        if (userid && userid !== "undefined" && mongoose.Types.ObjectId.isValid(userid)) {
+            const user = await User.findById(userid);
+            const isSuperAdmin = user?.email === 'himanshufa875@gmail.com' && (user?.role === 'superadmin' || user?.isAdmin);
+            const isOwner = String(existingService.vendorId) === String(userid) || String(existingService.userid) === String(userid);
+            if (!isSuperAdmin && !isOwner) {
+                return res.status(403).json({ message: "You are not authorized to edit this service" });
+            }
+        }
+
+        const {
+            service,
+            name,
+            pricingUnits,
+            rentperday,
+            unit,
+            customUnit,
+            isMerged,
+            mergedUnit,
+            isCountable,
+            maxQuantityPerDay,
+            maxUsersPerDay,
+            description,
+            phonenumber,
+            companyname,
+            address,
+            facility,
+            imageURLs,
+            imageurls,
+            optionalInputs,
+            extraInputs,
+            category,
+            subCategory,
+            bookingType,
+            locations,
+            locationType,
+            locationPricing,
+            allowedPaymentMethods
+        } = req.body;
+
+        const serviceName = service || name || existingService.name;
+        if (!serviceName || !serviceName.trim()) {
+            return res.status(400).json({ message: "Service name is required" });
+        }
+
+        const images = imageURLs || imageurls || existingService.imageurls;
+        if (!images || images.length < 3 || images.some(u => !u)) {
+            return res.status(400).json({ message: "At least 3 valid image URLs are required" });
+        }
+
+        // Process pricing units
+        let processedPricingUnits = [];
+        let defaultUnit = null;
+
+        if (pricingUnits && Array.isArray(pricingUnits) && pricingUnits.length > 0) {
+            processedPricingUnits = pricingUnits.map(u => ({
+                unit: u.unit || 'per day',
+                price: parseFloat(u.price) || 0,
+                customUnit: u.unit === 'Other' ? (u.customUnit || '') : '',
+                isDefault: u.isDefault || false,
+                isCountable: u.isCountable === true,
+                isMerged: !!u.isMerged,
+                mergedUnit: u.mergedUnit || 'per day',
+                maxQuantityPerDay: u.isCountable === true && u.maxQuantityPerDay ? parseInt(u.maxQuantityPerDay) : null,
+                maxUsersPerDay: u.maxUsersPerDay ? parseInt(u.maxUsersPerDay) : null,
+                description: u.description || ''
+            }));
+            defaultUnit = processedPricingUnits.find(u => u.isDefault) || processedPricingUnits[0];
+        } else if (rentperday !== undefined || unit !== undefined) {
+            const defaultUnitData = {
+                unit: unit || 'per day',
+                price: parseFloat(rentperday) || 0,
+                customUnit: unit === 'Other' ? (customUnit || '') : '',
+                isDefault: true,
+                isCountable: isCountable === true,
+                isMerged: !!isMerged,
+                mergedUnit: mergedUnit || 'per day',
+                maxQuantityPerDay: isCountable === true && maxQuantityPerDay ? parseInt(maxQuantityPerDay) : null,
+                maxUsersPerDay: maxUsersPerDay ? parseInt(maxUsersPerDay) : null,
+                description: ''
+            };
+            processedPricingUnits = [defaultUnitData];
+            defaultUnit = defaultUnitData;
+        } else {
+            processedPricingUnits = existingService.pricingUnits || [];
+            defaultUnit = processedPricingUnits.find(u => u.isDefault) || processedPricingUnits[0] || {
+                unit: existingService.unit || 'per day',
+                price: existingService.rentperday || 0,
+                customUnit: existingService.customUnit || ''
+            };
+        }
+
+        const processedLocationPricing = locationPricing !== undefined
+            ? (locationPricing || []).map(location => ({
+                locationName: location.locationName,
+                locationAddress: location.locationAddress,
+                extraPrice: parseFloat(location.extraPrice) || 0,
+                optionalInputsExtra: (location.optionalInputsExtra || []).map(opt => ({
+                    inputName: opt.inputName,
+                    extraPrice: parseFloat(opt.extraPrice) || 0
+                }))
+            }))
+            : existingService.locationPricing;
+
+        const effectiveLocType = (locations && locations.length > 0 && locations[0]) || locationType || existingService.locationType || 'Simple';
+        const processedLocations = (locations && locations.length > 0) ? locations : [effectiveLocType];
+
+        // Apply updates
+        existingService.name = serviceName;
+        existingService.pricingUnits = processedPricingUnits;
+        if (defaultUnit) {
+            existingService.rentperday = defaultUnit.price;
+            existingService.unit = defaultUnit.unit;
+            existingService.customUnit = defaultUnit.customUnit || '';
+            existingService.isMerged = !!defaultUnit.isMerged;
+            existingService.mergedUnit = defaultUnit.mergedUnit || 'per day';
+            existingService.isCountable = defaultUnit.isCountable === true;
+            existingService.maxQuantityPerDay = defaultUnit.isCountable === true ? (defaultUnit.maxQuantityPerDay || null) : null;
+            existingService.maxUsersPerDay = defaultUnit.maxUsersPerDay || null;
+        }
+        if (description !== undefined) existingService.description = description;
+        if (phonenumber) existingService.phonenumber = phonenumber;
+        if (companyname) existingService.companyname = companyname;
+        if (address) existingService.address = address;
+        if (facility) existingService.facility = facility;
+        existingService.locations = processedLocations;
+        existingService.locationType = effectiveLocType;
+        existingService.locationPricing = processedLocationPricing;
+        existingService.imageurls = images;
+        if (optionalInputs !== undefined) {
+            existingService.optionalInputs = normalizeOptionalInputs(optionalInputs);
+        }
+        if (extraInputs !== undefined) {
+            existingService.extraInputs = extraInputs;
+        }
+        if (category) existingService.category = category;
+        if (subCategory !== undefined) existingService.subCategory = subCategory;
+        if (bookingType) existingService.bookingType = bookingType;
+        const isInquiry = String(bookingType || existingService.bookingType || '').toLowerCase().includes('inqu');
+        if (isInquiry) {
+            existingService.allowedPaymentMethods = [];
+        } else if (allowedPaymentMethods !== undefined) {
+            existingService.allowedPaymentMethods = Array.isArray(allowedPaymentMethods) && allowedPaymentMethods.length > 0
+                ? allowedPaymentMethods
+                : ['CASH_AFTER_SERVICE'];
+        }
+
+        await existingService.save();
+
+        console.log(`✅ Service updated: ${existingService._id} (${existingService.name})`);
+        res.status(200).json({
+            message: "Service updated successfully",
+            service: existingService
+        });
     } catch (error) {
-        res.status(500).json({ message: 'Error updating service' });
+        console.error("Update service error:", error);
+        res.status(500).json({ message: "Failed to update service", error: error.message });
     }
-});
+}
+
+router.put("/editservice/:id", handleServiceUpdate);
+router.put("/update/:id", handleServiceUpdate);
 
 // Get service with location pricing details
 router.get("/servicewithpricing/:id", async (req, res) => {

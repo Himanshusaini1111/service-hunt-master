@@ -8,7 +8,9 @@ import { FaStore, FaInfoCircle, FaRupeeSign, FaImage, FaListUl, FaMapMarkerAlt, 
 import { getRandomDemoService } from './demoServiceAgent';
 import './Addservice.css';
 
-export function Addservice({ userId }) {
+const isInquiryType = (type) => Boolean(type && String(type).trim().toLowerCase().includes('inqu'));
+
+export function Addservice({ userId, editingService = null, onCancelEdit, onServiceUpdated }) {
     const lastDemoIndexRef = useRef(-1);
     const [service, setService] = useState("");
     const [phonenumber, setPhonenumber] = useState("");
@@ -65,6 +67,11 @@ export function Addservice({ userId }) {
     const [category, setCategory] = useState("");
     const [subCategory, setSubCategory] = useState("");
     const [bookingType, setBookingType] = useState("Automatic Booking");
+    const [allowedPaymentMethods, setAllowedPaymentMethods] = useState([
+        'CASH_AFTER_SERVICE',
+        'FULL_ONLINE',
+        'PARTIAL_30_70'
+    ]);
     const [descriptionPoints, setDescriptionPoints] = useState("");
     const [facilityPoints, setFacilityPoints] = useState("");
     const [showOptionalInputs, setShowOptionalInputs] = useState(false);
@@ -82,6 +89,222 @@ export function Addservice({ userId }) {
         optionalInputsExtra: []
     });
     const [locationAdded, setLocationAdded] = useState(false);
+
+    // Form reset function
+    const resetForm = () => {
+        if (imagePreview1) URL.revokeObjectURL(imagePreview1);
+        if (imagePreview2) URL.revokeObjectURL(imagePreview2);
+        if (imagePreview3) URL.revokeObjectURL(imagePreview3);
+        Object.values(optionalInputPreviews).forEach(preview => {
+            if (preview) URL.revokeObjectURL(preview);
+        });
+
+        setService("");
+        setAddress("");
+        setImage1("");
+        setImage2("");
+        setImage3("");
+        setImageFile1(null);
+        setImageFile2(null);
+        setImageFile3(null);
+        setImagePreview1("");
+        setImagePreview2("");
+        setImagePreview3("");
+        setFacilityPoints("");
+        setDescriptionPoints("");
+        setPhonenumber("");
+        setCompanyName("");
+        setCategory("");
+        setSubCategory("");
+        setBookingType("Automatic Booking");
+        setAllowedPaymentMethods(['CASH_AFTER_SERVICE', 'FULL_ONLINE', 'PARTIAL_30_70']);
+        setLocations([]);
+        setSelectedLocationType("");
+        setLocationsList([]);
+        setInputs([{
+            name: '',
+            price: '',
+            image: '',
+            maxcount: '',
+            unit: 'per day',
+            customUnit: '',
+            isCountable: true,
+            isMerged: false,
+            mergedUnit: 'per day'
+        }]);
+        setOptionalInputImages({});
+        setOptionalInputPreviews({});
+        setPricingUnits([{
+            unit: 'per day', 
+            price: '', 
+            customUnit: '', 
+            isDefault: true,
+            isCountable: false,
+            maxQuantityPerDay: '',
+            maxUsersPerDay: '',
+            description: '',
+            isMerged: false,
+            mergedUnit: 'per day'
+        }]);
+        setShowUnitControls(false);
+        setShowOptionalInputs(false);
+        setShowLocationOptions(false);
+        setShowLocationPricing(false);
+        setLocationAdded(false);
+    };
+
+    // Cancel edit handler
+    const handleCancelEdit = () => {
+        resetForm();
+        if (onCancelEdit) {
+            onCancelEdit();
+        }
+    };
+
+    // Effect: populate all fields when editingService changes
+    useEffect(() => {
+        if (editingService && editingService._id) {
+            if (imagePreview1) URL.revokeObjectURL(imagePreview1);
+            if (imagePreview2) URL.revokeObjectURL(imagePreview2);
+            if (imagePreview3) URL.revokeObjectURL(imagePreview3);
+            Object.values(optionalInputPreviews).forEach(preview => {
+                if (preview) URL.revokeObjectURL(preview);
+            });
+
+            setService(editingService.name || editingService.service || "");
+            setCompanyName(editingService.companyname || "");
+            setPhonenumber(editingService.phonenumber ? String(editingService.phonenumber) : "");
+            setAddress(editingService.address || "");
+            const rawType = String(editingService.bookingType || "Automatic Booking").toLowerCase();
+            const normalizedBookingType = rawType.includes('inqu') 
+                ? "Inquari Booking" 
+                : (rawType.includes('man') ? "Manual Booking" : "Automatic Booking");
+            setBookingType(normalizedBookingType);
+            setCategory(editingService.category || "");
+            setSubCategory(editingService.subCategory || "");
+
+            // Allowed Payment Methods - Payment methods are NOT allowed in inquiry services
+            if (isInquiryType(normalizedBookingType)) {
+                setAllowedPaymentMethods([]);
+            } else if (editingService.allowedPaymentMethods && Array.isArray(editingService.allowedPaymentMethods) && editingService.allowedPaymentMethods.length > 0) {
+                setAllowedPaymentMethods(editingService.allowedPaymentMethods);
+            } else {
+                setAllowedPaymentMethods(['CASH_AFTER_SERVICE', 'FULL_ONLINE', 'PARTIAL_30_70']);
+            }
+
+            // Images
+            const imgs = editingService.imageurls || editingService.imageURLs || [];
+            setImage1(imgs[0] || "");
+            setImage2(imgs[1] || "");
+            setImage3(imgs[2] || "");
+            setImageFile1(null);
+            setImageFile2(null);
+            setImageFile3(null);
+            setImagePreview1("");
+            setImagePreview2("");
+            setImagePreview3("");
+
+            // Description and Facility points
+            const cleanBulletPoints = (str) => {
+                if (!str) return "";
+                return str
+                    .split('\n')
+                    .map(line => line.replace(/^[→•\-*]\s*/, '').trim())
+                    .filter(Boolean)
+                    .join('\n');
+            };
+            setDescriptionPoints(cleanBulletPoints(editingService.description));
+            setFacilityPoints(cleanBulletPoints(editingService.facility));
+
+            // Pricing Units
+            if (editingService.pricingUnits && Array.isArray(editingService.pricingUnits) && editingService.pricingUnits.length > 0) {
+                setPricingUnits(editingService.pricingUnits.map(u => ({
+                    unit: u.unit || 'per day',
+                    price: u.price !== undefined && u.price !== null ? String(u.price) : '',
+                    customUnit: u.customUnit || '',
+                    isDefault: !!u.isDefault,
+                    isCountable: !!u.isCountable,
+                    maxQuantityPerDay: u.maxQuantityPerDay ? String(u.maxQuantityPerDay) : '',
+                    maxUsersPerDay: u.maxUsersPerDay ? String(u.maxUsersPerDay) : '',
+                    description: u.description || '',
+                    isMerged: !!u.isMerged,
+                    mergedUnit: u.mergedUnit || 'per day'
+                })));
+                setShowUnitControls(editingService.pricingUnits.length > 1);
+                if (editingService.pricingUnits.some(u => u.isMerged)) {
+                    setShowSimpleMerge(true);
+                }
+            } else {
+                const isMerged = !!editingService.isMerged;
+                setPricingUnits([{
+                    unit: editingService.unit || 'per day',
+                    price: editingService.rentperday !== undefined && editingService.rentperday !== null ? String(editingService.rentperday) : '',
+                    customUnit: editingService.customUnit || '',
+                    isDefault: true,
+                    isCountable: !!editingService.isCountable,
+                    maxQuantityPerDay: editingService.maxQuantityPerDay ? String(editingService.maxQuantityPerDay) : '',
+                    maxUsersPerDay: editingService.maxUsersPerDay ? String(editingService.maxUsersPerDay) : '',
+                    description: editingService.description || '',
+                    isMerged: isMerged,
+                    mergedUnit: editingService.mergedUnit || 'per day'
+                }]);
+                setShowUnitControls(false);
+                if (isMerged) {
+                    setShowSimpleMerge(true);
+                }
+            }
+
+            // Optional Inputs - ALWAYS SHOW in edit mode so all features can be used
+            setShowOptionalInputs(true);
+            if (editingService.optionalInputs && Array.isArray(editingService.optionalInputs) && editingService.optionalInputs.length > 0) {
+                setInputs(editingService.optionalInputs.map(opt => ({
+                    name: opt.name || '',
+                    price: opt.price !== undefined && opt.price !== null ? String(opt.price) : '',
+                    image: opt.image || '',
+                    maxcount: opt.maxcount ? String(opt.maxcount) : '',
+                    unit: opt.unit || 'per day',
+                    customUnit: opt.customUnit || '',
+                    isCountable: opt.isCountable !== false,
+                    isMerged: !!opt.isMerged,
+                    mergedUnit: opt.mergedUnit || 'per day'
+                })));
+            } else {
+                setInputs([{
+                    name: '',
+                    price: '',
+                    image: '',
+                    maxcount: '',
+                    unit: 'per day',
+                    customUnit: '',
+                    isCountable: true,
+                    isMerged: false,
+                    mergedUnit: 'per day'
+                }]);
+            }
+            setOptionalInputImages({});
+            setOptionalInputPreviews({});
+
+            // Locations - ALWAYS SHOW in edit mode so scope & surcharges are immediately accessible
+            const locType = editingService.locationType || (editingService.locations && editingService.locations[0]) || 'Simple';
+            setSelectedLocationType(locType);
+            setLocations([locType]);
+            setLocationAdded(true);
+            setShowLocationOptions(true);
+            setShowLocationPricing(true);
+
+            if (editingService.locationPricing && Array.isArray(editingService.locationPricing) && editingService.locationPricing.length > 0) {
+                setLocationsList(editingService.locationPricing.map(loc => ({
+                    locationName: loc.locationName || '',
+                    locationAddress: loc.locationAddress || '',
+                    extraPrice: loc.extraPrice || 0,
+                    optionalInputsExtra: loc.optionalInputsExtra || []
+                })));
+            } else {
+                setLocationsList([]);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editingService]);
 
     const categoryOptions = {
         "Home Maintenance & Repair Services": [
@@ -570,6 +793,11 @@ export function Addservice({ userId }) {
             return;
         }
 
+        if (!isInquiryType(bookingType) && (!allowedPaymentMethods || allowedPaymentMethods.length === 0)) {
+            Swal.fire("Error", "Please select at least one allowed payment method for this service.", "error");
+            return;
+        }
+
         // Validate pricing units
         const validUnits = pricingUnits.filter(u => u.price && parseFloat(u.price) > 0);
         if (validUnits.length === 0) {
@@ -654,66 +882,43 @@ export function Addservice({ userId }) {
                 category,
                 subCategory,
                 bookingType,
+                allowedPaymentMethods: isInquiryType(bookingType)
+                    ? []
+                    : ((allowedPaymentMethods && allowedPaymentMethods.length > 0) ? allowedPaymentMethods : ['CASH_AFTER_SERVICE']),
                 locations: [selectedLocationType || (locations && locations.length > 0 ? locations[0] : 'Simple')],
                 locationType: selectedLocationType || (locations && locations.length > 0 ? locations[0] : 'Simple'),
                 locationPricing: locationsList,
             };
             
-            await axios.post(`/api/service/addservice?userid=${activeUserId}`, payload, {
-                headers: { "Content-Type": "application/json" },
-            });
-            
-            Swal.fire("Success", "Service added successfully!", "success");
-            
-            // Reset form
-            setService("");
-            setAddress("");
-            setImage1("");
-            setImage2("");
-            setImage3("");
-            setImageFile1(null);
-            setImageFile2(null);
-            setImageFile3(null);
-            setImagePreview1("");
-            setImagePreview2("");
-            setImagePreview3("");
-            setFacilityPoints("");
-            setDescriptionPoints("");
-            setPhonenumber("");
-            setCompanyName("");
-            setCategory("");
-            setSubCategory("");
-            setLocations([]);
-            setSelectedLocationType("");
-            setLocationsList([]);
-            setPricingUnits([
-                { 
-                    unit: 'per day', 
-                    price: '', 
-                    customUnit: '', 
-                    isDefault: true,
-                    isCountable: false,
-                    maxQuantityPerDay: '',
-                    maxUsersPerDay: '',
-                    description: ''
+            if (editingService && editingService._id) {
+                const response = await axios.put(`/api/service/editservice/${editingService._id}?userid=${activeUserId}`, payload, {
+                    headers: { "Content-Type": "application/json" },
+                });
+
+                Swal.fire({
+                    icon: "success",
+                    title: "Service Updated!",
+                    text: `"${service}" was updated successfully.`,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+
+                resetForm();
+                if (onServiceUpdated) {
+                    onServiceUpdated(response.data.service);
                 }
-            ]);
-            setInputs([{
-                name: '',
-                price: '',
-                image: '',
-                maxcount: '',
-                unit: 'per day',
-                customUnit: '',
-                isCountable: true
-            }]);
-            setOptionalInputImages({});
-            setOptionalInputPreviews({});
-            
+            } else {
+                await axios.post(`/api/service/addservice?userid=${activeUserId}`, payload, {
+                    headers: { "Content-Type": "application/json" },
+                });
+
+                Swal.fire("Success", "Service added successfully!", "success");
+                resetForm();
+            }
         } catch (error) {
-            console.error("Error adding service:", error);
+            console.error(`Error ${editingService ? 'updating' : 'adding'} service:`, error);
             const errorMessage = error.response?.data?.message || error.response?.data?.error || error.message || "Unknown error";
-            Swal.fire("Error", `Failed to add service: ${errorMessage}`, "error");
+            Swal.fire("Error", `Failed to ${editingService ? 'update' : 'add'} service: ${errorMessage}`, "error");
         } finally {
             setUploading(false);
         }
@@ -730,28 +935,65 @@ export function Addservice({ userId }) {
         };
     }, [imagePreview1, imagePreview2, imagePreview3, optionalInputPreviews]);
 
+    const isEditing = Boolean(editingService && editingService._id);
+
     return (
         <div className="service-form-container">
+            {/* Edit Mode Alert Banner */}
+            {isEditing && (
+                <div className="as-edit-mode-banner">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ fontSize: 26 }}>✏️</span>
+                        <div>
+                            <div style={{ fontWeight: 700, color: '#92400e', fontSize: 15 }}>
+                                Editing Service: <span style={{ color: '#b45309' }}>{editingService.name || editingService.service}</span>
+                            </div>
+                            <div style={{ fontSize: 12.5, color: '#78350f' }}>
+                                Modify the fields below and click "Update Service Listing" to save changes.
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        className="btn btn-outline-danger btn-sm fw-bold"
+                        onClick={handleCancelEdit}
+                        style={{ borderRadius: 8, padding: '6px 14px' }}
+                    >
+                        ✕ Cancel Edit & Add New Service
+                    </button>
+                </div>
+            )}
+
             {/* Top Hero Banner */}
             <div className="as-hero-header">
                 <div className="as-hero-title-group">
-                    <h2>Create Service Offering</h2>
-                    <p>Configure pricing, media portfolio, coverage areas and booking rules for your new service.</p>
+                    <h2>{isEditing ? "Edit Service Offering" : "Create Service Offering"}</h2>
+                    <p>
+                        {isEditing
+                            ? `Updating "${editingService.name || editingService.service}". Modify pricing, images, and details.`
+                            : "Configure pricing, media portfolio, coverage areas and booking rules for your new service."}
+                    </p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                    <button
-                        type="button"
-                        className="as-demo-agent-btn"
-                        onClick={handleFillDemoData}
-                        title="Click to auto-populate all form fields with fresh random demo data"
-                    >
-                        <span className="as-agent-pulse-dot" />
-                        <FaRobot style={{ fontSize: 16 }} />
-                        <span>Fill Demo Data (Agent)</span>
-                        <FaMagic style={{ fontSize: 13, opacity: 0.9 }} />
-                    </button>
-                    <div className="as-hero-badge">
-                        <FaStore style={{ marginRight: 6 }} /> Vendor Partner Studio
+                    {!isEditing && (
+                        <button
+                            type="button"
+                            className="as-demo-agent-btn"
+                            onClick={handleFillDemoData}
+                            title="Click to auto-populate all form fields with fresh random demo data"
+                        >
+                            <span className="as-agent-pulse-dot" />
+                            <FaRobot style={{ fontSize: 16 }} />
+                            <span>Fill Demo Data (Agent)</span>
+                            <FaMagic style={{ fontSize: 13, opacity: 0.9 }} />
+                        </button>
+                    )}
+                    <div className={isEditing ? "as-edit-mode-badge" : "as-hero-badge"}>
+                        {isEditing ? (
+                            <>✏️ Edit Mode Active</>
+                        ) : (
+                            <><FaStore style={{ marginRight: 6 }} /> Vendor Partner Studio</>
+                        )}
                     </div>
                 </div>
             </div>
@@ -814,13 +1056,117 @@ export function Addservice({ userId }) {
                             <select
                                 className="as-select"
                                 value={bookingType}
-                                onChange={(e) => setBookingType(e.target.value)}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setBookingType(val);
+                                    if (isInquiryType(val)) {
+                                        setAllowedPaymentMethods([]);
+                                    } else if (!allowedPaymentMethods || allowedPaymentMethods.length === 0) {
+                                        setAllowedPaymentMethods(['CASH_AFTER_SERVICE', 'FULL_ONLINE', 'PARTIAL_30_70']);
+                                    }
+                                }}
                             >
                                 <option value="Automatic Booking">Automatic Booking (Instant Confirmation)</option>
                                 <option value="Manual Booking">Manual Booking (Vendor Acceptance Required)</option>
                                 <option value="Inquari Booking">Inquiry Booking (Price on Consultation)</option>
                             </select>
                         </div>
+
+                        {!isInquiryType(bookingType) && (
+                            <div className="as-field as-full" style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '6px', marginBottom: '14px' }}>
+                                <label className="as-label" style={{ fontWeight: 600, color: '#1e293b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    💳 Allowed Payment Methods <span className="as-required">*</span>
+                                </label>
+                                <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 12px 0' }}>
+                                    Choose which payment options customers can select when booking this service:
+                                </p>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                                    <label style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '10px',
+                                        padding: '12px',
+                                        borderRadius: '6px',
+                                        border: allowedPaymentMethods.includes('CASH_AFTER_SERVICE') ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                                        background: allowedPaymentMethods.includes('CASH_AFTER_SERVICE') ? '#eff6ff' : '#ffffff',
+                                        cursor: 'pointer'
+                                    }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={allowedPaymentMethods.includes('CASH_AFTER_SERVICE')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setAllowedPaymentMethods([...allowedPaymentMethods, 'CASH_AFTER_SERVICE']);
+                                                } else {
+                                                    setAllowedPaymentMethods(allowedPaymentMethods.filter(m => m !== 'CASH_AFTER_SERVICE'));
+                                                }
+                                            }}
+                                            style={{ marginTop: '3px' }}
+                                        />
+                                        <div>
+                                            <strong style={{ display: 'block', fontSize: '13px', color: '#1e293b' }}>Cash on Service</strong>
+                                            <span style={{ fontSize: '11px', color: '#64748b' }}>Full payment in cash after service completion.</span>
+                                        </div>
+                                    </label>
+
+                                    <label style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '10px',
+                                        padding: '12px',
+                                        borderRadius: '6px',
+                                        border: allowedPaymentMethods.includes('FULL_ONLINE') ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                                        background: allowedPaymentMethods.includes('FULL_ONLINE') ? '#eff6ff' : '#ffffff',
+                                        cursor: 'pointer'
+                                    }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={allowedPaymentMethods.includes('FULL_ONLINE')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setAllowedPaymentMethods([...allowedPaymentMethods, 'FULL_ONLINE']);
+                                                } else {
+                                                    setAllowedPaymentMethods(allowedPaymentMethods.filter(m => m !== 'FULL_ONLINE'));
+                                                }
+                                            }}
+                                            style={{ marginTop: '3px' }}
+                                        />
+                                        <div>
+                                            <strong style={{ display: 'block', fontSize: '13px', color: '#1e293b' }}>100% Online Payment</strong>
+                                            <span style={{ fontSize: '11px', color: '#64748b' }}>Full payment upfront online via Razorpay (UPI/Cards).</span>
+                                        </div>
+                                    </label>
+
+                                    <label style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '10px',
+                                        padding: '12px',
+                                        borderRadius: '6px',
+                                        border: allowedPaymentMethods.includes('PARTIAL_30_70') ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                                        background: allowedPaymentMethods.includes('PARTIAL_30_70') ? '#eff6ff' : '#ffffff',
+                                        cursor: 'pointer'
+                                    }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={allowedPaymentMethods.includes('PARTIAL_30_70')}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setAllowedPaymentMethods([...allowedPaymentMethods, 'PARTIAL_30_70']);
+                                                } else {
+                                                    setAllowedPaymentMethods(allowedPaymentMethods.filter(m => m !== 'PARTIAL_30_70'));
+                                                }
+                                            }}
+                                            style={{ marginTop: '3px' }}
+                                        />
+                                        <div>
+                                            <strong style={{ display: 'block', fontSize: '13px', color: '#1e293b' }}>30% Advance + 70% Cash</strong>
+                                            <span style={{ fontSize: '11px', color: '#64748b' }}>30% paid online upfront, remaining 70% in cash.</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="as-field">
                             <label className="as-label">
@@ -1932,36 +2278,55 @@ export function Addservice({ userId }) {
                 {/* 7. Bottom Submission Bar */}
                 <div className="as-action-bar">
                     <div>
-                        <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>Ready to Launch Service?</div>
-                        <div style={{ fontSize: 13, color: '#64748b' }}>Make sure service title, category, 3 photos, and base price are provided.</div>
+                        <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>
+                            {isEditing ? "Ready to Save Changes?" : "Ready to Launch Service?"}
+                        </div>
+                        <div style={{ fontSize: 13, color: '#64748b' }}>
+                            {isEditing
+                                ? "Ensure service details and at least 3 photos are in place before saving."
+                                : "Make sure service title, category, 3 photos, and base price are provided."}
+                        </div>
                     </div>
 
                     <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                        <button
-                            type="button"
-                            className="as-demo-agent-btn-secondary"
-                            onClick={handleFillDemoData}
-                            title="Generate another set of dynamic demo data"
-                        >
-                            <FaDice style={{ marginRight: 6 }} /> Fill Different Demo Data
-                        </button>
+                        {!isEditing && (
+                            <button
+                                type="button"
+                                className="as-demo-agent-btn-secondary"
+                                onClick={handleFillDemoData}
+                                title="Generate another set of dynamic demo data"
+                            >
+                                <FaDice style={{ marginRight: 6 }} /> Fill Different Demo Data
+                            </button>
+                        )}
+                        {isEditing && (
+                            <button
+                                type="button"
+                                className="btn btn-outline-secondary"
+                                onClick={handleCancelEdit}
+                                style={{ borderRadius: 10, padding: '10px 18px', fontWeight: 600 }}
+                            >
+                                Cancel Edit
+                            </button>
+                        )}
                         <button
                             type="button"
                             className="as-publish-btn"
-                        onClick={addService}
-                        disabled={uploading}
-                    >
-                        {uploading ? (
-                            <>
-                                <span className="spinner-border spinner-border-sm" role="status" style={{ marginRight: 8 }} />
-                                Processing & Uploading...
-                            </>
-                        ) : (
-                            <>
-                                Publish Service Listing →
-                            </>
-                        )}
-                    </button>
+                            onClick={addService}
+                            disabled={uploading}
+                            style={isEditing ? { background: '#d97706', borderColor: '#b45309' } : {}}
+                        >
+                            {uploading ? (
+                                <>
+                                    <span className="spinner-border spinner-border-sm" role="status" style={{ marginRight: 8 }} />
+                                    {isEditing ? "Saving Changes..." : "Processing & Uploading..."}
+                                </>
+                            ) : (
+                                <>
+                                    {isEditing ? "💾 Update Service Listing →" : "Publish Service Listing →"}
+                                </>
+                            )}
+                        </button>
                     </div>
                 </div>
             </div>

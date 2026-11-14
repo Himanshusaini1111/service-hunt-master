@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const vendorSchema = new mongoose.Schema({
      userId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'user',
         required: true,
         unique: true // Each vendor should be linked to one user
     },
@@ -31,7 +31,7 @@ const vendorSchema = new mongoose.Schema({
         url: String
     }],
     reviews: [{
-        customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'user' },
         customerName: String,
         rating: { type: Number, min: 1, max: 5 },
         comment: String,
@@ -49,7 +49,7 @@ const vendorSchema = new mongoose.Schema({
     },
     approvedBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        ref: 'user'
     },
     approvedDate: Date
 }, {

@@ -87,6 +87,57 @@ const bookingSchema = new mongoose.Schema({
     alertIfNoOneAccepts: {
         type: Boolean,
         default: false
+    },
+    paymentMethod: {
+        type: String,
+        enum: ['CASH_AFTER_SERVICE', 'FULL_ONLINE', 'PARTIAL_30_70', 'N/A'],
+        default: 'CASH_AFTER_SERVICE'
+    },
+    paymentStatus: {
+        type: String,
+        enum: ['unpaid', 'partial_paid', 'paid', 'not_applicable'],
+        default: 'unpaid'
+    },
+    advancePaidAmount: {
+        type: Number,
+        default: 0
+    },
+    remainingCashAmount: {
+        type: Number,
+        default: 0
+    },
+    razorpayOrderId: {
+        type: String
+    },
+    razorpayPaymentId: {
+        type: String
+    },
+    razorpaySignature: {
+        type: String
+    },
+    // Escrow & Commission System (SuperAdmin <-> Admin Settlement)
+    completedAt: {
+        type: Date
+    },
+    escrowReleaseDate: {
+        type: Date // Matures 2 days (48 hours) after completedAt
+    },
+    platformCommission: {
+        type: Number,
+        default: 0 // 5% for standard bookings, flat ₹200 for Inquiry
+    },
+    adminNetEarning: {
+        type: Number,
+        default: 0 // totalAmount - platformCommission
+    },
+    payoutStatus: {
+        type: String,
+        enum: ['unsettled', 'in_escrow', 'available', 'payout_requested', 'paid'],
+        default: 'unsettled'
+    },
+    payoutRequestId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'PayoutRequest'
     }
 }, { timestamps: true });
 

@@ -118,7 +118,14 @@ router.post("/bookservice", async (req, res) => {
             optionalInputs,
             extraInputs,
             rentperday,
-            selectedServiceArea
+            selectedServiceArea,
+            paymentMethod,
+            paymentStatus,
+            advancePaidAmount,
+            remainingCashAmount,
+            razorpayOrderId,
+            razorpayPaymentId,
+            razorpaySignature
         } = req.body;
 
         // Validate required fields
@@ -317,6 +324,13 @@ router.post("/bookservice", async (req, res) => {
             assignedHelpers: serviceAssignedHelpers,
             useOwn: !!serviceData.useOwn,
             alertIfNoOneAccepts: !!serviceData.alertIfNoOneAccepts,
+            paymentMethod: bookingType === 'Inquari Booking' ? 'N/A' : (paymentMethod || 'CASH_AFTER_SERVICE'),
+            paymentStatus: bookingType === 'Inquari Booking' ? 'not_applicable' : (paymentStatus || 'unpaid'),
+            advancePaidAmount: advancePaidAmount || 0,
+            remainingCashAmount: remainingCashAmount != null ? remainingCashAmount : (bookingType === 'Inquari Booking' ? 0 : (totalAmount || 0)),
+            razorpayOrderId: razorpayOrderId || null,
+            razorpayPaymentId: razorpayPaymentId || null,
+            razorpaySignature: razorpaySignature || null,
             ...(selectedServiceArea && typeof selectedServiceArea === 'object' ? {
                 selectedServiceArea: {
                     city: selectedServiceArea.city || '',
@@ -609,7 +623,28 @@ router.post("/updatestatus", async (req, res) => {
         }
 
         // Update the booking status
-         booking.status = status;
+        booking.status = status;
+        if (status === 'completed') {
+            const now = new Date();
+            booking.completedAt = now;
+            // Immediate maturity for testing (bypasses 2-day hold so payout can be tested right away)
+            booking.escrowReleaseDate = now;
+
+            // Platform Commission: Flat ₹200 for Inquiry bookings, 5% of total for standard bookings
+            const total = Number(booking.totalAmount) || 0;
+            const isInquiry = booking.bookingType === 'Inquari Booking' || booking.bookingType === 'inquiry';
+            let commission = 0;
+            if (isInquiry) {
+                commission = 200;
+            } else {
+                commission = Math.round(total * 0.05 * 100) / 100;
+            }
+            booking.platformCommission = commission;
+            booking.adminNetEarning = Math.max(0, total - commission);
+            if (booking.payoutStatus !== 'paid' && booking.payoutStatus !== 'payout_requested') {
+                booking.payoutStatus = 'available';
+            }
+        }
         await booking.save();
         
         console.log('Booking updated successfully:', booking);

@@ -90,10 +90,21 @@ deviceInfo: {
 },
     approvedDate: {
         type: Date
+    },
+    // Banking / UPI profile for payouts
+    bankDetails: {
+        accountHolderName: { type: String, default: '' },
+        accountNumber: { type: String, default: '' },
+        ifscCode: { type: String, default: '' },
+        bankName: { type: String, default: '' },
+        upiId: { type: String, default: '' }
     }
 }, {
     timestamps: true,
 });
 
-const userModel = mongoose.model('user', userSchema);
+const userModel = mongoose.models.user || mongoose.model('user', userSchema);
+if (!mongoose.models.User) {
+    mongoose.model('User', userSchema);
+}
 module.exports = userModel;

@@ -1,4 +1,5 @@
 const express = require("express");
+require('dotenv').config();
 const cors = require("cors");
 const path = require("path");
 const http = require('http');
@@ -17,6 +18,8 @@ const bidRouter = require("./routes/bids");
 const vendorRoutes = require("./routes/vendorRoutes"); // Adjust the path as needed
 const helpers = require("./routes/helpers");
 const superadmin =require("./routes/superadmin.js")
+const paymentRoute = require("./routes/paymentRoute");
+const payoutRoute = require("./routes/payoutRoute");
 
 
 app.use('/uploads', express.static('uploads'));
@@ -44,6 +47,8 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/comments', commentsRouter); // E
 app.use('/api/helper', helpers); // E
 app.use('/api/superadmin', superadmin);
+app.use('/api/payment', paymentRoute);
+app.use('/api/payouts', payoutRoute);
 
 if (process.env.NODE_ENV === 'production') {
   // For Render deployment - build is in parent directory's client/build

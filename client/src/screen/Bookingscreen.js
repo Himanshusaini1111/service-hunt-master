@@ -83,6 +83,23 @@ function Bookingscreen() {
   const [selectedServiceArea, setSelectedServiceArea] = useState(null);
   const [selectedUnitIndex, setSelectedUnitIndex] = useState(0);
   const [availableUnits, setAvailableUnits] = useState([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('CASH_AFTER_SERVICE');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  // Helper to dynamically load Razorpay script
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   // Max quantity calculation from pricing unit or service configured by admin in Add Service
   const activeUnit = availableUnits[selectedUnitIndex] || availableUnits[0];
@@ -203,6 +220,9 @@ function Bookingscreen() {
         }
 
         setBookingType(data.bookingType || "Automatic Booking");
+        if (data.allowedPaymentMethods && data.allowedPaymentMethods.length > 0) {
+          setSelectedPaymentMethod(data.allowedPaymentMethods[0]);
+        }
 
         const today = moment().format('YYYY-MM-DD');
         setFromDate(today);
@@ -619,20 +639,154 @@ const handleBooking = async (e) => {
       status: bookingType === 'Inquari Booking' ? 'inquiry' : 'pending'
     };
 
-    const response = await axios.post('/api/bookings/bookservice', bookingDetails);
+    // If Inquiry Booking or Cash on Service -> Direct booking creation
+    if (bookingType === 'Inquari Booking' || selectedPaymentMethod === 'CASH_AFTER_SERVICE') {
+      const finalBookingData = {
+        ...bookingDetails,
+        paymentMethod: bookingType === 'Inquari Booking' ? 'N/A' : 'CASH_AFTER_SERVICE',
+        paymentStatus: bookingType === 'Inquari Booking' ? 'not_applicable' : 'unpaid',
+        advancePaidAmount: 0,
+        remainingCashAmount: bookingType === 'Inquari Booking' ? 0 : totalAmount
+      };
 
-    if (response.status === 201) {
-      Swal.fire({
-        title: bookingType === 'Inquari Booking' ? 'Inquiry Submitted!' : 'Success!',
-        text: bookingType === 'Inquari Booking'
-          ? 'Your inquiry has been submitted. Our team will contact you shortly.'
-          : 'Your service has been booked!',
-        icon: 'success',
-      }).then(() => {
-        // ✅ FIX: Navigate back to the booking screen with the service ID
-        navigate(`/book/${serviceid}`);
-      });
+      const response = await axios.post('/api/bookings/bookservice', finalBookingData);
+
+      if (response.status === 201) {
+        Swal.fire({
+          title: bookingType === 'Inquari Booking' ? 'Inquiry Submitted!' : 'Success!',
+          text: bookingType === 'Inquari Booking'
+            ? 'Your inquiry has been submitted. Our team will contact you shortly.'
+            : `Your service has been booked! ₹${totalAmount} is payable in cash upon service completion.`,
+          icon: 'success',
+        }).then(() => {
+          navigate(`/book/${serviceid}`);
+        });
+      }
+      setLoading(false);
+      return;
     }
+
+    // Online Payment Flow (100% Full Payment or 30% Advance Deposit)
+    setIsProcessingPayment(true);
+    const isFull = selectedPaymentMethod === 'FULL_ONLINE';
+    const advanceAmount = isFull ? Number(totalAmount) : Math.round(Number(totalAmount) * 0.30);
+    const remainingCash = Number(totalAmount) - advanceAmount;
+
+    const scriptLoaded = await loadRazorpayScript();
+    if (!scriptLoaded) {
+      setLoading(false);
+      setIsProcessingPayment(false);
+      Swal.fire('Error', 'Razorpay SDK failed to load. Please check your internet connection.', 'error');
+      return;
+    }
+
+    let orderRes;
+    try {
+      orderRes = await axios.post('/api/payment/create-order', {
+        amount: advanceAmount,
+        currency: 'INR',
+        notes: {
+          serviceId: service._id,
+          serviceName: service.name,
+          paymentType: selectedPaymentMethod
+        }
+      });
+    } catch (orderErr) {
+      console.error('Razorpay create-order error:', orderErr);
+      setLoading(false);
+      setIsProcessingPayment(false);
+      const errMsg = orderErr.response?.data?.message || orderErr.message || 'Failed to create payment order';
+      Swal.fire('Payment Error', errMsg, 'error');
+      return;
+    }
+
+    if (!orderRes.data || !orderRes.data.success) {
+      setLoading(false);
+      setIsProcessingPayment(false);
+      Swal.fire('Error', orderRes.data?.message || 'Failed to initiate payment', 'error');
+      return;
+    }
+
+    const { order, keyId } = orderRes.data;
+
+    const rzpOptions = {
+      key: keyId || 'rzp_test_placeholder',
+      amount: order.amount,
+      currency: order.currency || 'INR',
+      name: 'Service Hunt',
+      description: isFull ? '100% Full Payment' : '30% Advance Booking Deposit',
+      image: (service.imageurls && service.imageurls[0]) || '',
+      order_id: order.id,
+      handler: async function (paymentResponse) {
+        try {
+          const verifyRes = await axios.post('/api/payment/verify-payment', {
+            razorpay_order_id: paymentResponse.razorpay_order_id,
+            razorpay_payment_id: paymentResponse.razorpay_payment_id,
+            razorpay_signature: paymentResponse.razorpay_signature
+          });
+
+          if (!verifyRes.data || !verifyRes.data.success) {
+            Swal.fire('Payment Verification Failed', 'Payment signature mismatch. Please contact support.', 'error');
+            setIsProcessingPayment(false);
+            return;
+          }
+
+          const completeBookingDetails = {
+            ...bookingDetails,
+            paymentMethod: selectedPaymentMethod,
+            paymentStatus: isFull ? 'paid' : 'partial_paid',
+            advancePaidAmount: advanceAmount,
+            remainingCashAmount: remainingCash,
+            razorpayOrderId: paymentResponse.razorpay_order_id,
+            razorpayPaymentId: paymentResponse.razorpay_payment_id,
+            razorpaySignature: paymentResponse.razorpay_signature
+          };
+
+          const saveBookingRes = await axios.post('/api/bookings/bookservice', completeBookingDetails);
+
+          if (saveBookingRes.status === 201 || saveBookingRes.status === 200) {
+            Swal.fire({
+              title: 'Booking Confirmed!',
+              text: isFull
+                ? `Online payment of ₹${advanceAmount} was successful! Booking confirmed.`
+                : `30% deposit of ₹${advanceAmount} paid! Remaining ₹${remainingCash} is payable in cash after service.`,
+              icon: 'success'
+            }).then(() => {
+              navigate(`/book/${serviceid}`);
+            });
+          }
+        } catch (err) {
+          console.error('Error saving booking post-payment:', err);
+          Swal.fire('Error', 'Payment was successful, but booking could not be saved. Please contact support with Payment ID: ' + paymentResponse.razorpay_payment_id, 'error');
+        } finally {
+          setIsProcessingPayment(false);
+          setLoading(false);
+        }
+      },
+      prefill: {
+        name: name || user.name || '',
+        contact: phone || user.phone || '',
+        email: user.email || ''
+      },
+      theme: {
+        color: '#2563eb'
+      },
+      modal: {
+        ondismiss: function () {
+          setLoading(false);
+          setIsProcessingPayment(false);
+        }
+      }
+    };
+
+    setLoading(false);
+    const rzp = new window.Razorpay(rzpOptions);
+    rzp.on('payment.failed', function (failRes) {
+      setIsProcessingPayment(false);
+      Swal.fire('Payment Failed', failRes.error?.description || 'Payment was cancelled or failed.', 'error');
+    });
+    rzp.open();
+    return;
 
   } catch (error) {
     console.error("Booking Error:", error);
@@ -641,7 +795,9 @@ const handleBooking = async (e) => {
       : 'Failed to book the service.';
 
     if (error.response) {
-      if (error.response.status === 400) {
+      if (error.response.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response.status === 400) {
         errorMessage = error.response.data.message || 'Invalid booking data.';
       } else if (error.response.status === 401) {
         errorMessage = 'Please login again.';
@@ -650,6 +806,8 @@ const handleBooking = async (e) => {
       } else if (error.response.status === 409) {
         errorMessage = 'This time slot is already booked. Please choose different dates/times.';
       }
+    } else if (error.message) {
+      errorMessage = error.message;
     }
 
     Swal.fire('Error', errorMessage, 'error');
@@ -2001,6 +2159,119 @@ const handleBooking = async (e) => {
                     <span className="bill-total-label">Total Amount</span>
                     <span className="bill-total-val">₹{totalAmount}</span>
                   </div>
+
+                  {/* Payment Options Selection */}
+                  {bookingType !== 'Inquari Booking' && (
+                    <div style={{ marginTop: '20px', padding: '16px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        💳 Select Payment Option
+                      </div>
+                      <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 12px 0' }}>
+                        Choose how you would like to pay for this booking:
+                      </p>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {((service?.allowedPaymentMethods && service.allowedPaymentMethods.length > 0) ? service.allowedPaymentMethods : ['CASH_AFTER_SERVICE', 'FULL_ONLINE', 'PARTIAL_30_70']).includes('CASH_AFTER_SERVICE') && (
+                          <label style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            border: selectedPaymentMethod === 'CASH_AFTER_SERVICE' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                            background: selectedPaymentMethod === 'CASH_AFTER_SERVICE' ? '#eff6ff' : '#ffffff',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <input
+                                type="radio"
+                                name="bookingPaymentMethod"
+                                checked={selectedPaymentMethod === 'CASH_AFTER_SERVICE'}
+                                onChange={() => setSelectedPaymentMethod('CASH_AFTER_SERVICE')}
+                                style={{ accentColor: '#2563eb' }}
+                              />
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
+                                  Cash on Service (Pay Later)
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                                  Pay full ₹{totalAmount} in cash after the service is done
+                                </div>
+                              </div>
+                            </div>
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#16a34a' }}>Pay Now: ₹0</span>
+                          </label>
+                        )}
+
+                        {((service?.allowedPaymentMethods && service.allowedPaymentMethods.length > 0) ? service.allowedPaymentMethods : ['CASH_AFTER_SERVICE', 'FULL_ONLINE', 'PARTIAL_30_70']).includes('FULL_ONLINE') && (
+                          <label style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            border: selectedPaymentMethod === 'FULL_ONLINE' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                            background: selectedPaymentMethod === 'FULL_ONLINE' ? '#eff6ff' : '#ffffff',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <input
+                                type="radio"
+                                name="bookingPaymentMethod"
+                                checked={selectedPaymentMethod === 'FULL_ONLINE'}
+                                onChange={() => setSelectedPaymentMethod('FULL_ONLINE')}
+                                style={{ accentColor: '#2563eb' }}
+                              />
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
+                                  100% Online Payment
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                                  Instant checkout via UPI, Cards, NetBanking (Razorpay)
+                                </div>
+                              </div>
+                            </div>
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb' }}>Pay Now: ₹{totalAmount}</span>
+                          </label>
+                        )}
+
+                        {((service?.allowedPaymentMethods && service.allowedPaymentMethods.length > 0) ? service.allowedPaymentMethods : ['CASH_AFTER_SERVICE', 'FULL_ONLINE', 'PARTIAL_30_70']).includes('PARTIAL_30_70') && (
+                          <label style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 14px',
+                            borderRadius: '8px',
+                            border: selectedPaymentMethod === 'PARTIAL_30_70' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                            background: selectedPaymentMethod === 'PARTIAL_30_70' ? '#eff6ff' : '#ffffff',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <input
+                                type="radio"
+                                name="bookingPaymentMethod"
+                                checked={selectedPaymentMethod === 'PARTIAL_30_70'}
+                                onChange={() => setSelectedPaymentMethod('PARTIAL_30_70')}
+                                style={{ accentColor: '#2563eb' }}
+                              />
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b' }}>
+                                  30% Advance Online + 70% Cash
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                                  Pay ₹{Math.round(totalAmount * 0.30)} deposit now, remaining ₹{totalAmount - Math.round(totalAmount * 0.30)} in cash later
+                                </div>
+                              </div>
+                            </div>
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#d97706' }}>Pay Now: ₹{Math.round(totalAmount * 0.30)}</span>
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2027,10 +2298,20 @@ const handleBooking = async (e) => {
 
               <button
                 type="button"
+                disabled={isProcessingPayment}
                 className={`bill-btn-confirm ${bookingType === 'Inquari Booking' ? 'inquiry' : ''}`}
                 onClick={handleBooking}
+                style={{ opacity: isProcessingPayment ? 0.7 : 1, cursor: isProcessingPayment ? 'not-allowed' : 'pointer' }}
               >
-                {bookingType === 'Inquari Booking' ? "Submit Inquiry" : "Confirm Booking"}
+                {isProcessingPayment ? "Opening Razorpay..." : (
+                  bookingType === 'Inquari Booking'
+                    ? "Submit Inquiry"
+                    : selectedPaymentMethod === 'FULL_ONLINE'
+                      ? `Pay ₹${totalAmount} Online`
+                      : selectedPaymentMethod === 'PARTIAL_30_70'
+                        ? `Pay ₹${Math.round(totalAmount * 0.30)} (30% Deposit)`
+                        : `Confirm Booking (Pay ₹${totalAmount} Cash)`
+                )}
               </button>
             </div>
           </div>

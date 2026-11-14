@@ -730,6 +730,11 @@
   font-size: 14px;
 }
 
+.payment-cell {
+  vertical-align: middle;
+  min-width: 140px;
+}
+
 /* Status Badges */
 .status-badge {
   display: inline-flex;
@@ -1571,7 +1576,7 @@
 
 .service-mobile-actions {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
 }
 

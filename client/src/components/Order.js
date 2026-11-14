@@ -372,6 +372,37 @@ const MyOrders = () => {
         );
     };
 
+    const renderPaymentStatus = (b) => {
+        if (!b) return null;
+        const isBInquiry = b.status === 'inquiry' || b.bookingType === 'inquiry' || b.bookingType === 'Inquari Booking';
+        if (isBInquiry) return null;
+
+        const method = b.paymentMethod || 'CASH_AFTER_SERVICE';
+        const status = b.paymentStatus || 'unpaid';
+        const advance = Number(b.advancePaidAmount) || 0;
+        const remaining = Number(b.remainingCashAmount) || 0;
+
+        if (status === 'paid' || method === 'FULL_ONLINE') {
+            return (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', background: '#ecfdf5', borderRadius: '16px', border: '1px solid #a7f3d0', color: '#059669', fontSize: '11px', fontWeight: 600 }}>
+                    <span>💳 Fully Paid Online (₹{advance || b.totalAmount})</span>
+                </div>
+            );
+        }
+        if (status === 'partial_paid' || method === 'PARTIAL_30_70') {
+            return (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', background: '#fffbeb', borderRadius: '16px', border: '1px solid #fde68a', color: '#b45309', fontSize: '11px', fontWeight: 600 }}>
+                    <span>⚡ 30% Paid (₹{advance}) • ₹{remaining} Cash Due</span>
+                </div>
+            );
+        }
+        return (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', background: '#f8fafc', borderRadius: '16px', border: '1px solid #cbd5e1', color: '#475569', fontSize: '11px', fontWeight: 600 }}>
+                <span>💵 Cash on Service (₹{remaining || b.totalAmount || 0} Due)</span>
+            </div>
+        );
+    };
+
     const handleHelperClick = (helperId) => {
         setExpandedHelper(expandedHelper === helperId ? null : helperId);
     };
@@ -855,6 +886,37 @@ const MyOrders = () => {
                                         ₹{pricing.effectiveTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
                                 </div>
+
+                                {/* Payment Breakdown */}
+                                <div style={{
+                                    marginTop: '10px',
+                                    padding: '12px 14px',
+                                    background: '#f8fafc',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '10px'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>Payment Status:</span>
+                                        {renderPaymentStatus(selectedBooking)}
+                                    </div>
+                                    {selectedBooking.advancePaidAmount > 0 && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#059669', marginBottom: '4px' }}>
+                                            <span>Paid Online (Advance):</span>
+                                            <span style={{ fontWeight: 600 }}>₹{selectedBooking.advancePaidAmount}</span>
+                                        </div>
+                                    )}
+                                    {selectedBooking.remainingCashAmount > 0 && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#b45309' }}>
+                                            <span>Remaining Payable in Cash:</span>
+                                            <span style={{ fontWeight: 600 }}>₹{selectedBooking.remainingCashAmount}</span>
+                                        </div>
+                                    )}
+                                    {selectedBooking.razorpayPaymentId && (
+                                        <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed #cbd5e1', fontSize: '11px', color: '#94a3b8' }}>
+                                            Razorpay Payment ID: <code>{selectedBooking.razorpayPaymentId}</code>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1054,6 +1116,13 @@ const MyOrders = () => {
                                     ₹{Number(basePrice).toLocaleString()} / {getUnitDisplay()}
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {/* Payment Status */}
+                    {!isInquiry && (
+                        <div style={{ marginTop: '8px', marginBottom: '6px' }}>
+                            {renderPaymentStatus(booking)}
                         </div>
                     )}
 
